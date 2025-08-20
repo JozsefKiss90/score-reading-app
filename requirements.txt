@@ -1,0 +1,10 @@
+pip install verovio
+pip install mido python-rtmidi
+pip install PyQt6
+pip install PyQt6-WebEngine
+pip install music21
+pip install pyfluidsynth
+pip install pygame
+pip install beautifulsoup4
+pip install lxml
+pip install cairosvg
