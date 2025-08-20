@@ -32,21 +32,24 @@ class Measure:
     start_sec: float
     end_sec: float
 
-_HTML = r"""
+_HTML = r'''
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  /* Light theme so music (black strokes) has strong contrast */
+  :root { --hl-fill: rgba(255, 214, 10, 0.18); --hl-stroke: rgba(255, 149, 0, 0.75); --cursor: #ff3b30; }
   html, body { margin:0; padding:0; background:#fff; height:100%; color:#111; }
   #frame { position:relative; width:100%; height:100vh; overflow:hidden; background:#fff; }
-  #cursor { position:absolute; top:0; width:2px; background:#ff3b30; z-index:9999; transform: translateX(-1px); }
+  #barHL { position:absolute; top:0; left:0; width:0; height:0; pointer-events:none; z-index:1000;
+           background: var(--hl-fill); outline: 2px solid var(--hl-stroke); outline-offset:-2px; border-radius: 6px;
+           transition: left .12s ease, top .12s ease, width .12s ease, height .12s ease; }
+  #cursor { position:absolute; top:0; width:2px; background:var(--cursor); z-index:1010; transform: translateX(-1px); }
   #hud { position:absolute; right:8px; top:8px; color:#fff; font:12px/1.35 system-ui;
          background:rgba(0,0,0,.55); padding:6px 8px; border-radius:6px; }
-  /* Ensure the embedded Verovio SVG never shows a dark backdrop */
   object, svg { display:block; width:100%; height:100%; background:#fff !important; }
 </style></head>
 <body>
 <div id="frame">
+  <div id="barHL"></div>
   <div id="cursor"></div>
   <object id="page" type="image/svg+xml" data=""></object>
   <div id="hud">loading…</div>
@@ -59,7 +62,19 @@ _HTML = r"""
 
   let PAGE_IDX=0, READY_SVG=false;
   let BOXES_BY_ABS={}, ANCHORS_BY_ABS={}, ORDER_ABS=[];
-  let QUEUED=null, LAST={page:-1, abs:-1, t:0, x:0};
+  let QUEUED=null, LAST={page:-1, abs:-1, t:0, x:0}, LAST_HL=-1;
+
+  const THEMES={
+    amber:{fill:'rgba(255,214,10,0.18)', stroke:'rgba(255,149,0,0.75)', cursor:'#ff3b30'},
+    sky:{fill:'rgba(56,189,248,0.18)', stroke:'rgba(2,132,199,0.75)', cursor:'#0ea5e9'},
+    mint:{fill:'rgba(110,231,183,0.18)', stroke:'rgba(5,150,105,0.65)', cursor:'#10b981'},
+    violet:{fill:'rgba(196,181,253,0.20)', stroke:'rgba(124,58,237,0.70)', cursor:'#8b5cf6'}
+  };
+  function setTheme(name){
+    const t = THEMES[name] || THEMES.amber;
+    const s = document.documentElement.style;
+    s.setProperty('--hl-fill', t.fill); s.setProperty('--hl-stroke', t.stroke); s.setProperty('--cursor', t.cursor);
+  }
 
   function svgDoc(){ const o=document.getElementById('page'); try{ return o.contentDocument; }catch(e){ return null; } }
   function svgRoot(){ const d=svgDoc(); return d? d.querySelector('svg') : null }
@@ -74,16 +89,14 @@ _HTML = r"""
     const svg=svgRoot(); if(!svg) return;
     const R=svg.getBoundingClientRect();
     BOXES_BY_ABS={}; ANCHORS_BY_ABS={}; ORDER_ABS=[];
-    let groups=[...svg.querySelectorAll('[data-vrv-type="measure"]')];
-    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*="measure"]')];
-
+    let groups=[...svg.querySelectorAll('[data-vrv-type=\"measure\"]')];
+    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*=\"measure\"]')];
     const n=Math.min(groups.length, ABS_INDEXES.length);
     for(let i=0;i<n;i++){
       const abs=ABS_INDEXES[i], g=groups[i];
       const box=_rectRel(g, R);
       BOXES_BY_ABS[abs]=box; ORDER_ABS.push(abs);
-
-      const cand = g.querySelectorAll('[data-vrv-type="note"], g.note, .note, use[href*="note"]');
+      const cand = g.querySelectorAll('[data-vrv-type=\"note\"], g.note, .note, use[href*=\"note\"]');
       const xs=[];
       cand.forEach(el=>{
         const rr=el.getBoundingClientRect();
@@ -116,6 +129,14 @@ _HTML = r"""
     const c=document.getElementById('cursor');
     c.style.left=`${x}px`; c.style.top=`${box.top}px`; c.style.height=`${box.bottom-box.top}px`;
   }
+  function _placeHL(box){
+    const hl=document.getElementById('barHL');
+    const pad=2;
+    hl.style.left=`${box.left+pad}px`;
+    hl.style.top=`${box.top+pad}px`;
+    hl.style.width=`${Math.max(0, (box.right-box.left)-pad*2)}px`;
+    hl.style.height=`${Math.max(0, (box.bottom-box.top)-pad*2)}px`;
+  }
 
   function _compute(absIdx, t, dur){
     const box = BOXES_BY_ABS[absIdx]; if(!box) return null;
@@ -146,17 +167,19 @@ _HTML = r"""
     QUEUED=[absIdx, tInMeasure, dur];
     if(!READY_SVG) return;
     const r=_compute(absIdx, tInMeasure, dur); if(!r) return;
-    const [x, box, t] = r; _place(x, box); LAST={page:PAGE_IDX, abs:absIdx, t:t, x:x};
+    const [x, box, t] = r; _place(x, box); if(LAST_HL!==absIdx){ _placeHL(box); LAST_HL=absIdx; }
+    LAST={page:PAGE_IDX, abs:absIdx, t:t, x:x};
     document.getElementById('hud').textContent = `page=${PAGE_IDX} abs=${absIdx} x=${Math.round(x)} t=${t.toFixed(3)}s`;
   }
 
   function setPageAndSvg(pageIndex, svgUrl){
-    PAGE_IDX=pageIndex; READY_SVG=false; LAST={page:-1,abs:-1,t:0,x:0};
+    PAGE_IDX=pageIndex; READY_SVG=false; LAST={page:-1,abs:-1,t:0,x:0}; LAST_HL=-1;
     const obj=document.getElementById('page');
     obj.addEventListener('load', function onLoad(){
       obj.removeEventListener('load', onLoad);
       _scan();
-      if(QUEUED){ const [a,t,d]=QUEUED; const r=_compute(a,t,d); if(r){ const [x,box,tt]=r; _place(x,box); LAST={page:PAGE_IDX,abs:a,t:tt,x:x}; } }
+      if(QUEUED){ const [a,t,d]=QUEUED; const r=_compute(a,t,d); if(r){ const [x,box,tt]=r; _place(x,box); _placeHL(box); LAST_HL=a; LAST={page:PAGE_IDX,abs:a,t:tt,x:x}; } }
+      setTheme('amber');
     }, {once:true});
     obj.data = (svgUrl.indexOf('?')===-1 ? svgUrl+'?ts='+Date.now() : svgUrl);
   }
@@ -164,11 +187,11 @@ _HTML = r"""
   window.addEventListener('resize', ()=>{
     if(!svgRoot()) return;
     _scan();
-    if(QUEUED){ const [a,t,d]=QUEUED; const r=_compute(a,t,d); if(r){ const [x,box,tt]=r; _place(x,box); LAST={page:PAGE_IDX,abs:a,t:tt,x:x}; } }
+    if(QUEUED){ const [a,t,d]=QUEUED; const r=_compute(a,t,d); if(r){ const [x,box,tt]=r; _place(x,box); _placeHL(box); LAST_HL=a; LAST={page:PAGE_IDX,abs:a,t:tt,x:x}; } }
   });
 </script>
 </body></html>
-"""
+'''
 
 class ScoreView(QWidget):
     musicTimeChanged = None  # placeholder; view is passive and driven by PianoRoll
@@ -374,3 +397,10 @@ class ScoreView(QWidget):
             dlog(f"page={page} meas_abs={m_idx} num={m.number} t_in={t_in:.3f}/{dur:.3f}")
             self._last_logged = (page, m_idx)
         self.lbl.setText(f"t={sec:7.3f}s  page {page+1}/{self._page_count}  meas {m_idx} (no.{m.number})  t={t_in:0.3f}/{dur:0.3f}s")
+    # --- Optional: let the app choose a bar highlight theme at runtime ---
+    def set_highlight_theme(self, name: str):
+        """Set highlight colours. Themes: 'amber' (default), 'sky', 'mint', 'violet'."""
+        try:
+            self.web.page().runJavaScript(f"setTheme({json.dumps(name)})")
+        except Exception:
+            pass
