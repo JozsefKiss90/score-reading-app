@@ -3,11 +3,12 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QGraphicsRectItem
 from PyQt6.QtGui import QBrush
 from PyQt6.QtCore import Qt
-from config import NUM_KEYS, START_MIDI, KEY_WIDTH, KEY_HEIGHT, WHITE_KEYS, FOOTER_HEIGHT
+from config import NUM_KEYS, VISIBLE_START_MIDI, KEY_WIDTH, KEY_HEIGHT, WHITE_KEYS, FOOTER_HEIGHT
 
 def draw_keyboard(scene):
+    keys = {}
     for i in range(NUM_KEYS):
-        midi = START_MIDI + i
+        midi = VISIBLE_START_MIDI + i
         pc = midi % 12
         x = i * KEY_WIDTH
         is_white = pc in WHITE_KEYS
@@ -17,3 +18,6 @@ def draw_keyboard(scene):
         key.setFlag(QGraphicsRectItem.GraphicsItemFlag.ItemIsSelectable, False)
         key.setCacheMode(QGraphicsRectItem.CacheMode.DeviceCoordinateCache)
         scene.addItem(key)
+        keys[midi] = key
+    return keys
+

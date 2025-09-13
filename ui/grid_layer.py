@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QGraphicsScene, QGraphicsSimpleTextItem
 from config import (
     GRID_LEVELS, GRID_MIN_SPACING_PX,
     KEY_HEIGHT, FOOTER_HEIGHT, SCROLL_SPEED,
-    START_MIDI, NUM_KEYS, KEY_WIDTH, WHITE_KEYS,
+    VISIBLE_START_MIDI, NUM_KEYS, KEY_WIDTH, WHITE_KEYS,
 )
 
 def rebuild_static_grid(scene: QGraphicsScene, grid_items: List, bpm: float) -> None:
@@ -64,7 +64,7 @@ def draw_vertical_key_grid(scene: QGraphicsScene, grid_items: List) -> None:
 
     for i in range(NUM_KEYS + 1):
         x = i * KEY_WIDTH
-        midi = START_MIDI + i
+        midi = VISIBLE_START_MIDI + i
         pc = midi % 12
         if pc == 0:  # C
             color = QColor(80, 80, 80, 140); pen_w = 2
@@ -103,7 +103,7 @@ def draw_pitch_labels(scene: QGraphicsScene, grid_items: List, show_sharps=True,
     text_color = QColor(40, 40, 40)
     names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
     for i in range(NUM_KEYS):
-        midi = START_MIDI + i
+        midi = VISIBLE_START_MIDI + i
         pc = midi % 12
         octave = (midi // 12) - 1
         is_white = pc in WHITE_KEYS

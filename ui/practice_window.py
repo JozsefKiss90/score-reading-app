@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QSplitter
 from PyQt6.QtCore import Qt
-
+from config import LIVE_VELOCITY_SCALE
 from .pianoroll import PianoRoll
 from .score_view import ScoreView
+from audio.midi_input import MidiInput
 
 class PracticeWindow(QWidget):
     """
@@ -36,3 +37,31 @@ class PracticeWindow(QWidget):
 
         layout = QHBoxLayout(self)
         layout.addWidget(self.splitter)
+
+        self.midi_in = MidiInput()
+        self.midi_in.noteOn.connect(self._on_note_on)
+        self.midi_in.noteOff.connect(self._on_note_off)
+        self.midi_in.control.connect(self._on_control)
+        
+
+    def closeEvent(self, event):
+        if hasattr(self, "midi_in"):
+            self.midi_in.close()
+        super().closeEvent(event)
+
+    def _on_note_on(self, pitch: int, velocity: int, ts: float):
+        print(f"NOTE ON {pitch} vel={velocity}")
+        self.roll.on_note_on(pitch, velocity, ts)
+
+        # Apply scaling to match score playback volume
+        scaled_vel = int(min(127, velocity * LIVE_VELOCITY_SCALE))
+        self.roll.player.play_note(pitch, velocity=scaled_vel, duration=1.0)
+
+    def _on_note_off(self, pitch: int, ts: float):
+        self.roll.on_note_off(pitch, ts)
+        # optionally call noteoff explicitly if you want sustain accuracy
+
+
+    def _on_control(self, cc: int, val: int, ts: float):
+        if cc == 64:  # sustain pedal
+            print("Sustain", "ON" if val >= 64 else "OFF", ts)

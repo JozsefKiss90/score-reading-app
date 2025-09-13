@@ -1,32 +1,30 @@
 from __future__ import annotations
-
 from collections import deque
 from PyQt6.QtWidgets import ( 
     QWidget, QVBoxLayout, QLabel, QGraphicsScene, QGraphicsView,
     QHBoxLayout, QDoubleSpinBox, QPushButton
 )
-from PyQt6.QtGui import QPainter
+from PyQt6.QtGui import QPainter, QBrush
     # If you prefer icons or shortcuts later, we can add them easily.
 from PyQt6.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
 
 from config import (
     NUM_KEYS, KEY_WIDTH, VIEW_HEIGHT, FOOTER_HEIGHT, FPS, SCROLL_SPEED,
-    START_MIDI, AUDIO_LATENCY_MS, VISUAL_PREROLL_S, DEFAULT_SF2
+    START_MIDI, AUDIO_LATENCY_MS, VISUAL_PREROLL_S, DEFAULT_SF2, VISIBLE_START_MIDI
 )
+PITCH_OFFSET = VISIBLE_START_MIDI - START_MIDI 
 from audio.midi_player import MidiPlayer
 from model.score_loader import load_notes_from_mxl, build_tempo_segments, bpm_at_seconds, ql_to_seconds, ql_duration_to_seconds
 from .keyboard import draw_keyboard
 from .grid_layers import rebuild_static_grid, draw_vertical_key_grid
 from .note_item import NoteItem
-from .score_view import ScoreView
+from config import WHITE_KEYS
+
 
 class PianoRoll(QWidget):
     """
-    Piano roll with speed control (0.25×–2.00×) + transport:
-    Pause/Resume, Forward, Rewind, Stop, Restart.
-
-    - Music time = wall_time * playback_rate + offset
-    - Audio fires just-in-time each frame -> speed/seek changes stay in sync.
+    Piano roll with transport controls.
+    Responds to both score playback and live MIDI input.
     """
     musicTimeChanged = pyqtSignal(float)
 
@@ -85,9 +83,9 @@ class PianoRoll(QWidget):
         self.clock = QElapsedTimer()
         self.clock.start()
         self.music_time_offset = -VISUAL_PREROLL_S
-        self.playback_rate = 1.0   # 0.0 means paused (transport only; speed spin stays at last non-zero)
+        self.playback_rate = 1.0
         self._pre_pause_rate = 1.0
-        self.step_seconds = 5.0    # Forward/Rewind amount (music seconds)
+        self.step_seconds = 5.0
 
         # Audio
         self.player = MidiPlayer(soundfont)
@@ -97,13 +95,12 @@ class PianoRoll(QWidget):
         self.bpm_label.setText(f"BPM: {self.tempo_bpm:.2f}")
 
         self.active_items: list[NoteItem] = []
-
-        draw_keyboard(self.scene)
+        self.key_items = draw_keyboard(self.scene)
 
         # Tempo segments for BPM label & grid spacing
         self.tempo_segments = build_tempo_segments(mxl_path)
         self._last_bpm_shown = None
-        self.total_duration_sec = self.tempo_segments[-1]["end_sec"] if self.tempo_segments else 0.0  # total piece length
+        self.total_duration_sec = self.tempo_segments[-1]["end_sec"] if self.tempo_segments else 0.0
 
         notes_sec = []
         for n in self.all_notes:
@@ -113,7 +110,8 @@ class PianoRoll(QWidget):
         self.all_notes = sorted(notes_sec, key=lambda x: x["start"])
         self.spawn_queue = deque(self.all_notes)
         self.audio_queue = deque(self.all_notes)
-                # Grid
+
+        # Grid
         self._grid_items = []
         self._last_grid_bpm = None
         initial_bpm = bpm_at_seconds(self.tempo_segments, 0.0)
@@ -121,7 +119,7 @@ class PianoRoll(QWidget):
         self._update_bpm_label(0.0)
         draw_vertical_key_grid(self.scene, self._grid_items)
 
-        # Travel time from spawn to key bed (in *music* seconds)
+        # Travel time from spawn to key bed
         self.target_y = self.scene.height() - FOOTER_HEIGHT - 100
         self.travel_time = (self.target_y - 0) / SCROLL_SPEED
 
@@ -234,7 +232,7 @@ class PianoRoll(QWidget):
             if music_now + 1e-6 < spawn_time_music:
                 break
             note_dict = self.spawn_queue.popleft()
-            x = (note_dict["pitch"] - START_MIDI) * KEY_WIDTH
+            x = (note_dict["pitch"] - VISIBLE_START_MIDI) * KEY_WIDTH
             initial_y = -bar_height
             item = NoteItem(
                 note_dict["pitch"], note_dict["start"], note_dict["duration"], note_dict["staff"],
@@ -265,7 +263,7 @@ class PianoRoll(QWidget):
             n = self.audio_queue.popleft()
             # duration in wall seconds so it sounds right at slower/faster rates
             dur_wall = max(0.0, n["duration"] / max(self.playback_rate, 1e-6))
-            self.player.play_note(n["pitch"], duration=dur_wall)
+            self.player.play_note(n["pitch"], velocity=n.get("velocity", 100), duration=dur_wall)
 
     # -------- frame --------
     def _update_bpm_label(self, music_now_sec: float):
@@ -288,7 +286,30 @@ class PianoRoll(QWidget):
             item.update_position(music_now)
 
         self.musicTimeChanged.emit(music_now)
-        self._collect_garbage()
+        self._collect_garbage() 
+
+    def on_note_on(self, pitch: int, velocity: int, ts: float):
+        print(f"🎹 SE61 note_on: pitch={pitch}, velocity={velocity}")
+        adj_pitch = pitch + PITCH_OFFSET
+        if adj_pitch in self.key_items:
+            self.key_items[adj_pitch].setBrush(QBrush(Qt.GlobalColor.red))
+        for item in self.active_items:
+            if item.pitch == adj_pitch:
+                item.setBrush(QBrush(Qt.GlobalColor.green))
+
+    def on_note_off(self, pitch: int, ts: float):
+        print(f"🎹 SE61 note_off: pitch={pitch}")
+        adj_pitch = pitch + PITCH_OFFSET
+        if adj_pitch in self.key_items:
+            is_white = (adj_pitch % 12) in WHITE_KEYS
+            color = Qt.GlobalColor.white if is_white else Qt.GlobalColor.black
+            self.key_items[adj_pitch].setBrush(QBrush(color))
+        for item in self.active_items:
+            if item.pitch == adj_pitch:
+                from PyQt6.QtGui import QColor
+                color = QColor(255, 100, 100, 220) if item.staff == 1 else QColor(100, 120, 255, 220)
+                item.setBrush(QBrush(color))
+
 
     def closeEvent(self, event):
         self.player.shutdown()

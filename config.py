@@ -5,9 +5,10 @@ from PyQt6.QtGui import QColor
 WHITE_KEYS = [0, 2, 4, 5, 7, 9, 11]
 KEY_WIDTH = 20
 KEY_HEIGHT = 100
-NUM_KEYS = 88
-START_MIDI = 21
-
+# config.py
+START_MIDI = 29             # actual pitch the SE61 sends
+VISIBLE_START_MIDI = 36     # draw keyboard from C2 (correct pattern)
+NUM_KEYS = 61
 # View / timing
 SCROLL_SPEED = 100.0
 FPS = 60
@@ -37,3 +38,4 @@ GRID_MAJOR_COLOR = QColor(0, 0, 0, 140)
 DEFAULT_SF2 = "FluidR3_GM.sf2"
 DEFAULT_MXL = "Gymnopdie_No._1__Satie.mxl"
 DEFAULT_XML = "Gymnopdie/score.xml"
+LIVE_VELOCITY_SCALE = 1.8

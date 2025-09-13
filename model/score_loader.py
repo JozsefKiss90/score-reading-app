@@ -95,7 +95,17 @@ def load_notes_from_mxl(mxl_path: str, xml_path: str):
             except Exception:
                 measure_num = 0
             staff = staff_map.get((measure_num, pitch_name, str(int(duration))), 1)
-            notes.append({"pitch": n.pitch.midi, "start": start, "duration": duration, "staff": staff})
+            vel = getattr(n.volume, "velocity", None)
+            if vel is None:
+                vel = 100
+            notes.append({
+                "pitch": n.pitch.midi,
+                "start": start,
+                "duration": duration,
+                "staff": staff,
+                "velocity": int(vel)
+            })
+
         elif isinstance(n, m21chord.Chord):
             for p in n.pitches:
                 pitch_name = p.nameWithOctave
