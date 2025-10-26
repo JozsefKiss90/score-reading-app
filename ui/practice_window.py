@@ -52,16 +52,18 @@ class PracticeWindow(QWidget):
     def _on_note_on(self, pitch: int, velocity: int, ts: float):
         print(f"NOTE ON {pitch} vel={velocity}")
         self.roll.on_note_on(pitch, velocity, ts)
-
-        # Apply scaling to match score playback volume
         scaled_vel = int(min(127, velocity * LIVE_VELOCITY_SCALE))
-        self.roll.player.play_note(pitch, velocity=scaled_vel, duration=1.0)
+        # Don't schedule noteoff here — start it and stop later
+        self.roll.player.fs.noteon(0, pitch, scaled_vel)
+
 
     def _on_note_off(self, pitch: int, ts: float):
         self.roll.on_note_off(pitch, ts)
-        # optionally call noteoff explicitly if you want sustain accuracy
+        self.roll.player.fs.noteoff(0, pitch)
+        
 
-
+    # practice_window.py
     def _on_control(self, cc: int, val: int, ts: float):
         if cc == 64:  # sustain pedal
-            print("Sustain", "ON" if val >= 64 else "OFF", ts)
+            # Forward to Fluidsynth so held notes are sustained properly
+            self.roll.player.fs.cc(0, 64, val)

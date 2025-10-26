@@ -13,6 +13,7 @@ from config import (
     START_MIDI, AUDIO_LATENCY_MS, VISUAL_PREROLL_S, DEFAULT_SF2, VISIBLE_START_MIDI
 )
 PITCH_OFFSET = VISIBLE_START_MIDI - START_MIDI 
+BAR_OFFSET = START_MIDI - VISIBLE_START_MIDI
 from audio.midi_player import MidiPlayer
 from model.score_loader import load_notes_from_mxl, build_tempo_segments, bpm_at_seconds, ql_to_seconds, ql_duration_to_seconds
 from .keyboard import draw_keyboard
@@ -224,7 +225,6 @@ class PianoRoll(QWidget):
             rebuild_static_grid(self.scene, self._grid_items, bpm_now)
 
     def _spawn_due_notes(self, music_now: float):
-        """Spawn graphics early so bars arrive on the keys at note start."""
         while self.spawn_queue:
             nxt = self.spawn_queue[0]
             bar_height = nxt["duration"] * SCROLL_SPEED
@@ -232,15 +232,20 @@ class PianoRoll(QWidget):
             if music_now + 1e-6 < spawn_time_music:
                 break
             note_dict = self.spawn_queue.popleft()
-            x = (note_dict["pitch"] - VISIBLE_START_MIDI) * KEY_WIDTH
+
+            # --- apply BAR_OFFSET ---
+            adj_pitch = note_dict["pitch"] + PITCH_OFFSET
+            x = (adj_pitch - VISIBLE_START_MIDI) * KEY_WIDTH
+
             initial_y = -bar_height
             item = NoteItem(
-                note_dict["pitch"], note_dict["start"], note_dict["duration"], note_dict["staff"],
+                adj_pitch, note_dict["start"], note_dict["duration"], note_dict["staff"],
                 bar_height, x, initial_y
             )
             self.scene.addItem(item)
             item.on_spawn(spawn_time_music)
             self.active_items.append(item)
+
 
     def _collect_garbage(self):
         cutoff_y = self.scene.height()
