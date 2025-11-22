@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE score-partwise PUBLIC
+    "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
+    "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work><work-title>C-origin fractal spiral (arpeggio, 2 staves)</work-title></work>
+  <identification>
+    <creator type="composer">Demonstration</creator>
+    <encoding><software>ChatGPT</software><encoding-date>2025-10-30</encoding-date></encoding>
+  </identification>
+
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+
+  <part id="P1">
+    <!-- ========= MEASURE 1 (C major, I) ========= -->
+    <measure number="1">
+      <attributes>
+        <divisions>8</divisions>
+        <staves>2</staves>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef number="1"><sign>G</sign><line>2</line></clef>
+        <clef number="2"><sign>F</sign><line>4</line></clef>
+      </attributes>
+      <harmony><root><root-step>C</root-step></root><kind text="C">major</kind></harmony>
+      <direction placement="above"><direction-type><words>I (C-dúr) — Tonika</words></direction-type></direction>
+      <!-- RH arpeggio: 1–3–5–8–5–3–5–8 -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <!-- LH whole-note bass -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>C</step><octave>3</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 2 (C major, IV) ========= -->
+    <measure number="2">
+      <harmony><root><root-step>F</root-step></root><kind text="F">major</kind></harmony>
+      <direction placement="above"><direction-type><words>IV (F-dúr) — Szubdomináns</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>F</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>A</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>F</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>A</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>F</step><octave>5</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>F</step><octave>3</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 3 (C major, V) ========= -->
+    <measure number="3">
+      <harmony><root><root-step>G</root-step></root><kind text="G">major</kind></harmony>
+      <direction placement="above"><direction-type><words>V (G-dúr) — Domináns</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>G</step><octave>2</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 4 (C major, I) ========= -->
+    <measure number="4">
+      <harmony><root><root-step>C</root-step></root><kind text="C">major</kind></harmony>
+      <direction placement="above"><direction-type><words>I (C-dúr) — Visszatérés</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>C</step><octave>3</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 5 (G major, I) ========= -->
+    <measure number="5">
+      <attributes><key><fifths>1</fifths></key></attributes>
+      <harmony><root><root-step>G</root-step></root><kind text="G">major</kind></harmony>
+      <direction placement="above"><direction-type><words>I (G-dúr) — Lokális tonika (fraktál-szint)</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>G</step><octave>2</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 6 (G major, IV) ========= -->
+    <measure number="6">
+      <harmony><root><root-step>C</root-step></root><kind text="C">major</kind></harmony>
+      <direction placement="above"><direction-type><words>IV (C-dúr) G-dúrban — Szubdomináns</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>E</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>C</step><octave>5</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>C</step><octave>3</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 7 (G major, V) ========= -->
+    <measure number="7">
+      <harmony><root><root-step>D</root-step></root><kind text="D">major</kind></harmony>
+      <direction placement="above"><direction-type><words>V (D-dúr) — Domináns G felé</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>F</step><alter>1</alter><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>A</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>A</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>F</step><alter>1</alter><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>A</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>D</step><octave>2</octave></pitch></note>
+    </measure>
+
+    <!-- ========= MEASURE 8 (G major, I) ========= -->
+    <measure number="8">
+      <harmony><root><root-step>G</root-step></root><kind text="G">major</kind></harmony>
+      <direction placement="above"><direction-type><words>I (G-dúr) — Zárás</words></direction-type></direction>
+      <!-- RH -->
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>B</step><octave>3</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>D</step><octave>4</octave></pitch></note>
+      <note><staff>1</staff><voice>1</voice><duration>4</duration><type>eighth</type><pitch><step>G</step><octave>4</octave></pitch></note>
+      <!-- LH -->
+      <note><staff>2</staff><voice>2</voice><duration>32</duration><type>whole</type><pitch><step>G</step><octave>2</octave></pitch></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+</score-partwise>

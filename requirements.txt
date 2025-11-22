@@ -8,3 +8,6 @@ pip install pygame
 pip install beautifulsoup4
 pip install lxml
 pip install cairosvg
+midi2audio
+pyfluidsynth
+PySide6

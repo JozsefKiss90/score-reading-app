@@ -20,7 +20,7 @@ except Exception:
     DEFAULT_XML = "Gymnopdie/score.xml"
 
 def main():
-    app = QApplication(sys.argv)
+    app = QApplication(sys.argv) 
     mxl_file = resources_path(DEFAULT_MXL)
     xml_path = resources_path(DEFAULT_XML)
 

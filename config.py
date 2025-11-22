@@ -36,8 +36,9 @@ GRID_MAJOR_COLOR = QColor(0, 0, 0, 140)
 
 # Resource names (relative to project / resources dir)
 DEFAULT_SF2 = "FluidR3_GM.sf2"
+DEFAULT_MXL = "Prelude_No._15_in_D_flat_major_Op._28_The_Raindrop_Prelude.mxl"
+DEFAULT_XML = "Prelude_No._15_in_D_flat_major_Op._28_The_Raindrop_Prelude.mxl/score.xml"
 #DEFAULT_MXL = "chopin-prelude-no-6-in-b-minor-op-28.mxl"
-#DEFAULT_XML = "chopin-prelude-no-6-in-b-minor-op-28/score.xml"
-DEFAULT_MXL = "chopin-prelude-in-e-minor-opus-28-no-4.mxl"
-DEFAULT_XML = "chopin-prelude-in-e-minor-opus-28-no-4/score.xml"
+#DEFAULT_MXL = "chopin-prelude-in-e-minor-opus-28-no-4.mxl"
+#DEFAULT_XML = "chopin-prelude-in-e-minor-opus-28-no-4/score.xml"
 LIVE_VELOCITY_SCALE = 1.8

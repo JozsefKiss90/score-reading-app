@@ -24,6 +24,22 @@ from model.score_loader import (
 
 def dlog(*args): print("[BeatSelector]", *args, flush=True)
 
+# --- SVG pitch attribute diagnostics ---
+def _iter_svg_note_like(root):
+    for el in root.iter():
+        tag = el.tag.split('}')[-1]
+        if tag != 'g':  # Verovio notes are groups containing paths
+            continue
+        cls = el.attrib.get('class', '')
+        typ = el.attrib.get('data-vrv-type') or el.attrib.get('data-type') or ''
+        if 'note' in cls or typ == 'note':
+            yield el
+
+def _attrs(el):
+    # flatten interesting attrs (both direct and data-* variants)
+    keys = ('pname','accid','oct','midi','data-pname','data-accid','data-oct','data-midi','class','data-vrv-type','data-type')
+    return {k: el.attrib.get(k) for k in keys if (k in el.attrib)}
+
 @dataclass
 class Measure:
     index: int
@@ -46,6 +62,7 @@ _HTML = r"""
 #side .beat{ margin:6px; padding:6px; border:1px solid #dbeafe; background:#eff6ff; border-radius:6px; }
 #side .note{ margin:4px 0; padding:4px 6px; border-radius:4px; cursor:pointer; }
 #side .note:hover{ background:#e2e8f0; }
+#side .note.note-hl { background:#dbeafe; outline:1px solid #60a5fa; }
 .note-hl path, .note-hl ellipse, .note-hl circle { fill:#2563eb !important; stroke:#1e40af !important; }
   object, svg { display:block; width:100%; height:100%; background:#fff !important; }
   /* Static clickable beat boxes */
@@ -90,7 +107,7 @@ _HTML = r"""
   // Incoming per-page arrays
   const ABS_INDEXES    = {ABS_INDEXES_JSON};
   const NOTE_TIMES_MAP = {NOTE_TIMES_MAP_JSON};
-
+  const PITCH_MAP = {PITCH_MAP_JSON};
   // Global selection store across pages (measureAbs-beat)
   const SELECTED = new Set();
 
@@ -113,7 +130,7 @@ _HTML = r"""
       if (/[¢]/.test(t)) return 2;
     }
     return lastSeen || 4;
-  }
+  } 
 
 
   // --- Helpers to collect and highlight notes inside a beat box ---
@@ -132,27 +149,46 @@ _HTML = r"""
     return base + acc + (oct!==undefined && oct!==null ? String(oct) : '');
   }
   function getNoteLabel(node){
-    // try attributes on the note group first
+    const logAttrs = (tag, n) => {
+      try {
+        const attrs = {};
+        for (const k of ['pname','accid','oct','midi','data-pname','data-accid','data-oct','data-midi','class']) {
+          const v = n.getAttribute && n.getAttribute(k);
+          if (v !== null && v !== undefined) attrs[k] = v;
+        }
+        console.log('[BeatSelector][label]', tag, attrs);
+      } catch(_){}
+    };
+
+    // 1) attributes on the note group
     const pn = node.getAttribute('data-pname') || node.getAttribute('pname');
     const ac = node.getAttribute('data-accid') || node.getAttribute('accid');
     const oc = node.getAttribute('data-oct') || node.getAttribute('oct');
-    if (pn) return pnameAccidOctToPitch(pn, ac, oc);
+    const md = node.getAttribute('data-midi') || node.getAttribute('midi');
 
-    const midi = node.getAttribute('data-midi') || node.getAttribute('midi');
-    if (midi) return midiToPitch(midi);
+    if (pn || md) {
+      logAttrs('group', node);
+      if (pn) return pnameAccidOctToPitch(pn, ac, oc);
+      if (md) return midiToPitch(md);
+    }
 
-    // try child elements (some builds put attrs on a child)
+    // 2) attributes on a child notehead etc.
     const head = node.querySelector('[data-midi],[midi],[data-pname],[pname]');
     if (head){
       const pn2 = head.getAttribute('data-pname') || head.getAttribute('pname');
       const ac2 = head.getAttribute('data-accid') || head.getAttribute('accid');
       const oc2 = head.getAttribute('data-oct') || head.getAttribute('oct');
       const md2 = head.getAttribute('data-midi') || head.getAttribute('midi');
+      logAttrs('child', head);
       if (pn2) return pnameAccidOctToPitch(pn2, ac2, oc2);
       if (md2) return midiToPitch(md2);
     }
-    return null; // fallback to "Note 1/2/…"
+
+    // 3) nothing found
+    logAttrs('missing', node);
+    return null;
   }
+
 
   // --- Robust highlight via inline styles on drawable descendants ---
   function eachDrawable(node, fn){
@@ -238,36 +274,70 @@ _HTML = r"""
   }
 
   function buildSidebar(){
-    const list = document.getElementById('list');
-    list.innerHTML = '';
-    const ordered = Array.from(SELECTED).sort((a,b)=>{
-      const [am,ab]=a.split('-').map(Number); const [bm,bb]=b.split('-').map(Number);
-      return am===bm ? (ab-bb) : (am-bm);
-    });
-    ordered.forEach(key=>{
-      const [absIdx, beatNo] = key.split('-').map(Number);
-      const g = measureGroupByAbs(absIdx); if(!g) return;
-      const bb = beatBoxBounds(absIdx, beatNo); if(!bb) return;
-      const notes = noteGroupsWithin(g, bb.left, bb.right);
-      const wrap = document.createElement('div'); wrap.className='beat';
-      const title = document.createElement('div'); title.textContent = `m${absIdx} • beat ${beatNo} — ${notes.length} notes`; wrap.appendChild(title);
-      notes.forEach((node, i)=>{
-        const item = document.createElement('div'); item.className='note';
-        const lab = getNoteLabel(node);
-        item.textContent = lab ? lab : `Note ${i+1}`;
-        item.addEventListener('click', (ev)=>{
-          ev.preventDefault(); ev.stopPropagation();
-          // toggle highlight only for this note
-          const on = !node.classList.contains('note-hl');
-          // if ctrl not held, clear other highlights first
-          if (!ev.ctrlKey) clearAllNoteHighlights();
-          highlightOneNote(node, on);
-        });
-        wrap.appendChild(item);
+    try{
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      const ordered = Array.from(SELECTED).sort((a,b)=>{
+        const [am,ab]=a.split('-').map(Number); const [bm,bb]=b.split('-').map(Number);
+        return am===bm ? (ab-bb) : (am-bm);
       });
-      list.appendChild(wrap);
-    });
+            ordered.forEach(key=>{
+        const [absIdx, beatNo] = key.split('-').map(Number);
+        const g = measureGroupByAbs(absIdx); if(!g) return;
+        const bb = beatBoxBounds(absIdx, beatNo); if(!bb) return;
+        const notes = noteGroupsWithin(g, bb.left, bb.right);
+
+        // Preload pitch labels for this (measure, beat) from Python
+        const beatMap =
+          (PITCH_MAP[String(absIdx)] && PITCH_MAP[String(absIdx)][String(beatNo)]) ||
+          (PITCH_MAP[absIdx] && PITCH_MAP[absIdx][beatNo]) ||
+          [];
+        const labelsFromMap = Array.isArray(beatMap) ? beatMap : [];
+
+        let labeled = 0, unlabeled = 0;
+        const wrap = document.createElement('div'); wrap.className = 'beat';
+        const title = document.createElement('div'); wrap.appendChild(title);
+
+        notes.forEach((node, i) => {
+          const item = document.createElement('div'); item.className = 'note';
+
+          // 1) Prefer direct SVG pitch attributes
+          let lab = getNoteLabel(node);
+
+          // 2) Fallback: use Python pitch map, but be more generous
+          if (!lab && labelsFromMap.length) {
+            // If there are fewer note events than noteheads, reuse the nearest label
+            const idx = Math.min(i, labelsFromMap.length - 1);
+            lab = labelsFromMap[idx] || null;
+          }
+
+          // 3) Only if we *really* know nothing do we fall back to Note n
+          if (lab) labeled++; else unlabeled++;
+          item.textContent = lab ? lab : `Note ${i+1}`;
+
+          item.addEventListener('click', (ev) => {
+            ev.preventDefault(); ev.stopPropagation();
+            const turnOn = !node.classList.contains('note-hl');
+            highlightOneNote(node, turnOn);
+            item.classList.toggle('note-hl', turnOn);
+          });
+
+          wrap.appendChild(item);
+        });
+
+        title.textContent = `m${absIdx} • beat ${beatNo} — ${notes.length} notes (labels: ${labeled}/${notes.length})`;
+        if (unlabeled > 0) {
+          console.warn(
+            `[BeatSelector] missing labels on m${absIdx} beat ${beatNo}; unlabeled=${unlabeled}`
+          );
+        }
+        document.getElementById('list').appendChild(wrap);
+      });
+    }catch(e){        
+      console.error("[BeatSelector] buildSidebar error:", e); 
+    }
   }
+    
 
   function publishSelection(){
     const arr = Array.from(SELECTED);
@@ -375,7 +445,8 @@ class BeatSelector(QWidget):
         self._tk = verovio.toolkit()
         self._tk.setOptions({
             "pageHeight": 1800, "pageWidth": 1200, "scale": 40,
-            "breaks": "auto", "adjustPageHeight": 1, "svgViewBox": 1
+            "breaks": "auto", "adjustPageHeight": 1, "svgViewBox": 1,
+            "svgAdditionalAttribute": "pname,accid,oct,midi"   # <-- add this
         })
         self._tk.loadFile(self.mxl_path)
         self._tk.redoLayout()
@@ -391,7 +462,7 @@ class BeatSelector(QWidget):
 
         # Onsets per measure (seconds relative) — used only if you later want note anchors; but wiring kept
         self.onsets_by_index: List[List[float]] = self._build_onsets()
-
+        self.pitch_map = self._build_pitch_map()
         # Page mapping: map SVG measures to absolute indices like score_view
         self._page_svgs: List[str] = []
         self._page_abs_indexes: List[List[int]] = []
@@ -502,11 +573,14 @@ class BeatSelector(QWidget):
       note_times_map = {i: self.onsets_by_index[i] for i in abs_indexes if i < len(self.onsets_by_index)}
 
       svg_url = QUrl.fromLocalFile(str(self._svg_path)).toString()
+      pitch_map_page = {i: self.pitch_map.get(i, {}) for i in abs_indexes}
       html = (_HTML
           .replace("{ABS_INDEXES_JSON}", json.dumps(abs_indexes))
           .replace("{NOTE_TIMES_MAP_JSON}", json.dumps(note_times_map))
+          .replace("{PITCH_MAP_JSON}", json.dumps(pitch_map_page))
           .replace("{SVG_URL}", svg_url)
       )
+
       self._html_path.write_text(html, encoding='utf-8')
 
       self._current_page = page
@@ -514,9 +588,87 @@ class BeatSelector(QWidget):
 
       # load into webview
       self.web.load(QUrl.fromLocalFile(str(self._html_path)))
-      # on load the JS will call buildBeatBoxes()
+
+      # ---- DEBUG: check whether the SVG actually contains pitch attributes
+      self._debug_svg_pitch_attrs(page)
+
+    def _build_pitch_map(self) -> dict[int, dict[int, list[str]]]:
+        # notes: {"pitch" (MIDI), "start" (QL), "duration" (QL), "staff"}
+        notes, _ = load_notes_from_mxl(self.mxl_path, self.xml_path)
+        by_measure: dict[int, list[dict]] = {i: [] for i in range(len(self.measures))}
+        for n in notes:
+            ql = float(n["start"])
+            # binary-search like in _build_onsets
+            starts = [m.start_ql for m in self.measures]
+            lo, hi = 0, len(starts) - 1
+            i = 0
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                m = self.measures[mid]
+                if ql < m.start_ql: hi = mid - 1
+                elif ql >= m.end_ql: lo = mid + 1
+                else: i = mid; break
+            else:
+                i = max(0, min(len(starts) - 1, lo))
+            by_measure[i].append(n)
+
+        # beats per measure from QL span (numerator), default 4 if ambiguous
+        pitch_map: dict[int, dict[int, list[str]]] = {}
+        for i, m in enumerate(self.measures):
+            span_ql = (m.end_ql - m.start_ql) or 4.0
+            # try to infer likely beats from span_ql roundness (4/4, 3/4, 6/8 etc.)
+            # default to 4; cap to 12
+            if abs(span_ql - round(span_ql)) < 1e-6:
+                beats = int(max(1, min(12, round(span_ql))))  # 4/4 -> 4, 3/4 -> 3
+            else:
+                beats = 4
+            beat_ql = span_ql / beats
+            labels_by_beat: dict[int, list[str]] = {b: [] for b in range(1, beats + 1)}
+
+            # within the measure, bucket by beat and keep left-to-right order (by start QL)
+            ms = self.measures[i].start_ql
+            for n in sorted(by_measure[i], key=lambda x: (x["start"], x["pitch"])):
+                rel = float(n["start"]) - ms
+                b   = int(rel // beat_ql) + 1
+                b   = max(1, min(beats, b))
+                midi = int(n["pitch"])
+                pc_names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+                labels_by_beat[b].append(f"{pc_names[midi%12]}{midi//12 - 1}")
+            pitch_map[i] = labels_by_beat
+        return pitch_map
 
 # -------- actions --------
     def _clear_selection(self):
         # Ask the page to clear its SELECTED Set by reloading the page (cheapest, keeps UI simple)
         self._load_page(self._current_page)
+
+    def _debug_svg_pitch_attrs(self, page:int):
+      try:
+          svg = self._page_svgs[page]
+          root = ET.fromstring(svg)
+      except Exception as e:
+          dlog(f"[debug] Could not parse SVG for page {page+1}: {e}")
+          return
+
+      total_notes = 0
+      with_pitch = 0
+      data_pitch = 0
+      sample = []
+      for el in _iter_svg_note_like(root):
+          total_notes += 1
+          has_direct = any(a in el.attrib for a in ('pname','accid','oct','midi'))
+          has_data   = any(a in el.attrib for a in ('data-pname','data-accid','data-oct','data-midi'))
+          if has_direct or has_data:
+              with_pitch += 1
+              if has_data:
+                  data_pitch += 1
+              if len(sample) < 6:
+                  sample.append(_attrs(el))
+
+      dlog(f"[debug] Page {page+1}: notes={total_notes}, with_pitch={with_pitch}, with_data_attrs={data_pitch}")
+      if sample:
+          dlog("[debug] Sample note attribute dicts:")
+          for i, s in enumerate(sample, 1):
+              dlog(f"   {i}: {s}")
+      else:
+          dlog("[debug] No note carried pitch attributes on this page.")
