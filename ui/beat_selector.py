@@ -94,321 +94,428 @@ _HTML = r"""
   </div>
 <script>
   // Bootstrap: attach load listener and set initial SVG URL
-  (function(){
-    const obj = document.getElementById('page');
+  (function () {
+    const obj = document.getElementById("page");
     const initial = "{SVG_URL}";
-    obj.addEventListener('load', function onLoad(){
-      obj.removeEventListener('load', onLoad);
-      buildBeatBoxes();
-    }, {once:true});
+    obj.addEventListener(
+      "load",
+      function onLoad() {
+        obj.removeEventListener("load", onLoad);
+        buildBeatBoxes();
+      },
+      { once: true },
+    );
     // force-refresh to ensure 'load' fires
-    obj.data = (initial.indexOf('?')===-1 ? initial+'?ts='+Date.now() : initial);
+    obj.data = initial.indexOf("?") === -1 ? initial + "?ts=" + Date.now() : initial;
   })();
+
   // Incoming per-page arrays
   const ABS_INDEXES    = {ABS_INDEXES_JSON};
   const NOTE_TIMES_MAP = {NOTE_TIMES_MAP_JSON};
-  const PITCH_MAP = {PITCH_MAP_JSON};
+  const PITCH_MAP      = {PITCH_MAP_JSON};
+  const MEASURE_BEATS  = {MEASURE_BEATS_JSON};
+
   // Global selection store across pages (measureAbs-beat)
   const SELECTED = new Set();
 
-  function svgDoc(){ const o=document.getElementById('page'); try{ return o.contentDocument; }catch(e){ return null; } }
-  function svgRoot(){ const d=svgDoc(); return d? d.querySelector('svg') : null }
-
-  function _rectRel(node, rootRect){
-    const r=node.getBoundingClientRect();
-    return {left:r.left-rootRect.left, right:r.right-rootRect.left, top:r.top-rootRect.top, bottom:r.bottom-rootRect.top};
-  }
-
-  // basic beats-per-measure guess using timesig if visible; default 4
-  function beatsInMeasure(g, lastSeen){
-    const tsg = g.querySelector('g[data-vrv-type="timeSig"], g.timeSig, .timeSig');
-    if (tsg){
-      const t = (tsg.textContent||'').replace(/\s+/g,'');
-      if (/^\d+\/\d+$/.test(t)) return Math.max(1, Math.min(parseInt(t.split('/')[0],10)||4, 12));
-      if (/^[0-9]{2,}$/.test(t)){ const num=parseInt(t.slice(0,Math.floor(t.length/2)),10); if(num>0) return Math.min(num,12); }
-      if (/^C$/.test(t)) return 4;
-      if (/[¢]/.test(t)) return 2;
+  function svgDoc() {
+    const o = document.getElementById("page");
+    try {
+      return o.contentDocument;
+    } catch (e) {
+      return null;
     }
-    return lastSeen || 4;
-  } 
-
-
-  // --- Helpers to collect and highlight notes inside a beat box ---
-    // --- Pitch helpers ---
-  function midiToPitch(m){
-    const names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const n = Math.round(Number(m)||0);
-    const name = names[(n%12+12)%12];
-    const oct = Math.floor(n/12) - 1;  // C4 = 60
-    return name + oct;
   }
-  function pnameAccidOctToPitch(pname, accid, oct){
+  function svgRoot() {
+    const d = svgDoc();
+    return d ? d.querySelector("svg") : null;
+  }
+
+  function _rectRel(node, rootRect) {
+    const r = node.getBoundingClientRect();
+    return {
+      left: r.left - rootRect.left,
+      right: r.right - rootRect.left,
+      top: r.top - rootRect.top,
+      bottom: r.bottom - rootRect.top,
+    };
+  }
+
+  function beatsForMeasure(absIdx, fallback) {
+    const kStr = String(absIdx);
+    if (Object.prototype.hasOwnProperty.call(MEASURE_BEATS, kStr)) {
+      return MEASURE_BEATS[kStr] || fallback || 4;
+    }
+    if (Object.prototype.hasOwnProperty.call(MEASURE_BEATS, absIdx)) {
+      return MEASURE_BEATS[absIdx] || fallback || 4;
+    }
+    return fallback || 4;
+  }
+
+  // --- Pitch helpers --------------------------------------------------------
+
+  function midiToPitch(m) {
+    const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+    const n = Math.round(Number(m) || 0);
+    const name = names[((n % 12) + 12) % 12];
+    const oct  = Math.floor(n / 12) - 1; // MIDI 60 = C4
+    return name + String(oct);
+  }
+
+  function pnameAccidOctToPitch(pname, accid, oct) {
     if (!pname) return null;
     const base = String(pname).toUpperCase();
-    const acc = (accid||'').replace('s','♯').replace('f','♭').replace('#','♯');
-    return base + acc + (oct!==undefined && oct!==null ? String(oct) : '');
+
+    // Normalise accidentals to ASCII: # / b / ## / bb / (or empty)
+    let a = (accid || "").toLowerCase();
+    if (a === "s" || a === "sharp" || a === "#") a = "#";
+    else if (a === "f" || a === "flat" || a === "b") a = "b";
+    else if (a === "ss" || a === "dbl-sharp" || a === "##") a = "##";
+    else if (a === "ff" || a === "dbl-flat" || a === "bb") a = "bb";
+    else if (a === "n" || a === "natural") a = "";
+    return base + a + (oct !== undefined && oct !== null ? String(oct) : "");
   }
-  function getNoteLabel(node){
-    const logAttrs = (tag, n) => {
-      try {
-        const attrs = {};
-        for (const k of ['pname','accid','oct','midi','data-pname','data-accid','data-oct','data-midi','class']) {
-          const v = n.getAttribute && n.getAttribute(k);
-          if (v !== null && v !== undefined) attrs[k] = v;
-        }
-        console.log('[BeatSelector][label]', tag, attrs);
-      } catch(_){}
-    };
 
-    // 1) attributes on the note group
-    const pn = node.getAttribute('data-pname') || node.getAttribute('pname');
-    const ac = node.getAttribute('data-accid') || node.getAttribute('accid');
-    const oc = node.getAttribute('data-oct') || node.getAttribute('oct');
-    const md = node.getAttribute('data-midi') || node.getAttribute('midi');
+  function normPitchLabel(s) {
+    if (!s) return "";
+    return String(s)
+      .replace(/♯/g, "#")
+      .replace(/♭/g, "b")
+      .toUpperCase();
+  }
 
-    if (pn || md) {
-      logAttrs('group', node);
-      if (pn) return pnameAccidOctToPitch(pn, ac, oc);
-      if (md) return midiToPitch(md);
+  function getNoteLabel(node) {
+    // 1) Look for notated pitch on the group itself
+    const pn = node.getAttribute("data-pname") || node.getAttribute("pname");
+    const ac = node.getAttribute("data-accid") || node.getAttribute("accid");
+    const oc = node.getAttribute("data-oct")   || node.getAttribute("oct");
+    const md = node.getAttribute("data-midi")  || node.getAttribute("midi");
+
+    let lab = null;
+
+    if (pn) {
+      lab = pnameAccidOctToPitch(pn, ac, oc);
+      if (lab) return lab;
+    }
+    if (md) {
+      lab = midiToPitch(md);
+      if (lab) return lab;
     }
 
-    // 2) attributes on a child notehead etc.
-    const head = node.querySelector('[data-midi],[midi],[data-pname],[pname]');
-    if (head){
-      const pn2 = head.getAttribute('data-pname') || head.getAttribute('pname');
-      const ac2 = head.getAttribute('data-accid') || head.getAttribute('accid');
-      const oc2 = head.getAttribute('data-oct') || head.getAttribute('oct');
-      const md2 = head.getAttribute('data-midi') || head.getAttribute('midi');
-      logAttrs('child', head);
-      if (pn2) return pnameAccidOctToPitch(pn2, ac2, oc2);
-      if (md2) return midiToPitch(md2);
+    // 2) Otherwise try a descendant notehead within the group
+    const head = node.querySelector("[data-pname],[pname],[data-midi],[midi]");
+    if (head) {
+      const pn2 = head.getAttribute("data-pname") || head.getAttribute("pname");
+      const ac2 = head.getAttribute("data-accid") || head.getAttribute("accid");
+      const oc2 = head.getAttribute("data-oct")   || head.getAttribute("oct");
+      const md2 = head.getAttribute("data-midi")  || head.getAttribute("midi");
+
+      if (pn2) {
+        lab = pnameAccidOctToPitch(pn2, ac2, oc2);
+        if (lab) return lab;
+      }
+      if (md2) {
+        lab = midiToPitch(md2);
+        if (lab) return lab;
+      }
     }
 
-    // 3) nothing found
-    logAttrs('missing', node);
+    // 3) Nothing usable found
     return null;
   }
 
+  // --- Robust highlight via inline styles on drawable descendants -----------
 
-  // --- Robust highlight via inline styles on drawable descendants ---
-  function eachDrawable(node, fn){
-    const tags = ['path','ellipse','circle','rect','polygon','polyline','use'];
+  function eachDrawable(node, fn) {
+    const tags = ["path","ellipse","circle","rect","polygon","polyline","use"];
     if (node.tagName && tags.includes(node.tagName.toLowerCase())) fn(node);
-    node.querySelectorAll(tags.join(',')).forEach(fn);
+    node.querySelectorAll(tags.join(",")).forEach(fn);
   }
-  function applyDirectHighlight(node, on=true){
-    eachDrawable(node, (el)=>{
-      if (on){
-        if (!el.hasAttribute('data-prev-fill'))   el.setAttribute('data-prev-fill',   el.style.fill   || '');
-        if (!el.hasAttribute('data-prev-stroke')) el.setAttribute('data-prev-stroke', el.style.stroke || '');
-        el.style.fill   = '#2563eb';
-        el.style.stroke = '#1e40af';
-      }else{
-        const prevF = el.getAttribute('data-prev-fill');
-        const prevS = el.getAttribute('data-prev-stroke');
-        el.style.fill   = prevF || '';
-        el.style.stroke = prevS || '';
+
+  function applyDirectHighlight(node, on = true) {
+    eachDrawable(node, (el) => {
+      if (on) {
+        if (!el.hasAttribute("data-prev-fill"))
+          el.setAttribute("data-prev-fill", el.style.fill || "");
+        if (!el.hasAttribute("data-prev-stroke"))
+          el.setAttribute("data-prev-stroke", el.style.stroke || "");
+        el.style.fill   = "#2563eb";
+        el.style.stroke = "#1e40af";
+      } else {
+        const prevF = el.getAttribute("data-prev-fill");
+        const prevS = el.getAttribute("data-prev-stroke");
+        el.style.fill   = prevF || "";
+        el.style.stroke = prevS || "";
       }
     });
   }
 
-  function measureGroupByAbs(absIdx){
-    const svg = svgRoot(); if(!svg) return null;
-    let groups=[...svg.querySelectorAll('[data-vrv-type="measure"]')];
-    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*="measure"]')];
+  function measureGroupByAbs(absIdx) {
+    const svg = svgRoot();
+    if (!svg) return null;
+    let groups = [...svg.querySelectorAll('[data-vrv-type="measure"]')];
+    if (groups.length === 0) {
+      groups = [...svg.querySelectorAll("g.measure,[class*='measure']")];
+    }
     const i = ABS_INDEXES.indexOf(absIdx);
-    if (i<0 || i>=groups.length) return null;
+    if (i < 0 || i >= groups.length) return null;
     return groups[i];
   }
 
-  function beatBoxBounds(absIdx, beatNumber){
-    const svg = svgRoot(); if(!svg) return null;
-    const frame = document.getElementById('frame');
+  function beatBoxBounds(absIdx, beatNumber) {
+    const svg = svgRoot();
+    if (!svg) return null;
     const R = svg.getBoundingClientRect();
-    let groups=[...svg.querySelectorAll('[data-vrv-type="measure"]')];
-    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*="measure"]')];
+    let groups = [...svg.querySelectorAll('[data-vrv-type="measure"]')];
+    if (groups.length === 0) {
+      groups = [...svg.querySelectorAll("g.measure,[class*='measure']")];
+    }
     const i = ABS_INDEXES.indexOf(absIdx);
-    if (i<0 || i>=groups.length) return null;
+    if (i < 0 || i >= groups.length) return null;
     const g = groups[i];
     const rr = _rectRel(g, R);
-    const beats = beatsInMeasure(g, 4);
+    const beats = beatsForMeasure(absIdx, 4);
     const b = Math.max(1, Math.min(beats, beatNumber)) - 1;
-    const width=Math.max(1, rr.right - rr.left);
-    const L = rr.left + (b/beats)*width;
-    const Rr= rr.left + ((b+1)/beats)*width;
-    return {left:L, right:Rr, top:rr.top, bottom:rr.bottom};
+    const width = Math.max(1, rr.right - rr.left);
+    const L = rr.left + (b / beats) * width;
+    const Rr = rr.left + ((b + 1) / beats) * width;
+    return { left: L, right: Rr, top: rr.top, bottom: rr.bottom };
   }
 
-  function noteGroupsWithin(g, leftPx, rightPx){
-    // Verovio note groups are fairly consistently marked; try robust selectors
-    const svg = svgRoot(); const R = svg.getBoundingClientRect();
-    const candidates = g.querySelectorAll('[data-vrv-type="note"], g.note, g.chord g.note');
-    const arr=[];
-    candidates.forEach(n=>{
+  function noteGroupsWithin(g, leftPx, rightPx) {
+    const svg = svgRoot();
+    if (!svg) return [];
+    const candidates = g.querySelectorAll(
+      "[data-vrv-type='note'], g.note, g.chord g.note",
+    );
+    const arr = [];
+    candidates.forEach((n) => {
       const r = n.getBoundingClientRect();
-      const cx = (r.left + r.right)/2;
-      if (cx>=leftPx && cx<=rightPx) arr.push(n);
+      const cx = (r.left + r.right) / 2;
+      if (cx >= leftPx && cx <= rightPx) arr.push(n);
     });
-    // sort by x
-    arr.sort((a,b)=>a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+    arr.sort(
+      (a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left,
+    );
     return arr;
   }
 
-  function clearAllNoteHighlights(){
-    const svg = svgRoot(); if(!svg) return;
-    svg.querySelectorAll('.note-hl').forEach(n=>{
-      n.classList.remove('note-hl');
+  function clearAllNoteHighlights() {
+    const svg = svgRoot();
+    if (!svg) return;
+    svg.querySelectorAll(".note-hl").forEach((n) => {
+      n.classList.remove("note-hl");
       applyDirectHighlight(n, false);
     });
   }
 
-  function highlightOneNote(el, on=true){
+  function highlightOneNote(el, on = true) {
     if (!el) return;
-    if (on){
-      el.classList.add('note-hl');
+    if (on) {
+      el.classList.add("note-hl");
       applyDirectHighlight(el, true);
-    }else{
-      el.classList.remove('note-hl');
+    } else {
+      el.classList.remove("note-hl");
       applyDirectHighlight(el, false);
     }
   }
 
-  function buildSidebar(){
-    try{
-      const list = document.getElementById('list');
-      list.innerHTML = '';
-      const ordered = Array.from(SELECTED).sort((a,b)=>{
-        const [am,ab]=a.split('-').map(Number); const [bm,bb]=b.split('-').map(Number);
-        return am===bm ? (ab-bb) : (am-bm);
+  // Match logical labels (PITCH_MAP) to SVG note groups by pitch, not index.
+    // Match logical labels (PITCH_MAP) to SVG note groups by *order*, not pitch.
+  function assignLabelsForBeat(absIdx, beatNo, nodes) {
+    const keyStr = String(absIdx);
+    const beatStr = String(beatNo);
+
+    const labels =
+      (PITCH_MAP[keyStr] && (PITCH_MAP[keyStr][beatStr] || PITCH_MAP[keyStr][beatNo])) ||
+      (PITCH_MAP[absIdx] && (PITCH_MAP[absIdx][beatStr] || PITCH_MAP[absIdx][beatNo])) ||
+      [];
+
+    const assignments = [];
+    const nNodes   = nodes.length;
+    const nLabels  = labels.length;
+    const nPair    = Math.min(nNodes, nLabels);
+
+    // 1) Pair up labels and noteheads in order (time-sorted on both sides).
+    for (let i = 0; i < nPair; i++) {
+      assignments.push({ label: labels[i], node: nodes[i] });
+    }
+
+    // 2) Extra labels with no visible note (e.g. hidden voices) – show them but they can't be highlighted.
+    for (let i = nPair; i < nLabels; i++) {
+      assignments.push({ label: labels[i], node: null });
+    }
+
+    // 3) Extra visible notes with no label (ties, grace notes, etc.) – give them a neutral name.
+    for (let i = nPair; i < nNodes; i++) {
+      assignments.push({ label: `Note ${i + 1}`, node: nodes[i] });
+    }
+
+    return assignments;
+  }
+
+     function buildSidebar() {
+    try {
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+
+      const ordered = Array.from(SELECTED).sort((a, b) => {
+        const [am, ab] = a.split("-").map(Number);
+        const [bm, bb] = b.split("-").map(Number);
+        return am === bm ? ab - bb : am - bm;
       });
-            ordered.forEach(key=>{
-        const [absIdx, beatNo] = key.split('-').map(Number);
-        const g = measureGroupByAbs(absIdx); if(!g) return;
-        const bb = beatBoxBounds(absIdx, beatNo); if(!bb) return;
+
+      ordered.forEach((key) => {
+        const [absIdx, beatNo] = key.split("-").map(Number);
+        const g = measureGroupByAbs(absIdx);
+        if (!g) return;
+
+        const bb = beatBoxBounds(absIdx, beatNo);
+        if (!bb) return;
+
         const notes = noteGroupsWithin(g, bb.left, bb.right);
+        const assignments = assignLabelsForBeat(absIdx, beatNo, notes);
 
-        // Preload pitch labels for this (measure, beat) from Python
-        const beatMap =
-          (PITCH_MAP[String(absIdx)] && PITCH_MAP[String(absIdx)][String(beatNo)]) ||
-          (PITCH_MAP[absIdx] && PITCH_MAP[absIdx][beatNo]) ||
-          [];
-        const labelsFromMap = Array.isArray(beatMap) ? beatMap : [];
+        let labeled = 0;
 
-        let labeled = 0, unlabeled = 0;
-        const wrap = document.createElement('div'); wrap.className = 'beat';
-        const title = document.createElement('div'); wrap.appendChild(title);
+        const wrap = document.createElement("div");
+        wrap.className = "beat";
+        const title = document.createElement("div");
+        wrap.appendChild(title);
 
-        notes.forEach((node, i) => {
-          const item = document.createElement('div'); item.className = 'note';
+        assignments.forEach(({ label, node }, idx) => {
+          const item = document.createElement("div");
+          item.className = "note";
+          item.textContent = label;
 
-          // 1) Prefer direct SVG pitch attributes
-          let lab = getNoteLabel(node);
-
-          // 2) Fallback: use Python pitch map, but be more generous
-          if (!lab && labelsFromMap.length) {
-            // If there are fewer note events than noteheads, reuse the nearest label
-            const idx = Math.min(i, labelsFromMap.length - 1);
-            lab = labelsFromMap[idx] || null;
+          // Count only labels that correspond to an actual visible notehead
+          if (node && label && !/^Note \d+$/i.test(label)) {
+            labeled += 1;
           }
 
-          // 3) Only if we *really* know nothing do we fall back to Note n
-          if (lab) labeled++; else unlabeled++;
-          item.textContent = lab ? lab : `Note ${i+1}`;
-
-          item.addEventListener('click', (ev) => {
-            ev.preventDefault(); ev.stopPropagation();
-            const turnOn = !node.classList.contains('note-hl');
-            highlightOneNote(node, turnOn);
-            item.classList.toggle('note-hl', turnOn);
-          });
+          if (node) {
+            item.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const turnOn = !node.classList.contains("note-hl");
+              highlightOneNote(node, turnOn);
+              item.classList.toggle("note-hl", turnOn);
+            });
+          } else {
+            // labels with no matching note on this page
+            item.style.opacity = "0.6";
+            item.title = "No matching notehead on this page";
+          }
 
           wrap.appendChild(item);
         });
 
-        title.textContent = `m${absIdx} • beat ${beatNo} — ${notes.length} notes (labels: ${labeled}/${notes.length})`;
-        if (unlabeled > 0) {
-          console.warn(
-            `[BeatSelector] missing labels on m${absIdx} beat ${beatNo}; unlabeled=${unlabeled}`
-          );
-        }
-        document.getElementById('list').appendChild(wrap);
+        title.textContent =
+          `m${absIdx} • beat ${beatNo} — ${notes.length} ` +
+          `notes (labels: ${labeled}/${notes.length})`;
+
+        list.appendChild(wrap);
       });
-    }catch(e){        
-      console.error("[BeatSelector] buildSidebar error:", e); 
+    } catch (e) {
+      console.error("[BeatSelector] buildSidebar error:", e);
     }
   }
-    
 
-  function publishSelection(){
+
+  function publishSelection() {
     const arr = Array.from(SELECTED);
-    arr.sort((a,b)=>{
-      const [am,ab]=a.split('-').map(Number); const [bm,bb]=b.split('-').map(Number);
-      return am===bm ? (ab-bb) : (am-bm);
+    arr.sort((a, b) => {
+      const [am, ab] = a.split("-").map(Number);
+      const [bm, bb] = b.split("-").map(Number);
+      return am === bm ? ab - bb : am - bm;
     });
-    document.title = 'BEATS:' + JSON.stringify(arr);
+    document.title = "BEATS:" + JSON.stringify(arr);
     buildSidebar();
   }
 
-  function clearBeatBoxes(){
-    const frame = document.getElementById('frame');
-    frame.querySelectorAll('.beat-box').forEach(n=>n.remove());
+  function clearBeatBoxes() {
+    const frame = document.getElementById("frame");
+    frame.querySelectorAll(".beat-box").forEach((n) => n.remove());
   }
 
-  function buildBeatBoxes(){
-    const svg = svgRoot(); if(!svg) return;
-    const frame = document.getElementById('frame');
+  function buildBeatBoxes() {
+    const svg = svgRoot();
+    if (!svg) return;
+    const frame = document.getElementById("frame");
     const R = svg.getBoundingClientRect();
     clearBeatBoxes();
 
-    let groups=[...svg.querySelectorAll('[data-vrv-type="measure"]')];
-    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*="measure"]')];
-    const n=Math.min(groups.length, ABS_INDEXES.length);
-    let lastBeats=4;
-    for (let i=0;i<n;i++){
-      const absIdx = ABS_INDEXES[i], g=groups[i];
+    let groups = [...svg.querySelectorAll('[data-vrv-type="measure"]')];
+    if (groups.length === 0) {
+      groups = [...svg.querySelectorAll("g.measure,[class*='measure']")];
+    }
+    const n = Math.min(groups.length, ABS_INDEXES.length);
+
+    for (let i = 0; i < n; i++) {
+      const absIdx = ABS_INDEXES[i];
+      const g = groups[i];
       const rr = _rectRel(g, R);
-      const beats = (lastBeats = beatsInMeasure(g, lastBeats));
-      const width=Math.max(1, rr.right - rr.left), height=Math.max(0, rr.bottom - rr.top);
-      for (let b=0;b<beats;b++){
-        const L = rr.left + (b/beats)*width;
-        const Rr= rr.left + ((b+1)/beats)*width;
+      const beats = beatsForMeasure(absIdx, 4);
+      const width = Math.max(1, rr.right - rr.left);
+      const height = Math.max(0, rr.bottom - rr.top);
 
-        const key = `${absIdx}-${b+1}`;
-        const box = document.createElement('div');
-        box.className = 'beat-box' + (SELECTED.has(key) ? ' sel' : '');
-        box.style.left   = `${L}px`;
-        box.style.top    = `${rr.top}px`;
-        box.style.width  = `${Math.max(0,Rr-L)}px`;
+      for (let b = 0; b < beats; b++) {
+        const L = rr.left + (b / beats) * width;
+        const Rr = rr.left + ((b + 1) / beats) * width;
+
+        const key = `${absIdx}-${b + 1}`;
+        const box = document.createElement("div");
+        box.className = "beat-box" + (SELECTED.has(key) ? " sel" : "");
+        box.style.left = `${L}px`;
+        box.style.top = `${rr.top}px`;
+        box.style.width = `${Math.max(0, Rr - L)}px`;
         box.style.height = `${height}px`;
-        box.dataset.label = `m${absIdx} • beat ${b+1}/${beats}`;
+        box.dataset.label = `m${absIdx} • beat ${b + 1}/${beats}`;
 
-        box.addEventListener('click', ev=>{
-          ev.preventDefault(); ev.stopPropagation();
-          if (SELECTED.has(key)){ SELECTED.delete(key); box.classList.remove('sel'); }
-          else { SELECTED.add(key); box.classList.add('sel'); }
-          publishSelection();
-        }, {passive:false});
+        box.addEventListener(
+          "click",
+          (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (SELECTED.has(key)) {
+              SELECTED.delete(key);
+              box.classList.remove("sel");
+            } else {
+              SELECTED.add(key);
+              box.classList.add("sel");
+            }
+            publishSelection();
+          },
+          { passive: false },
+        );
 
         frame.appendChild(box);
       }
     }
-    document.getElementById('hud').textContent = `measures on page: ${n}`;
+
+    document.getElementById("hud").textContent = `measures on page: ${n}`;
     publishSelection();
-    buildSidebar();
   }
 
-  function setPageSvg(svgUrl){
-    const obj = document.getElementById('page');
-    obj.addEventListener('load', function onLoad(){
-      obj.removeEventListener('load', onLoad);
-      buildBeatBoxes();
-    }, {once:true});
-    obj.data = (svgUrl.indexOf('?')===-1 ? svgUrl+'?ts='+Date.now() : svgUrl);
+  function setPageSvg(svgUrl) {
+    const obj = document.getElementById("page");
+    obj.addEventListener(
+      "load",
+      function onLoad() {
+        obj.removeEventListener("load", onLoad);
+        buildBeatBoxes();
+      },
+      { once: true },
+    );
+    obj.data = svgUrl.indexOf("?") === -1 ? svgUrl + "?ts=" + Date.now() : svgUrl;
   }
 
   // Rebuild on resize
-  window.addEventListener('resize', ()=>{ if(svgRoot()) buildBeatBoxes(); });
+  window.addEventListener("resize", () => {
+    if (svgRoot()) buildBeatBoxes();
+  });
 </script>
+
 </body></html>
 """
 
@@ -461,7 +568,12 @@ class BeatSelector(QWidget):
         ]
 
         # Onsets per measure (seconds relative) — used only if you later want note anchors; but wiring kept
+                # Onsets per measure (seconds relative)
         self.onsets_by_index: List[List[float]] = self._build_onsets()
+
+        # Beats per measure + pitch labels per (measure, beat)
+        self.measure_beats: Dict[int, int] = {}
+
         self.pitch_map = self._build_pitch_map()
         # Page mapping: map SVG measures to absolute indices like score_view
         self._page_svgs: List[str] = []
@@ -564,34 +676,6 @@ class BeatSelector(QWidget):
         if not self._page_abs_indexes:
             self._page_abs_indexes = [[i for i in range(len(self.measures))]]
 
-    # -------- page IO --------
-    def _load_page(self, page: int):
-      page = max(0, min(self._page_count-1, page))
-      self._svg_path.write_text(self._page_svgs[page], encoding='utf-8')
-
-      abs_indexes = self._page_abs_indexes[page]
-      note_times_map = {i: self.onsets_by_index[i] for i in abs_indexes if i < len(self.onsets_by_index)}
-
-      svg_url = QUrl.fromLocalFile(str(self._svg_path)).toString()
-      pitch_map_page = {i: self.pitch_map.get(i, {}) for i in abs_indexes}
-      html = (_HTML
-          .replace("{ABS_INDEXES_JSON}", json.dumps(abs_indexes))
-          .replace("{NOTE_TIMES_MAP_JSON}", json.dumps(note_times_map))
-          .replace("{PITCH_MAP_JSON}", json.dumps(pitch_map_page))
-          .replace("{SVG_URL}", svg_url)
-      )
-
-      self._html_path.write_text(html, encoding='utf-8')
-
-      self._current_page = page
-      self.lbl.setText(f"Page {page+1}/{self._page_count} — selected: 0 beats")
-
-      # load into webview
-      self.web.load(QUrl.fromLocalFile(str(self._html_path)))
-
-      # ---- DEBUG: check whether the SVG actually contains pitch attributes
-      self._debug_svg_pitch_attrs(page)
-
     def _build_pitch_map(self) -> dict[int, dict[int, list[str]]]:
         # notes: {"pitch" (MIDI), "start" (QL), "duration" (QL), "staff"}
         notes, _ = load_notes_from_mxl(self.mxl_path, self.xml_path)
@@ -605,19 +689,20 @@ class BeatSelector(QWidget):
             while lo <= hi:
                 mid = (lo + hi) // 2
                 m = self.measures[mid]
-                if ql < m.start_ql: hi = mid - 1
-                elif ql >= m.end_ql: lo = mid + 1
-                else: i = mid; break
+                if ql < m.start_ql:
+                    hi = mid - 1
+                elif ql >= m.end_ql:
+                    lo = mid + 1
+                else:
+                    i = mid
+                    break
             else:
                 i = max(0, min(len(starts) - 1, lo))
             by_measure[i].append(n)
 
-        # beats per measure from QL span (numerator), default 4 if ambiguous
         pitch_map: dict[int, dict[int, list[str]]] = {}
         for i, m in enumerate(self.measures):
             span_ql = (m.end_ql - m.start_ql) or 4.0
-            # try to infer likely beats from span_ql roundness (4/4, 3/4, 6/8 etc.)
-            # default to 4; cap to 12
             if abs(span_ql - round(span_ql)) < 1e-6:
                 beats = int(max(1, min(12, round(span_ql))))  # 4/4 -> 4, 3/4 -> 3
             else:
@@ -625,17 +710,61 @@ class BeatSelector(QWidget):
             beat_ql = span_ql / beats
             labels_by_beat: dict[int, list[str]] = {b: [] for b in range(1, beats + 1)}
 
-            # within the measure, bucket by beat and keep left-to-right order (by start QL)
             ms = self.measures[i].start_ql
             for n in sorted(by_measure[i], key=lambda x: (x["start"], x["pitch"])):
                 rel = float(n["start"]) - ms
-                b   = int(rel // beat_ql) + 1
-                b   = max(1, min(beats, b))
-                midi = int(n["pitch"])
-                pc_names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
-                labels_by_beat[b].append(f"{pc_names[midi%12]}{midi//12 - 1}")
+                b = int(rel // beat_ql) + 1
+                b = max(1, min(beats, b))
+
+                # Prefer spelled name from loader (e.g. 'Ab4'); fall back to MIDI if absent
+                name = n.get("name")
+                if not name:
+                    midi = int(n["pitch"])
+                    pc_names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+                    name = f"{pc_names[midi % 12]}{midi // 12 - 1}"
+
+                labels_by_beat[b].append(name)
+
+
+
             pitch_map[i] = labels_by_beat
+            # <-- NEW: remember how many beats this measure really has
+            self.measure_beats[i] = beats
+
         return pitch_map
+
+    # -------- page IO --------
+    def _load_page(self, page: int):
+        page = max(0, min(self._page_count - 1, page))
+        self._svg_path.write_text(self._page_svgs[page], encoding="utf-8")
+
+        abs_indexes = self._page_abs_indexes[page]
+        note_times_map = {
+            i: self.onsets_by_index[i]
+            for i in abs_indexes
+            if i < len(self.onsets_by_index)
+        }
+
+        svg_url = QUrl.fromLocalFile(str(self._svg_path)).toString()
+        pitch_map_page = {i: self.pitch_map.get(i, {}) for i in abs_indexes}
+        measure_beats_page = {i: self.measure_beats.get(i, 4) for i in abs_indexes}
+
+        html = (
+            _HTML
+            .replace("{ABS_INDEXES_JSON}", json.dumps(abs_indexes))
+            .replace("{NOTE_TIMES_MAP_JSON}", json.dumps(note_times_map))
+            .replace("{PITCH_MAP_JSON}", json.dumps(pitch_map_page))
+            .replace("{MEASURE_BEATS_JSON}", json.dumps(measure_beats_page))
+            .replace("{SVG_URL}", svg_url)
+        )
+
+        self._html_path.write_text(html, encoding="utf-8")
+
+        self._current_page = page
+        self.lbl.setText(f"Page {page+1}/{self._page_count} — selected: 0 beats")
+
+        self.web.load(QUrl.fromLocalFile(str(self._html_path)))
+        self._debug_svg_pitch_attrs(page)
 
 # -------- actions --------
     def _clear_selection(self):
