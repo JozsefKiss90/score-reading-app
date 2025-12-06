@@ -1,1045 +1,10 @@
 {
-  "beats_flat": {
-    "1": [
-      "G2"
-    ],
-    "2": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "3": [
-      "D2"
-    ],
-    "4": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "5": [
-      "G2"
-    ],
-    "6": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "7": [
-      "D2"
-    ],
-    "8": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "9": [
-      "G2"
-    ],
-    "10": [
-      "F#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "11": [
-      "A5"
-    ],
-    "12": [
-      "G5",
-      "D2"
-    ],
-    "13": [
-      "F#5",
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "14": [
-      "C#5"
-    ],
-    "15": [
-      "B4",
-      "G2"
-    ],
-    "16": [
-      "C#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "17": [
-      "D5"
-    ],
-    "18": [
-      "A4",
-      "D2"
-    ],
-    "19": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "20": [
-      "F#4",
-      "G2"
-    ],
-    "21": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "22": [
-      "F#4",
-      "D2"
-    ],
-    "23": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "24": [
-      "F#4",
-      "G2"
-    ],
-    "25": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "26": [
-      "F#4",
-      "D2"
-    ],
-    "27": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "28": [
-      "G2"
-    ],
-    "29": [
-      "F#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "30": [
-      "A5"
-    ],
-    "31": [
-      "G5",
-      "D2"
-    ],
-    "32": [
-      "F#5",
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "33": [
-      "C#5"
-    ],
-    "34": [
-      "B4",
-      "G2"
-    ],
-    "35": [
-      "C#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "36": [
-      "D5"
-    ],
-    "37": [
-      "A4",
-      "D2"
-    ],
-    "38": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "39": [
-      "C#5",
-      "F#2"
-    ],
-    "40": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "41": [
-      "F#5",
-      "B1"
-    ],
-    "42": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "43": [
-      "E4",
-      "E2"
-    ],
-    "44": [
-      "G3",
-      "B3"
-    ],
-    "45": [
-      "E4",
-      "E2"
-    ],
-    "46": [
-      "B3",
-      "D4",
-      "G4"
-    ],
-    "47": [
-      "E4",
-      "D2"
-    ],
-    "48": [
-      "F3",
-      "A3",
-      "D4"
-    ],
-    "49": [
-      "A4",
-      "A1"
-    ],
-    "50": [
-      "B4",
-      "A3",
-      "C4",
-      "E4"
-    ],
-    "51": [
-      "C5"
-    ],
-    "52": [
-      "E5",
-      "D2"
-    ],
-    "53": [
-      "D5",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "54": [
-      "B4"
-    ],
-    "55": [
-      "D5",
-      "D2"
-    ],
-    "56": [
-      "C5",
-      "D3",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "57": [
-      "B4"
-    ],
-    "58": [
-      "D5",
-      "D2"
-    ],
-    "59": [
-      "C3",
-      "E3",
-      "A3",
-      "D4"
-    ],
-    "60": [
-      "D5",
-      "D2"
-    ],
-    "61": [
-      "C3",
-      "F#3",
-      "A3",
-      "D4"
-    ],
-    "62": [
-      "D5"
-    ],
-    "63": [
-      "E5",
-      "D2"
-    ],
-    "64": [
-      "F5",
-      "A3",
-      "C4",
-      "F4"
-    ],
-    "65": [
-      "G5"
-    ],
-    "66": [
-      "A5",
-      "D2"
-    ],
-    "67": [
-      "C5",
-      "A3",
-      "C4",
-      "E4"
-    ],
-    "68": [
-      "D5"
-    ],
-    "69": [
-      "E5",
-      "D2"
-    ],
-    "70": [
-      "D5",
-      "D3",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "71": [
-      "B4"
-    ],
-    "72": [
-      "D5",
-      "D2"
-    ],
-    "73": [
-      "C3",
-      "E3",
-      "A3",
-      "D4"
-    ],
-    "74": [
-      "D5",
-      "D2"
-    ],
-    "75": [
-      "C3",
-      "F#3",
-      "A3",
-      "D4"
-    ],
-    "76": [
-      "D5"
-    ],
-    "77": [
-      "G5",
-      "E2"
-    ],
-    "78": [
-      "B3",
-      "E4",
-      "G4"
-    ],
-    "79": [
-      "F#5",
-      "F#2"
-    ],
-    "80": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "81": [
-      "B4",
-      "B1"
-    ],
-    "82": [
-      "A4",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "83": [
-      "B4"
-    ],
-    "84": [
-      "C#5",
-      "E2"
-    ],
-    "85": [
-      "D5",
-      "C#4",
-      "E4",
-      "A4"
-    ],
-    "86": [
-      "E5"
-    ],
-    "87": [
-      "C#5",
-      "E2"
-    ],
-    "88": [
-      "D5",
-      "A3",
-      "C#4",
-      "F#4",
-      "A4"
-    ],
-    "89": [
-      "E5"
-    ],
-    "90": [
-      "F#4",
-      "E2"
-    ],
-    "91": [
-      "A3",
-      "D4",
-      "B2"
-    ],
-    "92": [
-      "B3",
-      "D4",
-      "G4",
-      "E3"
-    ],
-    "93": [
-      "C4",
-      "E4",
-      "A4",
-      "C5",
-      "A2",
-      "G3"
-    ],
-    "94": [
-      "D4",
-      "F#4",
-      "A4",
-      "D5",
-      "D2",
-      "A2",
-      "D3"
-    ],
-    "95": [
-      "G2"
-    ],
-    "96": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "97": [
-      "D2"
-    ],
-    "98": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "99": [
-      "G2"
-    ],
-    "100": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "101": [
-      "D2"
-    ],
-    "102": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "103": [
-      "G2"
-    ],
-    "104": [
-      "F#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "105": [
-      "A5"
-    ],
-    "106": [
-      "G5",
-      "D2"
-    ],
-    "107": [
-      "F#5",
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "108": [
-      "C#5"
-    ],
-    "109": [
-      "B4",
-      "G2"
-    ],
-    "110": [
-      "C#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "111": [
-      "D5"
-    ],
-    "112": [
-      "A4",
-      "D2"
-    ],
-    "113": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "114": [
-      "F#4",
-      "G2"
-    ],
-    "115": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "116": [
-      "F#4",
-      "D2"
-    ],
-    "117": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "118": [
-      "F#4",
-      "G2"
-    ],
-    "119": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "120": [
-      "F#4",
-      "D2"
-    ],
-    "121": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "122": [
-      "G2"
-    ],
-    "123": [
-      "F#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "124": [
-      "A5"
-    ],
-    "125": [
-      "G5",
-      "D2"
-    ],
-    "126": [
-      "F#5",
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "127": [
-      "C#5"
-    ],
-    "128": [
-      "B4",
-      "G2"
-    ],
-    "129": [
-      "C#5",
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "130": [
-      "D5"
-    ],
-    "131": [
-      "A4",
-      "D2"
-    ],
-    "132": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "133": [
-      "C#5",
-      "F#2"
-    ],
-    "134": [
-      "A3",
-      "C#4",
-      "F#4"
-    ],
-    "135": [
-      "F#5",
-      "B1"
-    ],
-    "136": [
-      "B3",
-      "D4",
-      "F#4"
-    ],
-    "137": [
-      "E4",
-      "E2"
-    ],
-    "138": [
-      "G3",
-      "B3"
-    ],
-    "139": [
-      "E4",
-      "E2"
-    ],
-    "140": [
-      "B3",
-      "D4",
-      "G4"
-    ],
-    "141": [
-      "E4",
-      "D2"
-    ],
-    "142": [
-      "F3",
-      "A3",
-      "D4"
-    ],
-    "143": [
-      "A4",
-      "A1"
-    ],
-    "144": [
-      "B4",
-      "A3",
-      "C4",
-      "E4"
-    ],
-    "145": [
-      "C5"
-    ],
-    "146": [
-      "E5",
-      "D2"
-    ],
-    "147": [
-      "D5",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "148": [
-      "B4"
-    ],
-    "149": [
-      "D5",
-      "D2"
-    ],
-    "150": [
-      "C5",
-      "D3",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "151": [
-      "B4"
-    ],
-    "152": [
-      "D5",
-      "D2"
-    ],
-    "153": [
-      "C3",
-      "E3",
-      "A3",
-      "D4"
-    ],
-    "154": [
-      "D5",
-      "D2"
-    ],
-    "155": [
-      "C3",
-      "F#3",
-      "A3",
-      "D4"
-    ],
-    "156": [
-      "D5"
-    ],
-    "157": [
-      "E5",
-      "D2"
-    ],
-    "158": [
-      "F5",
-      "A3",
-      "C4",
-      "F4"
-    ],
-    "159": [
-      "G5"
-    ],
-    "160": [
-      "A5",
-      "D2"
-    ],
-    "161": [
-      "C5",
-      "A3",
-      "C4",
-      "E4"
-    ],
-    "162": [
-      "D5"
-    ],
-    "163": [
-      "E5",
-      "D2"
-    ],
-    "164": [
-      "D5",
-      "D3",
-      "G3",
-      "B3",
-      "E4"
-    ],
-    "165": [
-      "B4"
-    ],
-    "166": [
-      "D5",
-      "D2"
-    ],
-    "167": [
-      "C3",
-      "E3",
-      "A3",
-      "D4"
-    ],
-    "168": [
-      "D5",
-      "D2"
-    ],
-    "169": [
-      "C3",
-      "F#3",
-      "A3",
-      "D4"
-    ],
-    "170": [
-      "D5"
-    ],
-    "171": [
-      "G5",
-      "E2"
-    ],
-    "172": [
-      "B3",
-      "E4",
-      "G4"
-    ],
-    "173": [
-      "F5",
-      "E2"
-    ],
-    "174": [
-      "A3",
-      "D4",
-      "F4",
-      "A4"
-    ],
-    "175": [
-      "B4",
-      "E2"
-    ],
-    "176": [
-      "C5",
-      "A3",
-      "C4",
-      "F4"
-    ],
-    "177": [
-      "F5"
-    ],
-    "178": [
-      "E5",
-      "E2"
-    ],
-    "179": [
-      "D5",
-      "C4",
-      "E4",
-      "A4"
-    ],
-    "180": [
-      "C5"
-    ],
-    "181": [
-      "E5",
-      "E2"
-    ],
-    "182": [
-      "D5",
-      "A3",
-      "C4",
-      "F4",
-      "A4"
-    ],
-    "183": [
-      "C5"
-    ],
-    "184": [
-      "F4",
-      "E2"
-    ],
-    "185": [
-      "A3",
-      "D4",
-      "B2"
-    ],
-    "186": [
-      "B3",
-      "D4",
-      "G4",
-      "E3"
-    ],
-    "187": [
-      "C4",
-      "E4",
-      "A4",
-      "C5",
-      "A2",
-      "G3"
-    ],
-    "188": [
-      "D4",
-      "F4",
-      "A4",
-      "D5",
-      "D2",
-      "A2",
-      "D3"
-    ]
-  },
-  "beat_starts_ql": [
-    0.0,
-    1.0,
-    3.0,
-    4.0,
-    6.0,
-    7.0,
-    9.0,
-    10.0,
-    12.0,
-    13.0,
-    14.0,
-    15.0,
-    16.0,
-    17.0,
-    18.0,
-    19.0,
-    20.0,
-    21.0,
-    22.0,
-    24.0,
-    25.0,
-    27.0,
-    28.0,
-    30.0,
-    31.0,
-    33.0,
-    34.0,
-    36.0,
-    37.0,
-    38.0,
-    39.0,
-    40.0,
-    41.0,
-    42.0,
-    43.0,
-    44.0,
-    45.0,
-    46.0,
-    48.0,
-    49.0,
-    51.0,
-    52.0,
-    54.0,
-    55.0,
-    57.0,
-    58.0,
-    60.0,
-    61.0,
-    63.0,
-    64.0,
-    65.0,
-    66.0,
-    67.0,
-    68.0,
-    69.0,
-    70.0,
-    71.0,
-    72.0,
-    73.0,
-    75.0,
-    76.0,
-    77.0,
-    78.0,
-    79.0,
-    80.0,
-    81.0,
-    82.0,
-    83.0,
-    84.0,
-    85.0,
-    86.0,
-    87.0,
-    88.0,
-    90.0,
-    91.0,
-    92.0,
-    93.0,
-    94.0,
-    96.0,
-    97.0,
-    99.0,
-    100.0,
-    101.0,
-    102.0,
-    103.0,
-    104.0,
-    105.0,
-    106.0,
-    107.0,
-    108.0,
-    109.0,
-    110.0,
-    111.0,
-    114.0,
-    117.0,
-    118.0,
-    120.0,
-    121.0,
-    123.0,
-    124.0,
-    126.0,
-    127.0,
-    129.0,
-    130.0,
-    131.0,
-    132.0,
-    133.0,
-    134.0,
-    135.0,
-    136.0,
-    137.0,
-    138.0,
-    139.0,
-    141.0,
-    142.0,
-    144.0,
-    145.0,
-    147.0,
-    148.0,
-    150.0,
-    151.0,
-    153.0,
-    154.0,
-    155.0,
-    156.0,
-    157.0,
-    158.0,
-    159.0,
-    160.0,
-    161.0,
-    162.0,
-    163.0,
-    165.0,
-    166.0,
-    168.0,
-    169.0,
-    171.0,
-    172.0,
-    174.0,
-    175.0,
-    177.0,
-    178.0,
-    180.0,
-    181.0,
-    182.0,
-    183.0,
-    184.0,
-    185.0,
-    186.0,
-    187.0,
-    188.0,
-    189.0,
-    190.0,
-    192.0,
-    193.0,
-    194.0,
-    195.0,
-    196.0,
-    197.0,
-    198.0,
-    199.0,
-    200.0,
-    201.0,
-    202.0,
-    203.0,
-    204.0,
-    205.0,
-    207.0,
-    208.0,
-    209.0,
-    210.0,
-    211.0,
-    213.0,
-    214.0,
-    216.0,
-    217.0,
-    218.0,
-    219.0,
-    220.0,
-    221.0,
-    222.0,
-    223.0,
-    224.0,
-    225.0,
-    226.0,
-    227.0,
-    228.0,
-    231.0
-  ],
   "beats_by_measure": {
     "0": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1047,7 +12,9 @@
     },
     "1": {
       "1": [
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1055,7 +22,9 @@
     },
     "2": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1063,7 +32,9 @@
     },
     "3": {
       "1": [
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1071,13 +42,15 @@
     },
     "4": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "F#5",
         "B3",
         "D4",
         "F#4"
       ],
-      "2": [
+      "3": [
         "A5"
       ]
     },
@@ -1114,7 +87,9 @@
     "7": {
       "1": [
         "A4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1123,7 +98,9 @@
     "8": {
       "1": [
         "F#4",
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1132,7 +109,9 @@
     "9": {
       "1": [
         "F#4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1141,7 +120,9 @@
     "10": {
       "1": [
         "F#4",
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1150,7 +131,9 @@
     "11": {
       "1": [
         "F#4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1158,13 +141,15 @@
     },
     "12": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "F#5",
         "B3",
         "D4",
         "F#4"
       ],
-      "2": [
+      "3": [
         "A5"
       ]
     },
@@ -1201,7 +186,9 @@
     "15": {
       "1": [
         "A4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1210,7 +197,9 @@
     "16": {
       "1": [
         "C#5",
-        "F#2",
+        "F#2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1219,7 +208,9 @@
     "17": {
       "1": [
         "F#5",
-        "B1",
+        "B1"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1228,7 +219,9 @@
     "18": {
       "1": [
         "E4",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "G3",
         "B3"
       ]
@@ -1236,7 +229,9 @@
     "19": {
       "1": [
         "E4",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "B3",
         "D4",
         "G4"
@@ -1245,7 +240,9 @@
     "20": {
       "1": [
         "E4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "F3",
         "A3",
         "D4"
@@ -1300,7 +297,9 @@
     "24": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "E3",
         "A3",
@@ -1310,13 +309,15 @@
     "25": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "F#3",
         "A3",
         "D4"
       ],
-      "2": [
+      "3": [
         "D5"
       ]
     },
@@ -1369,7 +370,9 @@
     "29": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "E3",
         "A3",
@@ -1379,20 +382,24 @@
     "30": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "F#3",
         "A3",
         "D4"
       ],
-      "2": [
+      "3": [
         "D5"
       ]
     },
     "31": {
       "1": [
         "G5",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "B3",
         "E4",
         "G4"
@@ -1401,7 +408,9 @@
     "32": {
       "1": [
         "F#5",
-        "F#2",
+        "F#2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1493,7 +502,9 @@
     },
     "39": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1501,7 +512,9 @@
     },
     "40": {
       "1": [
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1509,7 +522,9 @@
     },
     "41": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1517,7 +532,9 @@
     },
     "42": {
       "1": [
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1525,13 +542,15 @@
     },
     "43": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "F#5",
         "B3",
         "D4",
         "F#4"
       ],
-      "2": [
+      "3": [
         "A5"
       ]
     },
@@ -1568,7 +587,9 @@
     "46": {
       "1": [
         "A4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1577,7 +598,9 @@
     "47": {
       "1": [
         "F#4",
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1586,7 +609,9 @@
     "48": {
       "1": [
         "F#4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1595,7 +620,9 @@
     "49": {
       "1": [
         "F#4",
-        "G2",
+        "G2"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1604,7 +631,9 @@
     "50": {
       "1": [
         "F#4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1612,13 +641,15 @@
     },
     "51": {
       "1": [
-        "G2",
+        "G2"
+      ],
+      "2": [
         "F#5",
         "B3",
         "D4",
         "F#4"
       ],
-      "2": [
+      "3": [
         "A5"
       ]
     },
@@ -1655,7 +686,9 @@
     "54": {
       "1": [
         "A4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1664,7 +697,9 @@
     "55": {
       "1": [
         "C#5",
-        "F#2",
+        "F#2"
+      ],
+      "2": [
         "A3",
         "C#4",
         "F#4"
@@ -1673,7 +708,9 @@
     "56": {
       "1": [
         "F#5",
-        "B1",
+        "B1"
+      ],
+      "2": [
         "B3",
         "D4",
         "F#4"
@@ -1682,7 +719,9 @@
     "57": {
       "1": [
         "E4",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "G3",
         "B3"
       ]
@@ -1690,7 +729,9 @@
     "58": {
       "1": [
         "E4",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "B3",
         "D4",
         "G4"
@@ -1699,7 +740,9 @@
     "59": {
       "1": [
         "E4",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "F3",
         "A3",
         "D4"
@@ -1754,7 +797,9 @@
     "63": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "E3",
         "A3",
@@ -1764,13 +809,15 @@
     "64": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "F#3",
         "A3",
         "D4"
       ],
-      "2": [
+      "3": [
         "D5"
       ]
     },
@@ -1823,7 +870,9 @@
     "68": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "E3",
         "A3",
@@ -1833,20 +882,24 @@
     "69": {
       "1": [
         "D5",
-        "D2",
+        "D2"
+      ],
+      "2": [
         "C3",
         "F#3",
         "A3",
         "D4"
       ],
-      "2": [
+      "3": [
         "D5"
       ]
     },
     "70": {
       "1": [
         "G5",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "B3",
         "E4",
         "G4"
@@ -1855,7 +908,9 @@
     "71": {
       "1": [
         "F5",
-        "E2",
+        "E2"
+      ],
+      "2": [
         "A3",
         "D4",
         "F4",
@@ -1958,11 +1013,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 0.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 1
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -1971,14 +1024,12 @@
       "abs_measure_index": 0,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 1.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 2
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -1987,14 +1038,12 @@
       "abs_measure_index": 0,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 1.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 2
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -2003,14 +1052,12 @@
       "abs_measure_index": 0,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 1.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 2
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2022,11 +1069,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 3.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 3
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2035,14 +1080,12 @@
       "abs_measure_index": 1,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 4.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 4
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2051,14 +1094,12 @@
       "abs_measure_index": 1,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 4.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 4
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2067,14 +1108,12 @@
       "abs_measure_index": 1,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 4.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 4
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2086,11 +1125,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 6.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 5
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -2099,14 +1136,12 @@
       "abs_measure_index": 2,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 7.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 6
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -2115,14 +1150,12 @@
       "abs_measure_index": 2,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 7.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 6
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -2131,14 +1164,12 @@
       "abs_measure_index": 2,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 7.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 6
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2150,11 +1181,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 9.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 7
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2163,14 +1192,12 @@
       "abs_measure_index": 3,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 10.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 8
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2179,14 +1206,12 @@
       "abs_measure_index": 3,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 10.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 8
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2195,14 +1220,12 @@
       "abs_measure_index": 3,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 10.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 8
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2214,75 +1237,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 12.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 9
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 5,
-      "abs_measure_index": 4,
-      "staff": 1,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 13.0,
-      "duration_ql": 1.0,
-      "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 10
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 5,
-      "abs_measure_index": 4,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 13.0,
-      "duration_ql": 2.0,
-      "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 10
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 5,
-      "abs_measure_index": 4,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 13.0,
-      "duration_ql": 2.0,
-      "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 10
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 5,
-      "abs_measure_index": 4,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 13.0,
-      "duration_ql": 2.0,
-      "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 10
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -2292,13 +1249,67 @@
       "staff": 1,
       "voice": null,
       "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 1.0,
+      "pitch_name": "F#5",
+      "midi": 78
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 5,
+      "abs_measure_index": 4,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "B3",
+      "midi": 59
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 5,
+      "abs_measure_index": 4,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "D4",
+      "midi": 62
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 5,
+      "abs_measure_index": 4,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "F#4",
+      "midi": 66
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 5,
+      "abs_measure_index": 4,
+      "staff": 1,
+      "voice": null,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 14.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 11
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -2310,11 +1321,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 15.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 12
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -2326,11 +1335,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 15.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 12
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2342,11 +1349,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 16.0,
       "duration_ql": 1.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 13
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -2358,11 +1363,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 16.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 13
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2374,11 +1377,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 16.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 13
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2390,11 +1391,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 16.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 13
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2406,11 +1405,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 17.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 14
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -2422,11 +1419,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 18.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 15
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -2438,11 +1433,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 18.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 15
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -2454,11 +1447,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 19.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 16
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -2470,11 +1461,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 19.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 16
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -2486,11 +1475,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 19.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 16
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -2502,11 +1489,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 19.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 16
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2518,11 +1503,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 20.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 17
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -2534,11 +1517,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 21.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 18
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -2550,11 +1531,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 21.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 18
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2563,14 +1542,12 @@
       "abs_measure_index": 7,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 22.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 19
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2579,14 +1556,12 @@
       "abs_measure_index": 7,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 22.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 19
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2595,14 +1570,12 @@
       "abs_measure_index": 7,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 22.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 19
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2614,11 +1587,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 24.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 20
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2630,11 +1601,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 24.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 20
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -2643,14 +1612,12 @@
       "abs_measure_index": 8,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 25.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 21
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -2659,14 +1626,12 @@
       "abs_measure_index": 8,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 25.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 21
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -2675,14 +1640,12 @@
       "abs_measure_index": 8,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 25.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 21
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2694,11 +1657,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 27.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 22
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2710,11 +1671,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 27.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 22
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2723,14 +1682,12 @@
       "abs_measure_index": 9,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 28.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 23
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2739,14 +1696,12 @@
       "abs_measure_index": 9,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 28.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 23
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2755,14 +1710,12 @@
       "abs_measure_index": 9,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 28.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 23
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2774,11 +1727,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 30.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 24
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2790,11 +1741,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 30.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 24
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -2803,14 +1752,12 @@
       "abs_measure_index": 10,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 31.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 25
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -2819,14 +1766,12 @@
       "abs_measure_index": 10,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 31.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 25
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -2835,14 +1780,12 @@
       "abs_measure_index": 10,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 31.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 25
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2854,11 +1797,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 33.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 26
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2870,11 +1811,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 33.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 26
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -2883,14 +1822,12 @@
       "abs_measure_index": 11,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 34.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 27
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -2899,14 +1836,12 @@
       "abs_measure_index": 11,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 34.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 27
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -2915,14 +1850,12 @@
       "abs_measure_index": 11,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 34.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 27
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -2934,75 +1867,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 36.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 28
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 13,
-      "abs_measure_index": 12,
-      "staff": 1,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 37.0,
-      "duration_ql": 1.0,
-      "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 29
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 13,
-      "abs_measure_index": 12,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 37.0,
-      "duration_ql": 2.0,
-      "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 29
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 13,
-      "abs_measure_index": 12,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 37.0,
-      "duration_ql": 2.0,
-      "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 29
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 13,
-      "abs_measure_index": 12,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 37.0,
-      "duration_ql": 2.0,
-      "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 29
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -3012,13 +1879,67 @@
       "staff": 1,
       "voice": null,
       "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 1.0,
+      "pitch_name": "F#5",
+      "midi": 78
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 13,
+      "abs_measure_index": 12,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "B3",
+      "midi": 59
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 13,
+      "abs_measure_index": 12,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "D4",
+      "midi": 62
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 13,
+      "abs_measure_index": 12,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "F#4",
+      "midi": 66
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 13,
+      "abs_measure_index": 12,
+      "staff": 1,
+      "voice": null,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 38.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 30
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -3030,11 +1951,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 39.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 31
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -3046,11 +1965,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 39.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 31
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -3062,11 +1979,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 40.0,
       "duration_ql": 1.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 32
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -3078,11 +1993,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 40.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 32
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -3094,11 +2007,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 40.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 32
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -3110,11 +2021,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 40.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 32
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -3126,11 +2035,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 41.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 33
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -3142,11 +2049,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 42.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 34
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -3158,11 +2063,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 42.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 34
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -3174,11 +2077,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 43.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 35
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -3190,11 +2091,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 43.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 35
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -3206,11 +2105,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 43.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 35
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -3222,11 +2119,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 43.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 35
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -3238,11 +2133,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 44.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 36
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -3254,11 +2147,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 45.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 37
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -3270,11 +2161,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 45.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 37
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -3283,14 +2172,12 @@
       "abs_measure_index": 15,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 46.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 38
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -3299,14 +2186,12 @@
       "abs_measure_index": 15,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 46.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 38
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -3315,14 +2200,12 @@
       "abs_measure_index": 15,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 46.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 38
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -3334,11 +2217,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 48.0,
       "duration_ql": 3.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 39
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -3350,11 +2231,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 48.0,
       "duration_ql": 3.0,
       "pitch_name": "F#2",
-      "midi": 42,
-      "global_beat": 39
+      "midi": 42
     },
     {
       "part_index": 0,
@@ -3363,14 +2242,12 @@
       "abs_measure_index": 16,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 49.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 40
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -3379,14 +2256,12 @@
       "abs_measure_index": 16,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 49.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 40
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -3395,14 +2270,12 @@
       "abs_measure_index": 16,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 49.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 40
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -3414,11 +2287,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 51.0,
       "duration_ql": 3.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 41
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -3430,11 +2301,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 51.0,
       "duration_ql": 3.0,
       "pitch_name": "B1",
-      "midi": 35,
-      "global_beat": 41
+      "midi": 35
     },
     {
       "part_index": 0,
@@ -3443,14 +2312,12 @@
       "abs_measure_index": 17,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 52.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 42
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -3459,14 +2326,12 @@
       "abs_measure_index": 17,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 52.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 42
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -3475,14 +2340,12 @@
       "abs_measure_index": 17,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 52.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 42
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -3494,11 +2357,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 54.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 43
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -3510,11 +2371,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 54.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 43
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -3523,14 +2382,12 @@
       "abs_measure_index": 18,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 55.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 44
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -3539,14 +2396,12 @@
       "abs_measure_index": 18,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 55.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 44
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -3558,11 +2413,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 57.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 45
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -3574,11 +2427,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 57.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 45
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -3587,14 +2438,12 @@
       "abs_measure_index": 19,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 58.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 46
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -3603,14 +2452,12 @@
       "abs_measure_index": 19,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 58.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 46
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -3619,14 +2466,12 @@
       "abs_measure_index": 19,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 58.0,
       "duration_ql": 2.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 46
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -3638,11 +2483,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 60.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 47
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -3654,11 +2497,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 60.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 47
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -3667,14 +2508,12 @@
       "abs_measure_index": 20,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 61.0,
       "duration_ql": 2.0,
       "pitch_name": "F3",
-      "midi": 53,
-      "global_beat": 48
+      "midi": 53
     },
     {
       "part_index": 0,
@@ -3683,14 +2522,12 @@
       "abs_measure_index": 20,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 61.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 48
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -3699,14 +2536,12 @@
       "abs_measure_index": 20,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 61.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 48
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -3718,11 +2553,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 63.0,
       "duration_ql": 1.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 49
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -3734,11 +2567,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 63.0,
       "duration_ql": 3.0,
       "pitch_name": "A1",
-      "midi": 33,
-      "global_beat": 49
+      "midi": 33
     },
     {
       "part_index": 0,
@@ -3750,11 +2581,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 64.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 50
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -3766,11 +2595,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 64.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 50
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -3782,11 +2609,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 64.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 50
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -3798,11 +2623,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 64.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 50
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -3814,11 +2637,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 65.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 51
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -3830,11 +2651,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 66.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 52
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -3846,11 +2665,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 66.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 52
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -3862,11 +2679,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 67.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 53
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -3878,11 +2693,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 67.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 53
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -3894,11 +2707,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 67.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 53
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -3910,11 +2721,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 67.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 53
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -3926,11 +2735,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 68.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 54
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -3942,11 +2749,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 69.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 55
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -3958,11 +2763,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 69.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 55
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -3974,11 +2777,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 70.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 56
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -3990,11 +2791,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 70.0,
       "duration_ql": 2.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 56
+      "midi": 50
     },
     {
       "part_index": 0,
@@ -4006,11 +2805,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 70.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 56
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -4022,11 +2819,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 70.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 56
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -4038,11 +2833,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 70.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 56
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -4054,11 +2847,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 71.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 57
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -4070,11 +2861,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 72.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 58
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4086,11 +2875,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 72.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 58
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4099,14 +2886,12 @@
       "abs_measure_index": 24,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 73.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 59
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -4115,14 +2900,12 @@
       "abs_measure_index": 24,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 73.0,
       "duration_ql": 2.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 59
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -4131,14 +2914,12 @@
       "abs_measure_index": 24,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 73.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 59
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4147,14 +2928,12 @@
       "abs_measure_index": 24,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 73.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 59
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -4166,11 +2945,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 75.0,
       "duration_ql": 2.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 60
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4182,11 +2959,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 75.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 60
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4195,14 +2970,12 @@
       "abs_measure_index": 25,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 76.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 61
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -4211,14 +2984,12 @@
       "abs_measure_index": 25,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 76.0,
       "duration_ql": 2.0,
       "pitch_name": "F#3",
-      "midi": 54,
-      "global_beat": 61
+      "midi": 54
     },
     {
       "part_index": 0,
@@ -4227,14 +2998,12 @@
       "abs_measure_index": 25,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 76.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 61
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4243,14 +3012,12 @@
       "abs_measure_index": 25,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 76.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 61
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -4259,14 +3026,12 @@
       "abs_measure_index": 25,
       "staff": 1,
       "voice": null,
-      "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 77.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 62
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4278,11 +3043,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 78.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 63
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -4294,11 +3057,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 78.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 63
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4310,11 +3071,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 79.0,
       "duration_ql": 1.0,
       "pitch_name": "F5",
-      "midi": 77,
-      "global_beat": 64
+      "midi": 77
     },
     {
       "part_index": 0,
@@ -4326,11 +3085,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 79.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 64
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4342,11 +3099,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 79.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 64
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -4358,11 +3113,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 79.0,
       "duration_ql": 2.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 64
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -4374,11 +3127,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 80.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 65
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -4390,11 +3141,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 81.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 66
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -4406,11 +3155,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 81.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 66
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4422,11 +3169,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 82.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 67
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -4438,11 +3183,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 82.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 67
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4454,11 +3197,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 82.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 67
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -4470,11 +3211,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 82.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 67
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -4486,11 +3225,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 83.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 68
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4502,11 +3239,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 84.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 69
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -4518,11 +3253,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 84.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 69
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4534,11 +3267,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 85.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 70
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4550,11 +3281,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 85.0,
       "duration_ql": 2.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 70
+      "midi": 50
     },
     {
       "part_index": 0,
@@ -4566,11 +3295,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 85.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 70
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -4582,11 +3309,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 85.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 70
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -4598,11 +3323,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 85.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 70
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -4614,11 +3337,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 86.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 71
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -4630,11 +3351,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 87.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 72
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4646,11 +3365,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 87.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 72
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4659,14 +3376,12 @@
       "abs_measure_index": 29,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 88.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 73
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -4675,14 +3390,12 @@
       "abs_measure_index": 29,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 88.0,
       "duration_ql": 2.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 73
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -4691,14 +3404,12 @@
       "abs_measure_index": 29,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 88.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 73
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4707,14 +3418,12 @@
       "abs_measure_index": 29,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 88.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 73
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -4726,11 +3435,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 90.0,
       "duration_ql": 2.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 74
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4742,11 +3449,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 90.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 74
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -4755,14 +3460,12 @@
       "abs_measure_index": 30,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 91.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 75
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -4771,14 +3474,12 @@
       "abs_measure_index": 30,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 91.0,
       "duration_ql": 2.0,
       "pitch_name": "F#3",
-      "midi": 54,
-      "global_beat": 75
+      "midi": 54
     },
     {
       "part_index": 0,
@@ -4787,14 +3488,12 @@
       "abs_measure_index": 30,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 91.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 75
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4803,14 +3502,12 @@
       "abs_measure_index": 30,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 91.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 75
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -4819,14 +3516,12 @@
       "abs_measure_index": 30,
       "staff": 1,
       "voice": null,
-      "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 92.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 76
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -4838,11 +3533,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 93.0,
       "duration_ql": 3.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 77
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -4854,11 +3547,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 93.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 77
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -4867,14 +3558,12 @@
       "abs_measure_index": 31,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 94.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 78
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -4883,14 +3572,12 @@
       "abs_measure_index": 31,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 94.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 78
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -4899,14 +3586,12 @@
       "abs_measure_index": 31,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 94.0,
       "duration_ql": 2.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 78
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -4918,11 +3603,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 96.0,
       "duration_ql": 3.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 79
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -4934,11 +3617,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 96.0,
       "duration_ql": 3.0,
       "pitch_name": "F#2",
-      "midi": 42,
-      "global_beat": 79
+      "midi": 42
     },
     {
       "part_index": 0,
@@ -4947,14 +3628,12 @@
       "abs_measure_index": 32,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 97.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 80
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -4963,14 +3642,12 @@
       "abs_measure_index": 32,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 97.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 80
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -4979,14 +3656,12 @@
       "abs_measure_index": 32,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 97.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 80
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -4998,11 +3673,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 99.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 81
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -5014,11 +3687,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 99.0,
       "duration_ql": 3.0,
       "pitch_name": "B1",
-      "midi": 35,
-      "global_beat": 81
+      "midi": 35
     },
     {
       "part_index": 0,
@@ -5030,11 +3701,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 100.0,
       "duration_ql": 1.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 82
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -5046,11 +3715,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 100.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 82
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -5062,11 +3729,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 100.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 82
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5078,11 +3743,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 100.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 82
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5094,11 +3757,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 101.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 83
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -5110,11 +3771,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 102.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 84
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -5126,11 +3785,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 102.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 84
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -5142,11 +3799,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 103.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 85
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -5158,11 +3813,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 103.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 85
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -5174,11 +3827,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 103.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 85
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -5190,11 +3841,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 103.0,
       "duration_ql": 2.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 85
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -5206,11 +3855,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 104.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 86
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -5222,11 +3869,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 105.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 87
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -5238,11 +3883,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 105.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 87
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -5254,11 +3897,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 106.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 88
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -5270,11 +3911,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 106.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 88
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -5286,11 +3925,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 106.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 88
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -5302,11 +3939,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 106.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 88
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5318,11 +3953,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 106.0,
       "duration_ql": 2.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 88
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -5334,11 +3967,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 107.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 89
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -5350,11 +3981,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 108.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 90
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5366,11 +3995,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 108.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 90
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -5382,11 +4009,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 109.0,
       "duration_ql": 1.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 91
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -5398,11 +4023,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 109.0,
       "duration_ql": 1.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 91
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5414,11 +4037,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 109.0,
       "duration_ql": 1.0,
       "pitch_name": "B2",
-      "midi": 47,
-      "global_beat": 91
+      "midi": 47
     },
     {
       "part_index": 0,
@@ -5430,11 +4051,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 110.0,
       "duration_ql": 1.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 92
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -5446,11 +4065,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 110.0,
       "duration_ql": 1.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 92
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5462,11 +4079,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 110.0,
       "duration_ql": 1.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 92
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -5478,11 +4093,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 110.0,
       "duration_ql": 1.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 92
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -5494,11 +4107,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 93
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -5510,11 +4121,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 93
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -5526,11 +4135,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 93
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -5542,11 +4149,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 93
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -5558,11 +4163,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "A2",
-      "midi": 45,
-      "global_beat": 93
+      "midi": 45
     },
     {
       "part_index": 0,
@@ -5574,11 +4177,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 111.0,
       "duration_ql": 3.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 93
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -5590,11 +4191,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 94
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5606,11 +4205,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 94
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5622,11 +4219,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 94
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -5638,11 +4233,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 94
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -5654,11 +4247,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 94
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -5670,11 +4261,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "A2",
-      "midi": 45,
-      "global_beat": 94
+      "midi": 45
     },
     {
       "part_index": 0,
@@ -5686,11 +4275,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 114.0,
       "duration_ql": 3.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 94
+      "midi": 50
     },
     {
       "part_index": 0,
@@ -5702,11 +4289,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 117.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 95
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -5715,14 +4300,12 @@
       "abs_measure_index": 39,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 118.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 96
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -5731,14 +4314,12 @@
       "abs_measure_index": 39,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 118.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 96
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5747,14 +4328,12 @@
       "abs_measure_index": 39,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 118.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 96
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5766,11 +4345,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 120.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 97
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -5779,14 +4356,12 @@
       "abs_measure_index": 40,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 121.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 98
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -5795,14 +4370,12 @@
       "abs_measure_index": 40,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 121.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 98
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -5811,14 +4384,12 @@
       "abs_measure_index": 40,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 121.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 98
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5830,11 +4401,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 123.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 99
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -5843,14 +4412,12 @@
       "abs_measure_index": 41,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 124.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 100
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -5859,14 +4426,12 @@
       "abs_measure_index": 41,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 124.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 100
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -5875,14 +4440,12 @@
       "abs_measure_index": 41,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 124.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 100
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5894,11 +4457,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 126.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 101
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -5907,14 +4468,12 @@
       "abs_measure_index": 42,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 127.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 102
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -5923,14 +4482,12 @@
       "abs_measure_index": 42,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 127.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 102
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -5939,14 +4496,12 @@
       "abs_measure_index": 42,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 127.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 102
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -5958,75 +4513,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 129.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 103
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 44,
-      "abs_measure_index": 43,
-      "staff": 1,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 130.0,
-      "duration_ql": 1.0,
-      "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 104
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 44,
-      "abs_measure_index": 43,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 130.0,
-      "duration_ql": 2.0,
-      "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 104
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 44,
-      "abs_measure_index": 43,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 130.0,
-      "duration_ql": 2.0,
-      "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 104
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 44,
-      "abs_measure_index": 43,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 130.0,
-      "duration_ql": 2.0,
-      "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 104
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6036,13 +4525,67 @@
       "staff": 1,
       "voice": null,
       "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 1.0,
+      "pitch_name": "F#5",
+      "midi": 78
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 44,
+      "abs_measure_index": 43,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "B3",
+      "midi": 59
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 44,
+      "abs_measure_index": 43,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "D4",
+      "midi": 62
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 44,
+      "abs_measure_index": 43,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "F#4",
+      "midi": 66
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 44,
+      "abs_measure_index": 43,
+      "staff": 1,
+      "voice": null,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 131.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 105
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -6054,11 +4597,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 132.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 106
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -6070,11 +4611,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 132.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 106
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -6086,11 +4625,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 133.0,
       "duration_ql": 1.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 107
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -6102,11 +4639,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 133.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 107
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -6118,11 +4653,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 133.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 107
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -6134,11 +4667,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 133.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 107
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6150,11 +4681,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 134.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 108
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -6166,11 +4695,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 135.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 109
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -6182,11 +4709,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 135.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 109
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6198,11 +4723,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 136.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 110
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -6214,11 +4737,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 136.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 110
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -6230,11 +4751,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 136.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 110
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -6246,11 +4765,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 136.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 110
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6262,11 +4779,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 137.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 111
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -6278,11 +4793,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 138.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 112
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -6294,11 +4807,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 138.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 112
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -6307,14 +4818,12 @@
       "abs_measure_index": 46,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 139.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 113
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -6323,14 +4832,12 @@
       "abs_measure_index": 46,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 139.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 113
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -6339,14 +4846,12 @@
       "abs_measure_index": 46,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 139.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 113
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6358,11 +4863,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 141.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 114
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6374,11 +4877,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 141.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 114
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6387,14 +4888,12 @@
       "abs_measure_index": 47,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 142.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 115
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -6403,14 +4902,12 @@
       "abs_measure_index": 47,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 142.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 115
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -6419,14 +4916,12 @@
       "abs_measure_index": 47,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 142.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 115
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6438,11 +4933,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 144.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 116
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6454,11 +4947,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 144.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 116
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -6467,14 +4958,12 @@
       "abs_measure_index": 48,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 145.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 117
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -6483,14 +4972,12 @@
       "abs_measure_index": 48,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 145.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 117
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -6499,14 +4986,12 @@
       "abs_measure_index": 48,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 145.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 117
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6518,11 +5003,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 147.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 118
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6534,11 +5017,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 147.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 118
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6547,14 +5028,12 @@
       "abs_measure_index": 49,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 148.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 119
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -6563,14 +5042,12 @@
       "abs_measure_index": 49,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 148.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 119
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -6579,14 +5056,12 @@
       "abs_measure_index": 49,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 148.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 119
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6598,11 +5073,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 150.0,
       "duration_ql": 3.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 120
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6614,11 +5087,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 150.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 120
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -6627,14 +5098,12 @@
       "abs_measure_index": 50,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 151.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 121
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -6643,14 +5112,12 @@
       "abs_measure_index": 50,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 151.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 121
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -6659,14 +5126,12 @@
       "abs_measure_index": 50,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 151.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 121
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6678,75 +5143,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 153.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 122
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 52,
-      "abs_measure_index": 51,
-      "staff": 1,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 154.0,
-      "duration_ql": 1.0,
-      "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 123
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 52,
-      "abs_measure_index": 51,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 154.0,
-      "duration_ql": 2.0,
-      "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 123
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 52,
-      "abs_measure_index": 51,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 154.0,
-      "duration_ql": 2.0,
-      "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 123
-    },
-    {
-      "part_index": 0,
-      "part_name": "Score",
-      "measure_number": 52,
-      "abs_measure_index": 51,
-      "staff": 2,
-      "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
-      "offset_ql_in_measure": 1.0,
-      "start_ql": 154.0,
-      "duration_ql": 2.0,
-      "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 123
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6756,13 +5155,67 @@
       "staff": 1,
       "voice": null,
       "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 1.0,
+      "pitch_name": "F#5",
+      "midi": 78
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 52,
+      "abs_measure_index": 51,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "B3",
+      "midi": 59
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 52,
+      "abs_measure_index": 51,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "D4",
+      "midi": 62
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 52,
+      "abs_measure_index": 51,
+      "staff": 2,
+      "voice": null,
+      "beat": 2,
+      "beat_pos": 0.0,
+      "offset_ql_in_measure": 1.0,
+      "duration_ql": 2.0,
+      "pitch_name": "F#4",
+      "midi": 66
+    },
+    {
+      "part_index": 0,
+      "part_name": "Score",
+      "measure_number": 52,
+      "abs_measure_index": 51,
+      "staff": 1,
+      "voice": null,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 155.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 124
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -6774,11 +5227,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 156.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 125
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -6790,11 +5241,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 156.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 125
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -6806,11 +5255,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 157.0,
       "duration_ql": 1.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 126
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -6822,11 +5269,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 157.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 126
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -6838,11 +5283,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 157.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 126
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -6854,11 +5297,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 157.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 126
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6870,11 +5311,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 158.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 127
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -6886,11 +5325,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 159.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 128
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -6902,11 +5339,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 159.0,
       "duration_ql": 3.0,
       "pitch_name": "G2",
-      "midi": 43,
-      "global_beat": 128
+      "midi": 43
     },
     {
       "part_index": 0,
@@ -6918,11 +5353,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 160.0,
       "duration_ql": 1.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 129
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -6934,11 +5367,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 160.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 129
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -6950,11 +5381,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 160.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 129
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -6966,11 +5395,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 160.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 129
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -6982,11 +5409,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 161.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 130
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -6998,11 +5423,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 162.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 131
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -7014,11 +5437,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 162.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 131
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7027,14 +5448,12 @@
       "abs_measure_index": 54,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 163.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 132
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7043,14 +5462,12 @@
       "abs_measure_index": 54,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 163.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 132
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -7059,14 +5476,12 @@
       "abs_measure_index": 54,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 163.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 132
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -7078,11 +5493,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 165.0,
       "duration_ql": 3.0,
       "pitch_name": "C#5",
-      "midi": 73,
-      "global_beat": 133
+      "midi": 73
     },
     {
       "part_index": 0,
@@ -7094,11 +5507,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 165.0,
       "duration_ql": 3.0,
       "pitch_name": "F#2",
-      "midi": 42,
-      "global_beat": 133
+      "midi": 42
     },
     {
       "part_index": 0,
@@ -7107,14 +5518,12 @@
       "abs_measure_index": 55,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 166.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 134
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7123,14 +5532,12 @@
       "abs_measure_index": 55,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 166.0,
       "duration_ql": 2.0,
       "pitch_name": "C#4",
-      "midi": 61,
-      "global_beat": 134
+      "midi": 61
     },
     {
       "part_index": 0,
@@ -7139,14 +5546,12 @@
       "abs_measure_index": 55,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 166.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 134
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -7158,11 +5563,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 168.0,
       "duration_ql": 3.0,
       "pitch_name": "F#5",
-      "midi": 78,
-      "global_beat": 135
+      "midi": 78
     },
     {
       "part_index": 0,
@@ -7174,11 +5577,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 168.0,
       "duration_ql": 3.0,
       "pitch_name": "B1",
-      "midi": 35,
-      "global_beat": 135
+      "midi": 35
     },
     {
       "part_index": 0,
@@ -7187,14 +5588,12 @@
       "abs_measure_index": 56,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 169.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 136
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -7203,14 +5602,12 @@
       "abs_measure_index": 56,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 169.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 136
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -7219,14 +5616,12 @@
       "abs_measure_index": 56,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 169.0,
       "duration_ql": 2.0,
       "pitch_name": "F#4",
-      "midi": 66,
-      "global_beat": 136
+      "midi": 66
     },
     {
       "part_index": 0,
@@ -7238,11 +5633,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 171.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 137
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7254,11 +5647,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 171.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 137
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -7267,14 +5658,12 @@
       "abs_measure_index": 57,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 172.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 138
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -7283,14 +5672,12 @@
       "abs_measure_index": 57,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 172.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 138
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -7302,11 +5689,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 174.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 139
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7318,11 +5703,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 174.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 139
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -7331,14 +5714,12 @@
       "abs_measure_index": 58,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 175.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 140
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -7347,14 +5728,12 @@
       "abs_measure_index": 58,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 175.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 140
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -7363,14 +5742,12 @@
       "abs_measure_index": 58,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 175.0,
       "duration_ql": 2.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 140
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -7382,11 +5759,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 177.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 141
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7398,11 +5773,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 177.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 141
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7411,14 +5784,12 @@
       "abs_measure_index": 59,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 178.0,
       "duration_ql": 2.0,
       "pitch_name": "F3",
-      "midi": 53,
-      "global_beat": 142
+      "midi": 53
     },
     {
       "part_index": 0,
@@ -7427,14 +5798,12 @@
       "abs_measure_index": 59,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 178.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 142
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7443,14 +5812,12 @@
       "abs_measure_index": 59,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 178.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 142
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -7462,11 +5829,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 180.0,
       "duration_ql": 1.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 143
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -7478,11 +5843,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 180.0,
       "duration_ql": 3.0,
       "pitch_name": "A1",
-      "midi": 33,
-      "global_beat": 143
+      "midi": 33
     },
     {
       "part_index": 0,
@@ -7494,11 +5857,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 181.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 144
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -7510,11 +5871,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 181.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 144
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7526,11 +5885,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 181.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 144
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -7542,11 +5899,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 181.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 144
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7558,11 +5913,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 182.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 145
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -7574,11 +5927,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 183.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 146
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -7590,11 +5941,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 183.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 146
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7606,11 +5955,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 184.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 147
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -7622,11 +5969,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 184.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 147
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -7638,11 +5983,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 184.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 147
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -7654,11 +5997,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 184.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 147
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7670,11 +6011,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 185.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 148
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -7686,11 +6025,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 186.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 149
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -7702,11 +6039,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 186.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 149
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7718,11 +6053,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 187.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 150
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -7734,11 +6067,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 187.0,
       "duration_ql": 2.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 150
+      "midi": 50
     },
     {
       "part_index": 0,
@@ -7750,11 +6081,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 187.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 150
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -7766,11 +6095,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 187.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 150
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -7782,11 +6109,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 187.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 150
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -7798,11 +6123,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 188.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 151
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -7814,11 +6137,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 189.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 152
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -7830,11 +6151,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 189.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 152
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7843,14 +6162,12 @@
       "abs_measure_index": 63,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 190.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 153
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -7859,14 +6176,12 @@
       "abs_measure_index": 63,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 190.0,
       "duration_ql": 2.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 153
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -7875,14 +6190,12 @@
       "abs_measure_index": 63,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 190.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 153
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7891,14 +6204,12 @@
       "abs_measure_index": 63,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 190.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 153
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -7910,11 +6221,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 192.0,
       "duration_ql": 2.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 154
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -7926,11 +6235,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 192.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 154
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -7939,14 +6246,12 @@
       "abs_measure_index": 64,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 193.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 155
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -7955,14 +6260,12 @@
       "abs_measure_index": 64,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 193.0,
       "duration_ql": 2.0,
       "pitch_name": "F#3",
-      "midi": 54,
-      "global_beat": 155
+      "midi": 54
     },
     {
       "part_index": 0,
@@ -7971,14 +6274,12 @@
       "abs_measure_index": 64,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 193.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 155
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -7987,14 +6288,12 @@
       "abs_measure_index": 64,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 193.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 155
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -8003,14 +6302,12 @@
       "abs_measure_index": 64,
       "staff": 1,
       "voice": null,
-      "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 194.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 156
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8022,11 +6319,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 195.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 157
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -8038,11 +6333,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 195.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 157
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -8054,11 +6347,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 196.0,
       "duration_ql": 1.0,
       "pitch_name": "F5",
-      "midi": 77,
-      "global_beat": 158
+      "midi": 77
     },
     {
       "part_index": 0,
@@ -8070,11 +6361,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 196.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 158
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8086,11 +6375,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 196.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 158
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -8102,11 +6389,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 196.0,
       "duration_ql": 2.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 158
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -8118,11 +6403,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 197.0,
       "duration_ql": 1.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 159
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -8134,11 +6417,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 198.0,
       "duration_ql": 1.0,
       "pitch_name": "A5",
-      "midi": 81,
-      "global_beat": 160
+      "midi": 81
     },
     {
       "part_index": 0,
@@ -8150,11 +6431,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 198.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 160
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -8166,11 +6445,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 199.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 161
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -8182,11 +6459,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 199.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 161
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8198,11 +6473,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 199.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 161
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -8214,11 +6487,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 199.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 161
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -8230,11 +6501,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 200.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 162
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8246,11 +6515,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 201.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 163
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -8262,11 +6529,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 201.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 163
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -8278,11 +6543,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 202.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 164
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8294,11 +6557,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 202.0,
       "duration_ql": 2.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 164
+      "midi": 50
     },
     {
       "part_index": 0,
@@ -8310,11 +6571,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 202.0,
       "duration_ql": 2.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 164
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -8326,11 +6585,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 202.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 164
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -8342,11 +6599,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 202.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 164
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -8358,11 +6613,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 203.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 165
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -8374,11 +6627,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 204.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 166
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8390,11 +6641,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 204.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 166
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -8403,14 +6652,12 @@
       "abs_measure_index": 68,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 205.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 167
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -8419,14 +6666,12 @@
       "abs_measure_index": 68,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 205.0,
       "duration_ql": 2.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 167
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -8435,14 +6680,12 @@
       "abs_measure_index": 68,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 205.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 167
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8451,14 +6694,12 @@
       "abs_measure_index": 68,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 205.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 167
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -8470,11 +6711,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 207.0,
       "duration_ql": 2.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 168
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8486,11 +6725,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 207.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 168
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -8499,14 +6736,12 @@
       "abs_measure_index": 69,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 208.0,
       "duration_ql": 2.0,
       "pitch_name": "C3",
-      "midi": 48,
-      "global_beat": 169
+      "midi": 48
     },
     {
       "part_index": 0,
@@ -8515,14 +6750,12 @@
       "abs_measure_index": 69,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 208.0,
       "duration_ql": 2.0,
       "pitch_name": "F#3",
-      "midi": 54,
-      "global_beat": 169
+      "midi": 54
     },
     {
       "part_index": 0,
@@ -8531,14 +6764,12 @@
       "abs_measure_index": 69,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 208.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 169
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8547,14 +6778,12 @@
       "abs_measure_index": 69,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.6666666666666666,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 208.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 169
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -8563,14 +6792,12 @@
       "abs_measure_index": 69,
       "staff": 1,
       "voice": null,
-      "beat": 2,
-      "beat_pos": 0.3333333333333333,
+      "beat": 3,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 209.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 170
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8582,11 +6809,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 210.0,
       "duration_ql": 3.0,
       "pitch_name": "G5",
-      "midi": 79,
-      "global_beat": 171
+      "midi": 79
     },
     {
       "part_index": 0,
@@ -8598,11 +6823,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 210.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 171
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -8611,14 +6834,12 @@
       "abs_measure_index": 70,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 211.0,
       "duration_ql": 2.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 172
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -8627,14 +6848,12 @@
       "abs_measure_index": 70,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 211.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 172
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -8643,14 +6862,12 @@
       "abs_measure_index": 70,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 211.0,
       "duration_ql": 2.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 172
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -8662,11 +6879,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 213.0,
       "duration_ql": 3.0,
       "pitch_name": "F5",
-      "midi": 77,
-      "global_beat": 173
+      "midi": 77
     },
     {
       "part_index": 0,
@@ -8678,11 +6893,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 213.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 173
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -8691,14 +6904,12 @@
       "abs_measure_index": 71,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 214.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 174
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8707,14 +6918,12 @@
       "abs_measure_index": 71,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 214.0,
       "duration_ql": 2.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 174
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -8723,14 +6932,12 @@
       "abs_measure_index": 71,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 214.0,
       "duration_ql": 2.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 174
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -8739,14 +6946,12 @@
       "abs_measure_index": 71,
       "staff": 2,
       "voice": null,
-      "beat": 1,
-      "beat_pos": 0.3333333333333333,
+      "beat": 2,
+      "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 214.0,
       "duration_ql": 2.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 174
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -8758,11 +6963,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 216.0,
       "duration_ql": 1.0,
       "pitch_name": "B4",
-      "midi": 71,
-      "global_beat": 175
+      "midi": 71
     },
     {
       "part_index": 0,
@@ -8774,11 +6977,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 216.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 175
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -8790,11 +6991,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 217.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 176
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -8806,11 +7005,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 217.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 176
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -8822,11 +7019,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 217.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 176
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -8838,11 +7033,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 217.0,
       "duration_ql": 2.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 176
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -8854,11 +7047,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 218.0,
       "duration_ql": 1.0,
       "pitch_name": "F5",
-      "midi": 77,
-      "global_beat": 177
+      "midi": 77
     },
     {
       "part_index": 0,
@@ -8870,11 +7061,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 219.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 178
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -8886,11 +7075,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 219.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 178
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -8902,11 +7089,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 220.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 179
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -8918,11 +7103,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 220.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 179
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -8934,11 +7117,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 220.0,
       "duration_ql": 2.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 179
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -8950,11 +7131,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 220.0,
       "duration_ql": 2.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 179
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -8966,11 +7145,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 221.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 180
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -8982,11 +7159,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 222.0,
       "duration_ql": 1.0,
       "pitch_name": "E5",
-      "midi": 76,
-      "global_beat": 181
+      "midi": 76
     },
     {
       "part_index": 0,
@@ -8998,11 +7173,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 222.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 181
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -9014,11 +7187,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 223.0,
       "duration_ql": 1.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 182
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -9030,11 +7201,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 223.0,
       "duration_ql": 2.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 182
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -9046,11 +7215,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 223.0,
       "duration_ql": 2.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 182
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -9062,11 +7229,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 223.0,
       "duration_ql": 2.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 182
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -9078,11 +7243,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 223.0,
       "duration_ql": 2.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 182
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -9094,11 +7257,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 224.0,
       "duration_ql": 1.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 183
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -9110,11 +7271,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 225.0,
       "duration_ql": 3.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 184
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -9126,11 +7285,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 225.0,
       "duration_ql": 3.0,
       "pitch_name": "E2",
-      "midi": 40,
-      "global_beat": 184
+      "midi": 40
     },
     {
       "part_index": 0,
@@ -9142,11 +7299,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 226.0,
       "duration_ql": 1.0,
       "pitch_name": "A3",
-      "midi": 57,
-      "global_beat": 185
+      "midi": 57
     },
     {
       "part_index": 0,
@@ -9158,11 +7313,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 226.0,
       "duration_ql": 1.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 185
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -9174,11 +7327,9 @@
       "beat": 2,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 1.0,
-      "start_ql": 226.0,
       "duration_ql": 1.0,
       "pitch_name": "B2",
-      "midi": 47,
-      "global_beat": 185
+      "midi": 47
     },
     {
       "part_index": 0,
@@ -9190,11 +7341,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 227.0,
       "duration_ql": 1.0,
       "pitch_name": "B3",
-      "midi": 59,
-      "global_beat": 186
+      "midi": 59
     },
     {
       "part_index": 0,
@@ -9206,11 +7355,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 227.0,
       "duration_ql": 1.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 186
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -9222,11 +7369,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 227.0,
       "duration_ql": 1.0,
       "pitch_name": "G4",
-      "midi": 67,
-      "global_beat": 186
+      "midi": 67
     },
     {
       "part_index": 0,
@@ -9238,11 +7383,9 @@
       "beat": 3,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 2.0,
-      "start_ql": 227.0,
       "duration_ql": 1.0,
       "pitch_name": "E3",
-      "midi": 52,
-      "global_beat": 186
+      "midi": 52
     },
     {
       "part_index": 0,
@@ -9254,11 +7397,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "C4",
-      "midi": 60,
-      "global_beat": 187
+      "midi": 60
     },
     {
       "part_index": 0,
@@ -9270,11 +7411,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "E4",
-      "midi": 64,
-      "global_beat": 187
+      "midi": 64
     },
     {
       "part_index": 0,
@@ -9286,11 +7425,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 187
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -9302,11 +7439,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "C5",
-      "midi": 72,
-      "global_beat": 187
+      "midi": 72
     },
     {
       "part_index": 0,
@@ -9318,11 +7453,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "A2",
-      "midi": 45,
-      "global_beat": 187
+      "midi": 45
     },
     {
       "part_index": 0,
@@ -9334,11 +7467,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 228.0,
       "duration_ql": 3.0,
       "pitch_name": "G3",
-      "midi": 55,
-      "global_beat": 187
+      "midi": 55
     },
     {
       "part_index": 0,
@@ -9350,11 +7481,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "D4",
-      "midi": 62,
-      "global_beat": 188
+      "midi": 62
     },
     {
       "part_index": 0,
@@ -9366,11 +7495,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "F4",
-      "midi": 65,
-      "global_beat": 188
+      "midi": 65
     },
     {
       "part_index": 0,
@@ -9382,11 +7509,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "A4",
-      "midi": 69,
-      "global_beat": 188
+      "midi": 69
     },
     {
       "part_index": 0,
@@ -9398,11 +7523,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "D5",
-      "midi": 74,
-      "global_beat": 188
+      "midi": 74
     },
     {
       "part_index": 0,
@@ -9414,11 +7537,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "D2",
-      "midi": 38,
-      "global_beat": 188
+      "midi": 38
     },
     {
       "part_index": 0,
@@ -9430,11 +7551,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "A2",
-      "midi": 45,
-      "global_beat": 188
+      "midi": 45
     },
     {
       "part_index": 0,
@@ -9446,11 +7565,9 @@
       "beat": 1,
       "beat_pos": 0.0,
       "offset_ql_in_measure": 0.0,
-      "start_ql": 231.0,
       "duration_ql": 3.0,
       "pitch_name": "D3",
-      "midi": 50,
-      "global_beat": 188
+      "midi": 50
     }
   ]
 }
