@@ -1,0 +1,146 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --hl-fill: rgba(255, 214, 10, 0.18);
+    --hl-stroke: rgba(255, 149, 0, 0.75);
+    --cursor: #ff3b30;
+    --beat-fill: rgba(255, 214, 10, 0.14);
+    --beat-stroke: rgba(255, 149, 0, 0.9);
+  }
+  html, body {
+    margin:0; padding:0; background:#fff; height:100%; color:#111;
+  }
+  #frame {
+    position:relative; width:100%; height:100vh; overflow:hidden; background:#fff;
+  }
+
+ #frame {
+    position:relative;
+    width:100%; height:100vh;
+    overflow:hidden;
+    background:#fff;
+    display:flex;                /* score + sidebar */
+  }
+  #scorePane{
+    position:relative;
+    flex:1 1 auto;
+    height:100%;
+  }
+  #side{
+    width:260px;
+    max-width:33vw;
+    border-left:1px solid #e5e7eb;
+    background:#fafafa;
+    overflow:auto;
+    font:13px/1.3 system-ui;
+  }
+  #side h3{
+    margin:8px 8px 4px;
+    font:600 13px system-ui;
+    color:#0b3a53;
+  }
+  #beatList .beatEntry{
+    margin:6px;
+    padding:6px;
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    border-radius:6px;
+  }
+  #beatList .beatTitle{
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  #beatList .noteItem{
+    margin:3px 0;
+    padding:3px 6px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  #beatList .noteItem:hover{
+    background:#e2e8f0;
+  }
+  #beatList .noteItem.sel{
+    background:#dbeafe;
+    outline:1px solid #60a5fa;
+  }
+
+  #barHL {
+    position:absolute; top:0; left:0; width:0; height:0;
+    pointer-events:none; z-index:1000;
+    background: var(--hl-fill);
+    outline: 2px solid var(--hl-stroke);
+    outline-offset:-2px; border-radius: 6px;
+    transition: left .12s ease, top .12s ease,
+                width .12s ease, height .12s ease;
+  }
+  #cursor {
+    position:absolute; top:0; width:2px;
+    background:var(--cursor); z-index:1010;
+    transform: translateX(-1px);
+  }
+  #hud {
+    position:absolute; right:8px; top:8px;
+    color:#fff; font:12px/1.35 system-ui;
+    background:rgba(0,0,0,.55);
+    padding:6px 8px; border-radius:6px;
+  }
+  object, svg {
+    display:block; width:100%; height:100%;
+    background:#fff !important;
+  }
+  .beatBox {
+    position:absolute;
+    background:var(--beat-fill);
+    outline:1px solid var(--beat-stroke);
+    outline-offset:-1px;
+    border-radius:4px;
+    pointer-events:auto;
+    cursor:pointer;
+    z-index:600; /* below barHL/cursor, above SVG */
+    display:none; /* OFF by default */
+  }
+.beatBox.sel {
+    outline: 3px solid #ff3b30;                 /* stronger border when selected */
+    background: rgba(255, 214, 10, 0.45);       /* brighter fill when selected */
+  }
+
+</style></head>
+<body>
+<div id="frame">
+  <div id="scorePane">
+    <div id="barHL"></div>
+    <div id="cursor"></div>
+    <object id="page" type="image/svg+xml" data=""></object>
+    <div id="hud">loading…</div>
+  </div>
+  <aside id="side">
+    <h3>Selected beats</h3>
+    <div id="beatList"></div>
+  </aside>
+</div>
+<script>
+  window.__BOOT__ = {
+    ABS_INDEXES:    {ABS_INDEXES_JSON},
+    NOTE_TIMES_MAP: {NOTE_TIMES_MAP_JSON},
+    BEAT_TIMES_MAP: {BEAT_TIMES_MAP_JSON},
+    PITCH_MAP:      {PITCH_MAP_JSON}
+  };
+</script>
+
+<script type="module">
+  import { createApp } from './js/app.js';
+
+  const app = createApp(window.__BOOT__);
+  window.ScoreApp = app; // optional
+
+  // Back-compat bridges for your Python runJavaScript() calls:
+  window.setBeatBoxesVisible = on      => app.setBeatBoxesVisible(on);
+  window.jsSetCursorAbs      = (a,t,d) => app.jsSetCursorAbs(a,t,d);
+  window.setPageAndSvg       = (p,url) => app.setPageAndSvg(p,url);
+
+  // Keep boxes correct on resize
+  window.addEventListener('resize', () => app.handleResize());
+</script>
+
+</body></html>

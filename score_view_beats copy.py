@@ -709,7 +709,6 @@ class ScoreViewBeats(QWidget):
             f"meas {m_idx} (no.{m.number})  t={t_in:0.3f}/{dur:0.3f}s"
         )
 
-
 # --- simple executable harness ------------------------------------------------
 
 def _pick_file_if_needed(path: Optional[str]) -> Optional[str]:

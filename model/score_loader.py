@@ -51,7 +51,7 @@ def load_notes_from_mxl(mxl_path: str, xml_path: str):
     - 'start' and 'duration' are in quarter-lengths (QL), as before.
     - Robust to xml_path being an .mxl or a non-parseable file.
     """
-    root = _parse_musicxml_tree(xml_path, mxl_path)
+    root = _parse_musicxml_tree(xml_path, mxl_path) 
     staff_map = defaultdict(int)
 
     # Build staff map (best-effort). If we cannot parse a tree, we skip and default staff=1 later.
