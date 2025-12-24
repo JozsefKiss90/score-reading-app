@@ -5,7 +5,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-
+import xml.etree.ElementTree as ET
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
 os.environ.setdefault("QT_OPENGL", "software")
 
@@ -79,7 +79,15 @@ class ScoreViewBeats(QWidget):
             "breaks": "auto",
             "adjustPageHeight": 1,
             "svgViewBox": 1,
+
+            "svgAdditionalAttribute": [
+                "note@pname", "note@oct",
+                "note@accid", "note@accid.ges",
+                "note@pnum", "note@pnum.ges",
+            ],
+
         })
+
         self._tk.loadFile(self.mxl_path)
         self._tk.redoLayout()
         self._tk.renderToMIDI()
@@ -203,6 +211,9 @@ class ScoreViewBeats(QWidget):
     def _load_page(self, page: int):
         page = max(0, min(self._page_count - 1, page))
 
+        svg = self._page_svgs[page]
+        self._log_svg_pitch_attrs(svg, limit=30)
+        #self._log_verovio_pitch_api(svg, limit=10)
         # IMPORTANT: set current page early so SVG parsing uses the correct page mapping
         self._current_page = page
 
@@ -314,3 +325,108 @@ class ScoreViewBeats(QWidget):
             f"meas {m_idx} (no.{m.number})  t={t_in:0.3f}/{dur:0.3f}s"
         )
 
+    def _log_verovio_pitch_api(self, svg: str, limit: int = 3):
+        """
+        Crash-proof diagnostic logger for Verovio pitch APIs.
+
+        - Does not json.loads() anything (avoid unexpected 'null'/list/etc.).
+        - Guards missing methods.
+        - Guards per-id failures.
+        """
+        try:
+            fn_midi = getattr(self._tk, "getMIDIValuesForElement", None)
+            fn_attr = getattr(self._tk, "getElementAttr", None)
+
+            if fn_midi is None and fn_attr is None:
+                dlog("[pitch api] toolkit has neither getMIDIValuesForElement nor getElementAttr")
+                return
+
+            root = ET.fromstring(svg)
+            ids = []
+            for g in root.iter():
+                if g.tag.split("}")[-1] != "g":
+                    continue
+                cls = (g.attrib.get("class", "") or "")
+                if "note" in cls.split() and "id" in g.attrib:
+                    ids.append(g.attrib["id"])
+
+            dlog(f"[pitch api] candidate_note_ids={len(ids)} (logging first {min(limit, len(ids))})")
+
+            for nid in ids[:limit]:
+                # Skip IDs that toolkit doesn't recognize (cheap safety gate).
+                try:
+                    t = self._tk.getTimeForElement(nid)
+                except Exception as e:
+                    dlog(f"[pitch api] id={nid} getTimeForElement ERROR: {e}")
+                    continue
+                if t is None or (isinstance(t, (int, float)) and t < 0):
+                    dlog(f"[pitch api] id={nid} getTimeForElement returned {t!r} (skipping)")
+                    continue
+
+                if fn_midi is not None:
+                    try:
+                        mv = fn_midi(nid)
+                        dlog(f"[pitch api] id={nid} MIDI type={type(mv).__name__} val={mv!r}")
+                    except Exception as e:
+                        dlog(f"[pitch api] id={nid} getMIDIValuesForElement ERROR: {e}")
+
+                if fn_attr is not None:
+                    try:
+                        ea = fn_attr(nid)
+                        dlog(f"[pitch api] id={nid} Attr type={type(ea).__name__} val={ea!r}")
+                    except Exception as e:
+                        dlog(f"[pitch api] id={nid} getElementAttr ERROR: {e}")
+
+        except Exception as e:
+            dlog("[pitch api] FATAL ERROR:", e)
+            dlog(traceback.format_exc())
+
+            
+    def _log_svg_pitch_attrs(self, svg: str, limit: int = 20):
+        keys = [
+            "data-pname", "data-oct", "data-accid",
+            "data-pname.ges", "data-oct.ges", "data-accid.ges",
+            "pname", "oct", "accid",
+            "pname.ges", "oct.ges", "accid.ges", 
+            "data-pnum", "data-pnum.ges",
+        ]
+
+        try:
+            root = ET.fromstring(svg)
+        except Exception as e:
+            dlog("[SVG pitch] parse error:", e)
+            return
+
+        # Collect note groups
+        note_g = []
+        for g in root.iter():
+            if g.tag.split("}")[-1] != "g":
+                continue
+            cls = (g.attrib.get("class", "") or "")
+            if "note" in cls.split() and "id" in g.attrib:
+                note_g.append(g)
+
+        def collect_attrs(el):
+            out = {}
+            for k in keys:
+                if k in el.attrib:
+                    out[k] = el.attrib.get(k)
+            return out
+
+        total = len(note_g)
+        with_pitch = 0
+        dumped = 0
+
+        for g in note_g:
+            # search note group + descendants for pitch attrs
+            merged = {}
+            for el in g.iter():
+                merged.update(collect_attrs(el))
+
+            if merged:
+                with_pitch += 1
+                if dumped < limit:
+                    dlog(f"[SVG pitch] id={g.attrib.get('id')} attrs={merged}")
+                    dumped += 1
+
+        dlog(f"[SVG pitch] notes_total={total} notes_with_any_pitch_attrs={with_pitch} dumped={dumped}/{limit}")

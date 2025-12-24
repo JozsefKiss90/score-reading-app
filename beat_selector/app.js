@@ -11,6 +11,8 @@ export function createApp(boot){
 class App {
   constructor(boot){
     this.state = new State(boot);
+    // Selected beats, keyed by abs measure index => Set(beatIdx)
+    this.state.selBeats = new Map();
     this.SNAP_T=0.06; this.NUDGE_T=0.25; this.NUDGE_GAIN=0.35; this.SMOOTH_ALPHA=0.4; this.MONO_TOL=1.5;
   }
 
@@ -25,7 +27,10 @@ class App {
     s.setProperty('--hl-fill', t.fill); s.setProperty('--hl-stroke', t.stroke); s.setProperty('--cursor', t.cursor);
   }
 
-  _destroyBeatBoxes(){ this.state.beatDivs.forEach(b=>b.remove()); this.state.beatDivs=[]; }
+  _destroyBeatBoxes(){
+    this.state.beatDivs.forEach(b=>b.remove());
+    this.state.beatDivs=[];
+  }
   _updateBeatVisibility(){
     const disp = this.state.beatVisible ? 'block' : 'none';
     this.state.beatDivs.forEach(b=>{ b.style.display=disp; });
@@ -34,7 +39,8 @@ class App {
   setBeatBoxesVisible(on){
     this.state.beatVisible=!!on; this._updateBeatVisibility();
     if(!this.state.beatVisible){
-      document.querySelectorAll('.beatBox.sel').forEach(b=>b.classList.remove('sel'));
+      // Clear selection when hiding beat UI
+      this.state.selBeats = new Map();
       Sidebar.rebuild(this.state, Cursor.setNoteHighlight);
     }
   }
@@ -52,6 +58,7 @@ class App {
 
   setPageAndSvg(pageIndex, svgUrl){
     const S=this.state; S.pageIndex=pageIndex; S.readySvg=false; S.last={page:-1,abs:-1,t:0,x:0}; S.lastHL=-1;
+    S.selBeats = new Map();
     this._destroyBeatBoxes();
     const obj=Dom.pageObj();
     obj.addEventListener('load', ()=>{
@@ -70,19 +77,98 @@ class App {
 
   _ensureBeatBoxes(){
     const S=this.state, frame=Dom.frame(); this._destroyBeatBoxes();
+    // UI model:
+    // - Exactly ONE overlay element per measure ("measureBox").
+    // - Beats are represented as internal separators, and selection is computed from
+    //   click position within the measure box. No per-beat boxes exist in the DOM.
+
+    const renderSelection = (mdiv, abs, beats) => {
+      // Remove old fills
+      mdiv.querySelectorAll('.beatFill').forEach(n=>n.remove());
+      const set = S.selBeats.get(abs);
+      if(!set || set.size===0) return;
+      const W = mdiv.clientWidth || 1;
+      const H = mdiv.clientHeight || 1;
+      for(const b of [...set].sort((a,b)=>a-b)){
+        const u0=(b-1)/beats, u1=b/beats;
+        const fill=document.createElement('div');
+        fill.className='beatFill';
+        fill.style.position='absolute';
+        fill.style.left=Math.round(W*u0)+'px';
+        fill.style.top='0px';
+        fill.style.width=Math.max(0, Math.round(W*(u1-u0)))+'px';
+        fill.style.height=H+'px';
+        fill.style.background='var(--hl-fill)';
+        fill.style.pointerEvents='none';
+        mdiv.appendChild(fill);
+      }
+    };
+
     for(const abs of S.orderAbs){
       const box=S.boxesByAbs[abs]; if(!box) continue;
-      const div=document.createElement('div'); div.className='beatBox'; div.dataset.abs=String(abs);
-      div.addEventListener('click', ev=>{
-        ev.stopPropagation(); div.classList.toggle('sel');
+
+      // BEAT_TIMES_MAP keys are JSON-serialized in Python; prefer string keys.
+      const beats = (S.boot.BEAT_TIMES_MAP?.[String(abs)]?.length)
+                 || (S.boot.BEAT_TIMES_MAP?.[abs]?.length)
+                 || 1;
+
+      const xL = box.left;
+      const xR = box.right;
+      const span = Math.max(1, xR - xL);
+
+      // Visible measure overlay
+      const mdiv=document.createElement('div');
+      mdiv.className='measureBox';
+      mdiv.dataset.abs=String(abs);
+      mdiv.dataset.beats=String(beats);
+      // Ensure visibility without requiring CSS edits
+      mdiv.style.position='absolute';
+      mdiv.style.boxSizing='border-box';
+      mdiv.style.border='2px solid var(--hl-stroke)';
+      mdiv.style.borderRadius='6px';
+      mdiv.style.pointerEvents='auto';
+      mdiv.style.background='transparent';
+      mdiv.style.overflow='hidden';
+
+      const pad=2;
+      mdiv.style.left=(Math.round(xL)+pad)+'px';
+      mdiv.style.top=(Math.round(box.top)+pad)+'px';
+      mdiv.style.width=Math.max(0, Math.round(span)-pad*2)+'px';
+      mdiv.style.height=Math.max(0, Math.round(box.bottom-box.top)-pad*2)+'px';
+
+      // Internal beat separators (visual only)
+      for(let b=1; b<beats; b++){
+        const sep=document.createElement('div');
+        sep.className='beatSep';
+        sep.style.position='absolute';
+        sep.style.top='0px';
+        sep.style.bottom='0px';
+        sep.style.width='1px';
+        sep.style.left=Math.round((b/beats)*10000)/100+'%'; // stable % layout
+        sep.style.background='rgba(0,0,0,0.18)';
+        sep.style.pointerEvents='none';
+        mdiv.appendChild(sep);
+      }
+
+      // Click selects a beat by x-position within the measure box
+      mdiv.addEventListener('click', (ev)=>{
+        ev.stopPropagation();
+        const rect=mdiv.getBoundingClientRect();
+        const x=Math.max(0, Math.min(rect.width-1, ev.clientX-rect.left));
+        const beat=Math.max(1, Math.min(beats, Math.floor((x/Math.max(1,rect.width))*beats)+1));
+        const key=Number(abs);
+        const set = S.selBeats.get(key) || new Set();
+        if(set.has(beat)) set.delete(beat); else set.add(beat);
+        if(set.size===0) S.selBeats.delete(key); else S.selBeats.set(key,set);
+        renderSelection(mdiv, key, beats);
         Sidebar.rebuild(S, Cursor.setNoteHighlight);
       });
-      const pad=2;
-      div.style.left=(Math.round(box.left)+pad)+'px';
-      div.style.top=(Math.round(box.top)+pad)+'px';
-      div.style.width=Math.max(0, Math.round(box.right-box.left)-pad*2)+'px';
-      div.style.height=Math.max(0, Math.round(box.bottom-box.top)-pad*2)+'px';
-      frame.appendChild(div); S.beatDivs.push(div);
+
+      frame.appendChild(mdiv);
+      S.beatDivs.push(mdiv);
+
+      // Re-render selection after resize / rebuild
+      renderSelection(mdiv, Number(abs), beats);
     }
     this._updateBeatVisibility();
   }

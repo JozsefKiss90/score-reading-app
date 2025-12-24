@@ -85,56 +85,71 @@ export class Sidebar {
     const svg = Dom.svgRoot(); if(!svg) return;
     svg.querySelectorAll(".note-hl").forEach(n=> n.classList.remove("note-hl"));
 
-    const boxes=[...document.querySelectorAll(".beatBox.sel")];
-    boxes.sort((a,b)=>Number(a.dataset.abs)-Number(b.dataset.abs));
+    // Selection model:
+    // - Score view uses ONE overlay per measure.
+    // - Beats are inferred from click position and stored in state.selBeats.
+    //   (Fallback to DOM selection if older builds still use .beatBox/.beatHit.)
+    const byAbs=new Map();
 
-    boxes.forEach(box=>{
-      const abs=Number(box.dataset.abs);
-      const g=Sidebar.measureGroupByAbs(state,abs); if(!g) return;
+    if(state.selBeats && typeof state.selBeats.entries === 'function'){
+      for(const [abs, set] of state.selBeats.entries()){
+        const beats=[...set].map(Number);
+        if(beats.length) byAbs.set(Number(abs), beats);
+      }
+    } else {
+      const hits=[...document.querySelectorAll(".beatHit.sel, .beatBox.sel")];
+      for(const h of hits){
+        const abs=Number(h.dataset.abs);
+        const beat=Number(h.dataset.beat||1);
+        if(!byAbs.has(abs)) byAbs.set(abs, []);
+        byAbs.get(abs).push(beat);
+      }
+    }
 
-      const br=box.getBoundingClientRect();
-      const notes=Sidebar.noteGroupsWithin(g, br.left, br.right, true);
-      const beat=Sidebar.beatIndexForBox(state, abs, br);
-
+    for(const [abs, beats] of byAbs.entries()){
       const wrap=document.createElement("div");
       wrap.className="beatEntry";
 
-      const title=document.createElement("div");
-      title.className="beatTitle";
-      title.textContent=`m${abs} • beat ${beat} — ${notes.length} notes`;
-      wrap.appendChild(title);
+      const head=document.createElement("div");
+      head.className="beatTitle";
+      const uniq=[...new Set(beats)].sort((a,b)=>a-b);
+      head.textContent = `m${abs} • ${uniq.length} beat${uniq.length===1?'':'s'} selected`;
+      wrap.appendChild(head);
 
-        // raw is now expected to be [{id, pitch, x}, ...] from Python/Verovio
-      const raw = (state.boot.PITCH_MAP[String(abs)]?.[String(beat)]) || [];
-      const rows = Array.isArray(raw) ? raw : [];
+      // Render each selected beat as a subsection within the single measure entry
+      for(const beat of uniq){
+        const sub=document.createElement("div");
+        sub.className="beatSubTitle";
 
-      // Title should reflect number of labeled notes (from Verovio) rather than SVG count
-      title.textContent = `m${abs} • beat ${beat} — ${rows.length} notes`;
+        const raw = (state.boot.PITCH_MAP?.[String(abs)]?.[String(beat)]) || [];
+        const rows = Array.isArray(raw) ? raw : [];
+        sub.textContent = `beat ${beat} — ${rows.length} notes`;
+        wrap.appendChild(sub);
 
-      // Render one sidebar item per Verovio row, highlight SVG element by id
-      rows.forEach((r, i) => {
-        const item = document.createElement("div");
-        item.className = "noteItem";
-        item.textContent = r?.pitch ? Sidebar.normPitch(r.pitch) : `Note ${i + 1}`;
+        rows.forEach((r, i)=>{
+          const item=document.createElement("div");
+          item.className="noteItem";
+          item.textContent = r?.pitch ? Sidebar.normPitch(r.pitch) : `Note ${i+1}`;
 
-        item.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          const on = !item.classList.contains("sel");
-          item.classList.toggle("sel", on);
+          item.addEventListener("click", (ev)=>{
+            ev.stopPropagation();
+            const on=!item.classList.contains("sel");
+            item.classList.toggle("sel", on);
 
-          // Find the SVG element by Verovio id (e.g., "m1n2") and highlight it
-          const svg = Dom.svgRoot();
-          if (!svg) return;
+            const svg = Dom.svgRoot();
+            if(!svg) return;
+            const node = svg.getElementById ? svg.getElementById(r.id) : null;
+            if(node) onHighlight(node, on);
+            const livePitch = Sidebar.readNodePitch(node);
+            const label = livePitch || r?.pitch || null;
 
-          // QWebEngine <object> SVG document should support getElementById
-          const node = svg.getElementById ? svg.getElementById(r.id) : null;
-          if (node) onHighlight(node, on);
+            item.textContent = label ? Sidebar.normPitch(label) : `Note ${i+1}`;
+          });
+          wrap.appendChild(item);
         });
-
-        wrap.appendChild(item);
-      });
+      }
 
       list.appendChild(wrap);
-    });
+    }
   }
 }
