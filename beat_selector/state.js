@@ -4,7 +4,7 @@ export class State {
     this.pageIndex = 0;
     this.readySvg  = false;
 
-    this.boxesByAbs   = {};  // abs -> {l,r,t,b}
+    this.boxesByAbs   = {};  // abs -> {left,right,top,bottom}
     this.anchorsByAbs = {};  // abs -> [x...]
     this.orderAbs     = [];  // visible order
 
@@ -14,5 +14,22 @@ export class State {
 
     this.beatVisible = false;
     this.beatDivs = [];      // overlay divs
+
+    // --- Beat selector state -------------------------------------------
+
+    // abs measure index -> Set(beatIdx)
+    this.selBeats = new Map();
+
+    // Selected SVG note ids (subset of visible notes in sidebar)
+    this.selNoteIds = new Set();
+
+    // midiPitch(int) -> Set(noteId)
+    this.selNotesByMidi = new Map();
+
+    // Currently pressed MIDI pitches
+    this.midiDown = new Set();
+
+    // midiPitch(int) -> Set(noteId) currently painted green
+    this.midiActiveIdsByMidi = new Map();
   }
 }

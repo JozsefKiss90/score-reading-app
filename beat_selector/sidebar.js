@@ -1,155 +1,161 @@
 import { Dom } from './dom.js';
 
 export class Sidebar {
-  static normPitch(s) {
-    return (s || "")
+  static _asciiPitch(s){
+    return (s || '')
       .toString()
       .trim()
-      .replace(/♯/g, "#")
-      .replace(/♭/g, "b")
-      .toUpperCase();
+      .replace(/♯/g, '#')
+      .replace(/♭/g, 'b');
   }
 
-  static readNodePitch(node) {
-    if (!node) return null;
-
-    const tryFrom = (el) => {
-      if (!el) return null;
-      const pname = el.getAttribute("data-pname");
-      const accid = (el.getAttribute("data-accid") || "").toLowerCase();
-      const oct   = el.getAttribute("data-oct");
-      if (!pname || !oct) return null;
-
-      const pc = pname.toString().toUpperCase();
-      const acc =
-        accid === "s" || accid === "sharp" ? "#" :
-        accid === "f" || accid === "flat"  ? "b" :
-        accid === "ss" || accid === "x" || accid === "2s" ? "##" :
-        accid === "ff" || accid === "2f" ? "bb" : "";
-
-      return pc + acc + oct;
-    };
-
-    // 1) Walk *up* the DOM for a few generations – Verovio often
-    //    hangs the data-pname/accid/oct on a parent <g>.
-    let el = node;
-    for (let depth = 0; el && depth < 6; depth++) {
-      const p = tryFrom(el);
-      if (p) return p;
-      el = el.parentElement;
-    }
-
-    // 2) Fallback: search all descendants for something pitch-like.
-    for (const el2 of node.querySelectorAll("[data-pname]")) {
-      const p = tryFrom(el2);
-      if (p) return p;
-    }
-
-    return null;
+  // Normalized display form, e.g. "bb3" -> "Bb3", "F♯4" -> "F#4"
+  static normPitch(s){
+    const t = Sidebar._asciiPitch(s);
+    const m = /^([A-Ga-g])([#b]{0,2})(-?\d+)$/.exec(t);
+    if(!m) return t;
+    return m[1].toUpperCase() + (m[2] || '') + m[3];
   }
 
-  static measureGroupByAbs(state, abs){
-    const svg=Dom.svgRoot(); if(!svg) return null;
-    let groups=[...svg.querySelectorAll('[data-vrv-type="measure"]')];
-    if(groups.length===0) groups=[...svg.querySelectorAll('g.measure,[class*="measure"]')];
-    const i=state.boot.ABS_INDEXES.indexOf(abs);
-    if(i<0 || i>=groups.length) return null;
-    return groups[i];
+  static pitchToMidi(pitch){
+    const t = Sidebar._asciiPitch(pitch);
+    const m = /^([A-Ga-g])([#b]{0,2})(-?\d+)$/.exec(t);
+    if(!m) return null;
+
+    const pc = m[1].toUpperCase();
+    const acc = m[2] || '';
+    const oct = parseInt(m[3], 10);
+
+    const base = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 }[pc];
+    const delta = (acc.match(/#/g)||[]).length - (acc.match(/b/g)||[]).length;
+    const semitone = base + delta;
+    return (oct + 1) * 12 + semitone;
   }
 
-  static noteGroupsWithin(g, L, R, includeRight=false){
-    const nodes=g.querySelectorAll("[data-vrv-type='note'], g.note, g.chord g.note");
-    const arr=[];
-    nodes.forEach(n=>{
-      const r=n.getBoundingClientRect();
-      const cx=(r.left+r.right)/2;
-      const inLeft=cx>=L, inRight=includeRight ? (cx<=R) : (cx<R);
-      if(inLeft && inRight) arr.push(n);
-    });
-    arr.sort((a,b)=>a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-    return arr;
-  }
+  static rebuild(state, onHighlight, onSelectionChanged){
+    const list = Dom.beatList();
+    if(!list) return;
+    list.innerHTML = '';
 
-  static beatIndexForBox(state, abs, boxRect){
-    const xs=state.anchorsByAbs[abs]||[];
-    if(!xs.length) return 1;
-    const first=xs[0], last=xs[xs.length-1], span=Math.max(1,last-first);
-    const beats=(state.boot.BEAT_TIMES_MAP[abs]?.length)||1;
-    const cx=(boxRect.left+boxRect.right)/2;
-    const u=Math.max(0, Math.min(0.9999, (cx-first)/span));
-    return Math.max(1, Math.min(beats, Math.floor(u*beats)+1));
-  }
+    const svg = Dom.svgRoot();
+    if(!svg) return;
 
-  static rebuild(state, onHighlight){
-    const list = Dom.beatList(); list.innerHTML="";
-    const svg = Dom.svgRoot(); if(!svg) return;
-    svg.querySelectorAll(".note-hl").forEach(n=> n.classList.remove("note-hl"));
+    // Clear previous selection highlight (blue). MIDI highlight (green) is managed by App.
+    svg.querySelectorAll('.note-hl').forEach(n => n.classList.remove('note-hl'));
 
-    // Selection model:
-    // - Score view uses ONE overlay per measure.
-    // - Beats are inferred from click position and stored in state.selBeats.
-    //   (Fallback to DOM selection if older builds still use .beatBox/.beatHit.)
-    const byAbs=new Map();
-
+    // Collect selected beats: abs -> [beatIdx...]
+    const byAbs = new Map();
     if(state.selBeats && typeof state.selBeats.entries === 'function'){
       for(const [abs, set] of state.selBeats.entries()){
-        const beats=[...set].map(Number);
+        const beats = [...set].map(Number);
         if(beats.length) byAbs.set(Number(abs), beats);
       }
     } else {
-      const hits=[...document.querySelectorAll(".beatHit.sel, .beatBox.sel")];
+      // Back-compat with older DOM-based beat selection.
+      const hits = [...document.querySelectorAll('.beatHit.sel, .beatBox.sel')];
       for(const h of hits){
-        const abs=Number(h.dataset.abs);
-        const beat=Number(h.dataset.beat||1);
+        const abs = Number(h.dataset.abs);
+        const beat = Number(h.dataset.beat || 1);
         if(!byAbs.has(abs)) byAbs.set(abs, []);
         byAbs.get(abs).push(beat);
       }
     }
 
-    for(const [abs, beats] of byAbs.entries()){
-      const wrap=document.createElement("div");
-      wrap.className="beatEntry";
+    // Prune old note selection to only notes still visible in the sidebar after rebuild.
+    const oldSel = state.selNoteIds || new Set();
+    const newSel = new Set();
+    const selByMidi = new Map();
 
-      const head=document.createElement("div");
-      head.className="beatTitle";
-      const uniq=[...new Set(beats)].sort((a,b)=>a-b);
+    const addSelMidi = (midi, id) => {
+      if(midi === null || midi === undefined) return;
+      let s = selByMidi.get(midi);
+      if(!s){ s = new Set(); selByMidi.set(midi, s); }
+      s.add(id);
+    };
+
+    for(const [abs, beats] of byAbs.entries()){
+      const wrap = document.createElement('div');
+      wrap.className = 'beatEntry';
+
+      const head = document.createElement('div');
+      head.className = 'beatTitle';
+      const uniq = [...new Set(beats)].sort((a,b)=>a-b);
       head.textContent = `m${abs} • ${uniq.length} beat${uniq.length===1?'':'s'} selected`;
       wrap.appendChild(head);
 
-      // Render each selected beat as a subsection within the single measure entry
       for(const beat of uniq){
-        const sub=document.createElement("div");
-        sub.className="beatSubTitle";
+        const sub = document.createElement('div');
+        sub.className = 'beatSubTitle';
 
         const raw = (state.boot.PITCH_MAP?.[String(abs)]?.[String(beat)]) || [];
         const rows = Array.isArray(raw) ? raw : [];
         sub.textContent = `beat ${beat} — ${rows.length} notes`;
         wrap.appendChild(sub);
 
-        rows.forEach((r, i)=>{
-          const item=document.createElement("div");
-          item.className="noteItem";
-          item.textContent = r?.pitch ? Sidebar.normPitch(r.pitch) : `Note ${i+1}`;
+        rows.forEach((r, i) => {
+          const id = r?.id ? String(r.id) : null;
+          const pitch = r?.pitch ? Sidebar.normPitch(r.pitch) : null;
+          const midi = pitch ? Sidebar.pitchToMidi(pitch) : null;
 
-          item.addEventListener("click", (ev)=>{
+          const item = document.createElement('div');
+          item.className = 'noteItem';
+          item.textContent = pitch || `Note ${i+1}`;
+          if(id) item.dataset.noteId = id;
+          if(midi !== null && midi !== undefined) item.dataset.midi = String(midi);
+
+          const isSel = !!(id && oldSel.has(id));
+          if(isSel){
+            item.classList.add('sel');
+            newSel.add(id);
+            if(midi !== null && midi !== undefined) addSelMidi(midi, id);
+          }
+
+          item.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            const on=!item.classList.contains("sel");
-            item.classList.toggle("sel", on);
+            if(!id) return;
 
-            const svg = Dom.svgRoot();
-            if(!svg) return;
-            const node = svg.getElementById ? svg.getElementById(r.id) : null;
+            const on = !item.classList.contains('sel');
+            item.classList.toggle('sel', on);
+
+            // Update selection sets
+            if(on) state.selNoteIds.add(id);
+            else state.selNoteIds.delete(id);
+
+            // Blue selection highlight
+            const node = svg.ownerDocument.getElementById(id);
             if(node) onHighlight(node, on);
-            const livePitch = Sidebar.readNodePitch(node);
-            const label = livePitch || r?.pitch || null;
 
-            item.textContent = label ? Sidebar.normPitch(label) : `Note ${i+1}`;
+            // Maintain midiPitch -> selected note ids
+            if(midi !== null && midi !== undefined){
+              let set = state.selNotesByMidi.get(midi);
+              if(on){
+                if(!set){ set = new Set(); state.selNotesByMidi.set(midi, set); }
+                set.add(id);
+              } else if(set){
+                set.delete(id);
+                if(set.size === 0) state.selNotesByMidi.delete(midi);
+              }
+            }
+
+            if(typeof onSelectionChanged === 'function') onSelectionChanged();
           });
+
           wrap.appendChild(item);
         });
       }
 
       list.appendChild(wrap);
     }
+
+    state.selNoteIds = newSel;
+    state.selNotesByMidi = selByMidi;
+
+    // Apply blue highlight after rebuild.
+    for(const id of state.selNoteIds){
+      const node = svg.ownerDocument.getElementById(id);
+      if(node) onHighlight(node, true);
+    }
+
+    if(typeof onSelectionChanged === 'function') onSelectionChanged();
   }
 }

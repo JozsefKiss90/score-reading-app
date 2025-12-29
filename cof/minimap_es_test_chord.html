@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>COF Mini-map (ES Modules) + Chord/Function Test</title>
+  <style>
+    body { margin: 0; height: 100vh; background: #0f1115; overflow: hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    #scorePane { position: relative; width: 100%; height: 100%; }
+    .controls {
+      position: absolute; left: 16px; top: 16px; z-index: 2000;
+      display: flex; gap: 8px; align-items: center; padding: 10px 12px;
+      border-radius: 12px; background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      color: rgba(255,255,255,0.85); user-select: none;
+    }
+    .controls button {
+      appearance: none; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85);
+      padding: 6px 10px; border-radius: 10px; cursor: pointer;
+    }
+    .controls button:hover { background: rgba(255,255,255,0.10); }
+    .controls .sep { width: 10px; }
+    .controls small { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div id="scorePane">
+    <div class="controls">
+      <button id="themeBtn">Toggle theme</button>
+      <span class="sep"></span>
+      <button id="playSeq">Play chords</button>
+      <small>Keys: Z X C (triad), V B N (V7), A S D (scale)</small>
+    </div>
+  </div>
+
+  <script type="module">
+    import { bootCOFMiniMap } from "./minimap_center.js";
+
+    const mm = bootCOFMiniMap({ ui: { hostId: "scorePane", sizePx: 420 } });
+    window.mm = mm;
+
+    let dark = true;
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      dark = !dark;
+      document.body.style.background = dark ? "#0f1115" : "#f2f4f7";
+      const c = document.querySelector(".controls");
+      c.style.color = dark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.80)";
+      c.style.background = dark ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.65)";
+      c.style.borderColor = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)";
+      window.dispatchEvent(new CustomEvent("ui:theme", { detail: { dark } }));
+    });
+
+    function noteOn(midi, velocity = 110) {
+      window.dispatchEvent(new CustomEvent("midi:noteon", { detail: { midi, velocity, ts: performance.now() } }));
+    }
+    function noteOff(midi) {
+      window.dispatchEvent(new CustomEvent("midi:noteoff", { detail: { midi, ts: performance.now() } }));
+    }
+
+    async function playChord(notes, holdMs=500) {
+      for (const n of notes) noteOn(n, 110);
+      await new Promise(r => setTimeout(r, holdMs));
+      for (const n of notes) noteOff(n);
+    }
+
+    document.getElementById("playSeq").addEventListener("click", async () => {
+      // C major -> G7 -> C major
+      await playChord([60,64,67], 600);
+      await new Promise(r => setTimeout(r, 180));
+      await playChord([67,71,74,77], 600); // G B D F (G7)
+      await new Promise(r => setTimeout(r, 180));
+      await playChord([60,64,67], 600);
+    });
+
+    // Quick keyboard triggers (simple, momentary)
+    const chords = {
+      "z": [60,64,67],      // C major
+      "x": [62,65,69],      // D minor-ish
+      "c": [64,67,71],      // E minor
+      "v": [67,71,74,77],   // G7
+      "b": [69,73,76,79],   // A7-ish
+      "n": [71,74,77,81],   // B7-ish
+      "a": [60,62,64,65,67,69,71], // C major scale
+    };
+    window.addEventListener("keydown", (e) => {
+      const k = (e.key || "").toLowerCase();
+      const notes = chords[k];
+      if (!notes) return;
+      for (const n of notes) noteOn(n, 105);
+    });
+    window.addEventListener("keyup", (e) => {
+      const k = (e.key || "").toLowerCase();
+      const notes = chords[k];
+      if (!notes) return;
+      for (const n of notes) noteOff(n);
+    });
+  </script>
+</body>
+</html>

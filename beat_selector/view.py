@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
+
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
 os.environ.setdefault("QT_OPENGL", "software")
 
 from PyQt6.QtCore import Qt, QUrl, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PyQt6.QtWebEngineWidgets import QWebEngineView
+
 import verovio
-import xml.etree.ElementTree as ET
 
 from model.score_loader import build_tempo_segments, build_measure_times
 
@@ -27,15 +27,24 @@ from .timing import Measure, build_onsets_by_measure, build_beats_by_measure, bu
 from .web_assets import prepare_web_assets
 from .verovio_map import VerovioNoteMapper
 
+# MIDI integration (optional)
+try:
+    from audio.midi_service import MidiService
+except Exception:
+    try:
+        from .midi_service import MidiService
+    except Exception:
+        MidiService = None
 
-def dlog(*args):  # keep identical prefix
+
+def dlog(*args):
     print("[ScoreViewBeats]", *args, flush=True)
 
 
 class ScoreViewBeats(QWidget):
     musicTimeChanged = None
 
-    def __init__(self, mxl_path: str, xml_path: Optional[str] = None, parent=None):
+    def __init__(self, mxl_path: str, xml_path: Optional[str] = None, parent=None, midi_service=None):
         super().__init__(parent)
         self.mxl_path = str(mxl_path)
         self.xml_path = str(xml_path or mxl_path)
@@ -65,11 +74,40 @@ class ScoreViewBeats(QWidget):
         self.btnNext.clicked.connect(self._go_next_page)
         top.addWidget(self.btnNext)
 
+                # in __init__ right after btnBeats (or wherever you prefer)
+        self._dark_mode = False
+        self.btnDark = QPushButton("Dark")
+        self.btnDark.setCheckable(True)
+        self.btnDark.setChecked(False)
+        self.btnDark.clicked.connect(self._on_toggle_dark)
+        top.addWidget(self.btnDark)
+
         layout.addLayout(top)
 
         self.web = QWebEngineView(self)
         self.web.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         layout.addWidget(self.web, 1)
+
+        # MIDI (optional): forward note events into the embedded beat selector page.
+        self._midi_service = None
+        self._owns_midi_service = False
+        if midi_service is not None:
+            self._midi_service = midi_service
+        elif MidiService is not None:
+            try:
+                self._midi_service = MidiService(self)
+                self._owns_midi_service = True
+                dlog(f"[MIDI] listening on: {getattr(self._midi_service, 'port_name', None)}")
+            except Exception as e:
+                dlog("[MIDI] init failed:", e)
+                self._midi_service = None
+
+        if self._midi_service is not None:
+            try:
+                self._midi_service.noteOn.connect(self._on_midi_note_on)
+                self._midi_service.noteOff.connect(self._on_midi_note_off)
+            except Exception as e:
+                dlog("[MIDI] connect failed:", e)
 
         self._tk = verovio.toolkit()
         self._tk.setOptions({
@@ -79,20 +117,19 @@ class ScoreViewBeats(QWidget):
             "breaks": "auto",
             "adjustPageHeight": 1,
             "svgViewBox": 1,
-
             "svgAdditionalAttribute": [
-                "note@pname", "note@oct",
-                "note@accid", "note@accid.ges",
-                "note@pnum", "note@pnum.ges",
+                "note@pname",
+                "note@oct",
+                "note@pname.ges",
+                "note@oct.ges",
+                "note@accid",
+                "note@accid.ges",
             ],
-
         })
 
         self._tk.loadFile(self.mxl_path)
         self._tk.redoLayout()
         self._tk.renderToMIDI()
-        print("pageCount =", self._tk.getPageCount())
-        print("duration =", getattr(self._tk, "getDuration", lambda: None)())
 
         self._page_count = int(self._tk.getPageCount() or 1)
 
@@ -120,9 +157,14 @@ class ScoreViewBeats(QWidget):
 
         self._mapper = VerovioNoteMapper(self._tk, self.measures, self.events_by_index, dlog=dlog)
 
-        print("[ScoreViewBeats] about to _load_page(0)", flush=True)
+        dlog("about to _load_page(0)")
         self._load_page(0)
-        print("[ScoreViewBeats] _load_page(0) returned", flush=True)
+        dlog("_load_page(0) returned")
+        
+    def _on_toggle_dark(self, checked: bool):
+        self._dark_mode = bool(checked)
+        self._run_js_safe(f"setDarkMode({str(self._dark_mode).lower()});")
+
 
     def _on_toggle_beats(self, checked: bool):
         self.set_beats_visible(checked)
@@ -138,19 +180,17 @@ class ScoreViewBeats(QWidget):
             self._load_page(new_page)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Right:
+        # PyQt6 uses Qt.Key.Key_*
+        if event.key() == Qt.Key.Key_Right:
             self._go_next_page()
-        elif event.key() == Qt.Key_Left:
+        elif event.key() == Qt.Key.Key_Left:
             self._go_prev_page()
         else:
             super().keyPressEvent(event)
 
     def set_beats_visible(self, visible: bool):
         self._beats_visible = bool(visible)
-        try:
-            self.web.page().runJavaScript(f"setBeatBoxesVisible({str(self._beats_visible).lower()});")
-        except Exception:
-            pass
+        self._run_js_safe(f"setBeatBoxesVisible({str(self._beats_visible).lower()});")
         self.btnBeats.setText("Hide beats" if self._beats_visible else "Show beats")
 
     def _discover_pages_by_numbers(self):
@@ -170,8 +210,7 @@ class ScoreViewBeats(QWidget):
             try:
                 root = ET.fromstring(svg)
                 for g in root.iter():
-                    tag = g.tag.split("}")[-1]
-                    if tag != "g":
+                    if g.tag.split("}")[-1] != "g":
                         continue
                     typ = g.attrib.get("data-vrv-type") or g.attrib.get("data-type") or ""
                     if typ != "measure" and "measure" not in g.attrib.get("class", ""):
@@ -213,37 +252,27 @@ class ScoreViewBeats(QWidget):
 
         svg = self._page_svgs[page]
         self._log_svg_pitch_attrs(svg, limit=30)
-        #self._log_verovio_pitch_api(svg, limit=10)
-        # IMPORTANT: set current page early so SVG parsing uses the correct page mapping
+
         self._current_page = page
 
-        dlog("writing svg...")
         self._assets.svg_path.write_text(self._page_svgs[page], encoding="utf-8")
-        dlog("svg written")
 
-        dlog("building maps...")
         abs_indexes = self._page_abs_indexes[page]
         note_times_map = {i: self.onsets_by_index[i] for i in abs_indexes if i < len(self.onsets_by_index)}
         beat_times_map = {i: self.beats_by_index[i] for i in abs_indexes if i < len(self.beats_by_index)}
-        dlog("maps built")
 
-        dlog("calling extract_pitches...")
         if extract_pitches is not None:
             try:
                 _ = extract_pitches(self.xml_path)
             except Exception as e:
                 dlog("extract_pitches ERROR:", e)
-        dlog("extract_pitches returned")
 
-        dlog("building note_map from verovio...")
         note_map = self._mapper.build_note_map_from_verovio(
             page_svg=self._page_svgs[page],
             abs_indexes=abs_indexes,
             beat_times_map=beat_times_map,
         )
-        dlog("note_map built")
 
-        dlog("building HTML...")
         html = (
             self._assets.html_template_raw
             .replace("{ABS_INDEXES_JSON}", json.dumps(abs_indexes))
@@ -251,7 +280,6 @@ class ScoreViewBeats(QWidget):
             .replace("{BEAT_TIMES_MAP_JSON}", json.dumps(beat_times_map))
             .replace("{PITCH_MAP_JSON}", json.dumps(note_map))
         )
-
         self._assets.html_out.write_text(html, encoding="utf-8")
 
         self._html_ready = False
@@ -267,20 +295,16 @@ class ScoreViewBeats(QWidget):
 
         def on_loaded(ok: bool):
             self._html_ready = True
-            self.web.page().runJavaScript(
-                f"setPageAndSvg({page}, {json.dumps(self._assets.svg_path.as_uri())});"
-            )
+            self._run_js_safe(f"setPageAndSvg({page}, {json.dumps(self._assets.svg_path.as_uri())});")
             self.set_beats_visible(self._beats_visible)
+            self._run_js_safe(f"setDarkMode({str(self._dark_mode).lower()});")
             if self._pending_sec is not None:
                 sec = self._pending_sec
                 self._pending_sec = None
                 self._apply_time(sec)
 
-        dlog("loading HTML into QWebEngineView...")
         self.web.load(QUrl.fromLocalFile(str(self._assets.html_out)))
-        dlog("HTML load triggered")
         self.web.loadFinished.connect(on_loaded)
-
 
     @pyqtSlot(float)
     def set_music_time(self, sec: float):
@@ -314,7 +338,7 @@ class ScoreViewBeats(QWidget):
             return
         dur = max(1e-6, m.end_sec - m.start_sec)
         t_in = max(0.0, sec - m.start_sec)
-        self.web.page().runJavaScript(f"jsSetCursorAbs({int(m_idx)}, {float(t_in)}, {float(dur)})")
+        self._run_js_safe(f"jsSetCursorAbs({int(m_idx)}, {float(t_in)}, {float(dur)})")
 
         if self._last_logged != (page, m_idx):
             dlog(f"page={page} meas_abs={m_idx} num={m.number} t_in={t_in:.3f}/{dur:.3f}")
@@ -325,70 +349,56 @@ class ScoreViewBeats(QWidget):
             f"meas {m_idx} (no.{m.number})  t={t_in:0.3f}/{dur:0.3f}s"
         )
 
-    def _log_verovio_pitch_api(self, svg: str, limit: int = 3):
-        """
-        Crash-proof diagnostic logger for Verovio pitch APIs.
-
-        - Does not json.loads() anything (avoid unexpected 'null'/list/etc.).
-        - Guards missing methods.
-        - Guards per-id failures.
-        """
+    # ------------------------------------------------------------------
+    # MIDI -> JS bridge
+    # ------------------------------------------------------------------
+    def _run_js_safe(self, code: str):
         try:
-            fn_midi = getattr(self._tk, "getMIDIValuesForElement", None)
-            fn_attr = getattr(self._tk, "getElementAttr", None)
+            self.web.page().runJavaScript(code)
+        except Exception:
+            pass
 
-            if fn_midi is None and fn_attr is None:
-                dlog("[pitch api] toolkit has neither getMIDIValuesForElement nor getElementAttr")
-                return
+    @pyqtSlot(int, int, float)
+    def _on_midi_note_on(self, pitch: int, velocity: int, timestamp: float):
+        # Many sources encode NoteOff as NoteOn with velocity 0.
+        if int(velocity) == 0:
+            self._on_midi_note_off(int(pitch), float(timestamp))
+            return
+        self._run_js_safe(
+            f"window.onMidiNoteOn && window.onMidiNoteOn({int(pitch)}, {int(velocity)}, {float(timestamp)});"
+        )
 
-            root = ET.fromstring(svg)
-            ids = []
-            for g in root.iter():
-                if g.tag.split("}")[-1] != "g":
-                    continue
-                cls = (g.attrib.get("class", "") or "")
-                if "note" in cls.split() and "id" in g.attrib:
-                    ids.append(g.attrib["id"])
+    @pyqtSlot(int, float)
+    def _on_midi_note_off(self, pitch: int, timestamp: float):
+        self._run_js_safe(
+            f"window.onMidiNoteOff && window.onMidiNoteOff({int(pitch)}, {float(timestamp)});"
+        )
 
-            dlog(f"[pitch api] candidate_note_ids={len(ids)} (logging first {min(limit, len(ids))})")
-
-            for nid in ids[:limit]:
-                # Skip IDs that toolkit doesn't recognize (cheap safety gate).
+    def closeEvent(self, event):
+        try:
+            if getattr(self, "_midi_service", None) is not None:
                 try:
-                    t = self._tk.getTimeForElement(nid)
-                except Exception as e:
-                    dlog(f"[pitch api] id={nid} getTimeForElement ERROR: {e}")
-                    continue
-                if t is None or (isinstance(t, (int, float)) and t < 0):
-                    dlog(f"[pitch api] id={nid} getTimeForElement returned {t!r} (skipping)")
-                    continue
-
-                if fn_midi is not None:
+                    self._midi_service.noteOn.disconnect(self._on_midi_note_on)
+                except Exception:
+                    pass
+                try:
+                    self._midi_service.noteOff.disconnect(self._on_midi_note_off)
+                except Exception:
+                    pass
+                if getattr(self, "_owns_midi_service", False):
                     try:
-                        mv = fn_midi(nid)
-                        dlog(f"[pitch api] id={nid} MIDI type={type(mv).__name__} val={mv!r}")
-                    except Exception as e:
-                        dlog(f"[pitch api] id={nid} getMIDIValuesForElement ERROR: {e}")
+                        self._midi_service.shutdown()
+                    except Exception:
+                        pass
+        finally:
+            super().closeEvent(event)
 
-                if fn_attr is not None:
-                    try:
-                        ea = fn_attr(nid)
-                        dlog(f"[pitch api] id={nid} Attr type={type(ea).__name__} val={ea!r}")
-                    except Exception as e:
-                        dlog(f"[pitch api] id={nid} getElementAttr ERROR: {e}")
-
-        except Exception as e:
-            dlog("[pitch api] FATAL ERROR:", e)
-            dlog(traceback.format_exc())
-
-            
     def _log_svg_pitch_attrs(self, svg: str, limit: int = 20):
         keys = [
             "data-pname", "data-oct", "data-accid",
             "data-pname.ges", "data-oct.ges", "data-accid.ges",
             "pname", "oct", "accid",
-            "pname.ges", "oct.ges", "accid.ges", 
-            "data-pnum", "data-pnum.ges",
+            "pname.ges", "oct.ges", "accid.ges",
         ]
 
         try:
@@ -397,7 +407,6 @@ class ScoreViewBeats(QWidget):
             dlog("[SVG pitch] parse error:", e)
             return
 
-        # Collect note groups
         note_g = []
         for g in root.iter():
             if g.tag.split("}")[-1] != "g":
@@ -418,7 +427,6 @@ class ScoreViewBeats(QWidget):
         dumped = 0
 
         for g in note_g:
-            # search note group + descendants for pitch attrs
             merged = {}
             for el in g.iter():
                 merged.update(collect_attrs(el))

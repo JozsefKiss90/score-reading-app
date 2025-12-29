@@ -12,10 +12,6 @@
     margin:0; padding:0; background:#fff; height:100%; color:#111;
   }
   #frame {
-    position:relative; width:100%; height:100vh; overflow:hidden; background:#fff;
-  }
-
- #frame {
     position:relative;
     width:100%; height:100vh;
     overflow:hidden;
@@ -89,6 +85,7 @@
     display:block; width:100%; height:100%;
     background:#fff !important;
   }
+
   .beatBox {
     position:absolute;
     background:var(--beat-fill);
@@ -97,14 +94,53 @@
     border-radius:4px;
     pointer-events:auto;
     cursor:pointer;
-    z-index:600; /* below barHL/cursor, above SVG */
-    display:none; /* OFF by default */
+    z-index:600;
+    display:none;
   }
-.beatBox.sel {
-    outline: 3px solid #ff3b30;                 /* stronger border when selected */
-    background: rgba(255, 214, 10, 0.45);       /* brighter fill when selected */
+  .beatBox.sel {
+    outline: 3px solid #ff3b30;
+    background: rgba(255, 214, 10, 0.45);
   }
 
+  /* Container background */
+.dark-score body { background: #000; }
+
+/* The SVG background itself */
+.dark-score #score svg { background: #000; }
+
+/* Force most Verovio-drawn primitives to white */
+.dark-score #score svg path,
+.dark-score #score svg line,
+.dark-score #score svg rect,
+.dark-score #score svg circle,
+.dark-score #score svg ellipse,
+.dark-score #score svg polygon,
+.dark-score #score svg polyline,
+.dark-score #score svg text {
+  stroke: #fff !important;
+  fill: #fff !important;
+}
+
+/* Some SVG elements are intended to be unfilled; keep that behavior */
+.dark-score #score svg [fill="none"] { fill: none !important; }
+.dark-score #score svg [stroke="none"] { stroke: none !important; }
+
+/* Preserve your highlight classes (do NOT let theme override them) */
+.dark-score #score svg .note-hl {
+  /* whatever you use for selection highlight */
+  stroke: #3aa0ff !important;
+  fill: #3aa0ff !important;
+}
+
+.dark-score #score svg .midi-ok {
+  stroke: #20c020 !important;
+  fill: #20c020 !important;
+}
+
+/* If you have beat-box overlays/cursor overlays, also preserve them explicitly.
+   Example class names shown—adjust to your actual ones. */
+.dark-score #score svg .beatbox { fill: rgba(255,255,255,0.10) !important; stroke: rgba(255,255,255,0.35) !important; }
+.dark-score #score svg .cursor  { stroke: #ffcc00 !important; }
 </style></head>
 <body>
 <div id="frame">
@@ -132,15 +168,85 @@
   import { createApp } from './js/app.js';
 
   const app = createApp(window.__BOOT__);
-  window.ScoreApp = app; // optional
+  window.ScoreApp = app;
 
-  // Back-compat bridges for your Python runJavaScript() calls:
   window.setBeatBoxesVisible = on      => app.setBeatBoxesVisible(on);
   window.jsSetCursorAbs      = (a,t,d) => app.jsSetCursorAbs(a,t,d);
   window.setPageAndSvg       = (p,url) => app.setPageAndSvg(p,url);
 
-  // Keep boxes correct on resize
+  window.onMidiNoteOn        = (pitch, velocity, ts) => app.onMidiNoteOn(pitch, velocity, ts);
+  window.onMidiNoteOff       = (pitch, ts)           => app.onMidiNoteOff(pitch, ts);
+
   window.addEventListener('resize', () => app.handleResize());
+
+  const DARK_STYLE_ID = "darkScoreStyle";
+
+  function ensureDarkStyle(svgDoc, enabled) {
+    if (!svgDoc) return;
+
+    let styleEl = svgDoc.getElementById(DARK_STYLE_ID);
+
+    if (!enabled) {
+      if (styleEl) styleEl.remove();
+      // also reset SVG root background if we set it
+      const svgRoot = svgDoc.documentElement;
+      if (svgRoot) svgRoot.style.background = "";
+      return;
+    }
+
+    if (!styleEl) {
+      styleEl = svgDoc.createElementNS("http://www.w3.org/2000/svg", "style");
+      styleEl.setAttribute("id", DARK_STYLE_ID);
+      svgDoc.documentElement.appendChild(styleEl);
+    }
+
+    // Background
+    svgDoc.documentElement.style.background = "#000";
+
+    // Force most score primitives to white; preserve highlight classes.
+    styleEl.textContent = `
+      svg { background: #000 !important; }
+
+      path, line, rect, circle, ellipse, polygon, polyline, text {
+        stroke: #fff !important;
+        fill: #fff !important;
+      }
+
+      [fill="none"] { fill: none !important; }
+      [stroke="none"] { stroke: none !important; }
+
+      /* Preserve highlights */
+      .note-hl { stroke: #3aa0ff !important; fill: #3aa0ff !important; }
+      .midi-ok { stroke: #20c020 !important; fill: #20c020 !important; }
+    `;
+  }
+
+  let darkEnabled = false;
+
+  window.setDarkMode = function(enabled) {
+    darkEnabled = !!enabled;
+
+    // Apply to parent page backgrounds too
+    document.body.style.background = darkEnabled ? "#000" : "#fff";
+    document.getElementById("frame").style.background = darkEnabled ? "#000" : "#fff";
+    document.getElementById("scorePane").style.background = darkEnabled ? "#000" : "#fff";
+    const side = document.getElementById("side");
+    side.style.background = darkEnabled ? "#0b0b0b" : "#fafafa";
+    side.style.color = darkEnabled ? "#eee" : "#111";
+    side.style.borderLeftColor = darkEnabled ? "#222" : "#e5e7eb";
+
+    // Apply into the embedded SVG document (object)
+    const obj = document.getElementById("page");
+    const svgDoc = obj?.contentDocument;
+    ensureDarkStyle(svgDoc, darkEnabled);
+  };
+
+  // Re-apply dark style whenever a new SVG is loaded into the <object>
+  const obj = document.getElementById("page");
+  obj.addEventListener("load", () => {
+    ensureDarkStyle(obj.contentDocument, darkEnabled);
+  });
 </script>
+
 
 </body></html>

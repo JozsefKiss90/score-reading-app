@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>COF Mini-map (ES Modules) Test</title>
+  <style>
+    body { margin:0; height:100vh; background:#0f1115; overflow:hidden;
+           font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    #scorePane { position:relative; width:100%; height:100%; }
+    .controls {
+      position:absolute; left:16px; top:16px; z-index:2000;
+      display:flex; gap:8px; align-items:center;
+      padding:10px 12px; border-radius:12px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: rgba(255,255,255,0.85);
+      user-select:none;
+    }
+    .controls button{
+      appearance:none; border:1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+      padding:6px 10px; border-radius:10px; cursor:pointer;
+    }
+    .controls button:hover { background: rgba(255,255,255,0.10); }
+    .controls .sep { width:10px; }
+    .controls small { opacity:0.8; }
+  </style>
+</head>
+<body>
+  <div id="scorePane">
+    <div class="controls">
+      <button id="themeBtn">Toggle theme</button>
+      <span class="sep"></span>
+      <button id="playSeq">Play demo sequence</button>
+      <small>Keyboard: A S D F G H J = C D E F G A B</small>
+    </div>
+  </div>
+
+  <script type="module">
+    import { bootCOFMiniMap } from "./minimap_center.js";
+
+    // Boot minimap (injects itself into #scorePane)
+    const mm = bootCOFMiniMap({ ui: { hostId: "scorePane", sizePx: 420 } });
+    window.mm = mm;
+
+    let dark = true;
+
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      dark = !dark;
+      document.body.style.background = dark ? "#0f1115" : "#f2f4f7";
+      const c = document.querySelector(".controls");
+      c.style.color = dark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.80)";
+      c.style.background = dark ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.65)";
+      c.style.borderColor = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)";
+      window.dispatchEvent(new CustomEvent("ui:theme", { detail: { dark } }));
+    });
+
+    function noteOn(midi, velocity = 100) {
+      window.dispatchEvent(new CustomEvent("midi:noteon", { detail: { midi, velocity, ts: performance.now() } }));
+    }
+    function noteOff(midi) {
+      window.dispatchEvent(new CustomEvent("midi:noteoff", { detail: { midi, ts: performance.now() } }));
+    }
+
+    const seq = [60, 67, 62, 69, 64, 71, 65, 72]; // C G D A E B F C
+    let playing = false;
+    document.getElementById("playSeq").addEventListener("click", async () => {
+      if (playing) return;
+      playing = true;
+      try {
+        for (const n of seq) {
+          noteOn(n, 110);
+          await new Promise(r => setTimeout(r, 400));
+          noteOff(n);
+          await new Promise(r => setTimeout(r, 80));
+        }
+      } finally {
+        playing = false;
+      }
+    });
+
+    // Keyboard mapping
+    const keyToMidi = { a:60, s:62, d:64, f:65, g:67, h:69, j:71 };
+    const held = new Set();
+    window.addEventListener("keydown", (e) => {
+      const k = (e.key || "").toLowerCase();
+      const midi = keyToMidi[k];
+      if (midi == null || held.has(midi)) return;
+      held.add(midi);
+      noteOn(midi, 105);
+    });
+    window.addEventListener("keyup", (e) => {
+      const k = (e.key || "").toLowerCase();
+      const midi = keyToMidi[k];
+      if (midi == null) return;
+      held.delete(midi);
+      noteOff(midi);
+    });
+  </script>
+</body>
+</html>
