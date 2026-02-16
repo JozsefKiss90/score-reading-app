@@ -53,14 +53,35 @@ class MidiInput(QObject):
     def _poll(self):
         if not self._midiin:
             return
+
         for msg in self._midiin.iter_pending():
             ts = time.time()
-            if msg.type == "note_on" and msg.velocity > 0:
-                self.noteOn.emit(msg.note, msg.velocity, ts)
-            elif msg.type in ("note_off", "note_on") and msg.velocity == 0:
-                self.noteOff.emit(msg.note, ts)
+
+            # Debug: show every incoming MIDI message
+            try:
+                note = getattr(msg, "note", None)
+                vel = getattr(msg, "velocity", None)
+                print(f"[MidiInput] RX type={msg.type} note={note} vel={vel} raw={msg!r}", flush=True)
+            except Exception:
+                print(f"[MidiInput] RX raw={msg!r}", flush=True)
+
+            if msg.type == "note_on":
+                # NoteOn with velocity 0 is a NoteOff in MIDI.
+                if int(getattr(msg, "velocity", 0)) == 0:
+                    print(f"[MidiInput] EMIT noteOff note={int(msg.note)} ts={ts:.6f} (note_on vel=0)", flush=True)
+                    self.noteOff.emit(int(msg.note), ts)
+                else:
+                    print(f"[MidiInput] EMIT noteOn  note={int(msg.note)} vel={int(msg.velocity)} ts={ts:.6f}", flush=True)
+                    self.noteOn.emit(int(msg.note), int(msg.velocity), ts)
+
+            elif msg.type == "note_off":
+                # IMPORTANT: note_off often has non-zero release velocity; still a NoteOff.
+                print(f"[MidiInput] EMIT noteOff note={int(msg.note)} ts={ts:.6f} (note_off)", flush=True)
+                self.noteOff.emit(int(msg.note), ts)
+
             elif msg.type == "control_change":
-                self.control.emit(msg.control, msg.value, ts)
+                print(f"[MidiInput] EMIT control cc={int(msg.control)} val={int(msg.value)} ts={ts:.6f}", flush=True)
+                self.control.emit(int(msg.control), int(msg.value), ts)
 
     def close(self):
         if self._midiin:

@@ -1,0 +1,67 @@
+{
+  "exercise_id": "ex_06_04_voice_leading",
+  "title": "Hangvezetés és feloldási minták",
+  "description": "Tipikus hangvezetési kényszerek felismerése tercalapú akkordokban",
+  "tasks": [
+    {
+      "task_id": "t1_dominant_to_tonic",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "G3+B3+D4+F4/1",
+          "C4+E4+G4/1"
+        ],
+        "bass": [
+          "G2/1",
+          "C2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_leading_tone_resolution",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": [
+          "D4+F#4+A4+C5/1",
+          "G3+B3+D4/1"
+        ],
+        "bass": [
+          "D3/1",
+          "G2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_half_diminished_to_dominant",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": [
+          "B3+D4+F4+A4/1",
+          "E3+G#3+B3+D4/1"
+        ],
+        "bass": [
+          "B2/1",
+          "E2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_fully_diminished_resolution",
+      "type": "recognition",
+      "key": "C minor",
+      "score": {
+        "treble": [
+          "B3+D4+F4+Ab4/1",
+          "C4+Eb4+G4/1"
+        ],
+        "bass": [
+          "B2/1",
+          "C2/1"
+        ]
+      }
+    }
+  ]
+}

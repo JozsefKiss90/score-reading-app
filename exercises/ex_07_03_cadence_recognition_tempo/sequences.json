@@ -1,0 +1,121 @@
+{
+  "exercise_id": "ex_07_03_cadence_recognition_tempo",
+  "title": "7.3 – Kadenciafelismerés tempóban",
+  "description": "8 ütemes, valódi akkordlánc (treble chord tokens '+'), kadenciális irányokkal. Tempóban: a 'megérkezés' pillanatait kell előre érezni, nem hangonként olvasni.",
+  "tasks": [
+    {
+      "task_id": "t1_C_major_8bars_real_chord_chain",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4+G4+C5/4","C4+E4+A4/4","D4+F4+A4/4","D4+G4+B4/4",
+          "E4+G4+C5/4","F4+A4+C5/4","D4+G4+B4/4","D4+G4+B4/4",
+          "E4+G4+C5/4","E4+G4+B4/4","F4+A4+C5/4","D4+F4+A4/4",
+          "D4+G4+B4/4","D4+F4+G4+B4/4","C4+E4+A4/4","D4+F4+A4/4",
+          "D4+F4+A4/4","D4+F4+G4+B4/4","E4+G4+C5/4","E4+G4+C5/4",
+          "E4+G4+C5/4","F4+A4+C5/4","C4+E4+A4/4","D4+G4+B4/4",
+          "E4+G4+C5/4","D4+G4+B4/4","C4+E4+A4/4","F4+A4+C5/4",
+          "D4+F4+A4/4","D4+F4+G4+B4/4","E4+G4+C5/4","E4+G4+C5/4"
+        ],
+        "bass": [
+          "C2+C3/4","A1+A2/4","D2+D3/4","G1+G2/4",
+          "C2+C3/4","F1+F2/4","G1+G2/4","G1+G2/4",
+          "C2+C3/4","E2+E3/4","F1+F2/4","D2+D3/4",
+          "G1+G2/4","G1+G2/4","A1+A2/4","D2+D3/4",
+          "D2+D3/4","G1+G2/4","C2+C3/4","C2+C3/4",
+          "C2+C3/4","F1+F2/4","A1+A2/4","G1+G2/4",
+          "C2+C3/4","G1+G2/4","A1+A2/4","F1+F2/4",
+          "D2+D3/4","G1+G2/4","C2+C3/4","C2+C3/4"
+        ]
+      }
+    },
+     {
+      "task_id": "t2_G_major_half_cadence_focus",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": [
+          "B3+D4+G4/2","A3+C4+F#4/4","B3+D4+G4/4",
+          "A3+C4+E4/2","D4+F#4+A4/2",
+          "B3+D4+G4/2","E4+G4+C5/4","D4+F#4+A4/4",
+          "B3+D4+G4/2","A3+C4+E4/2",
+          "F#4+A4+D5/2","D4+F#4+A4/2",
+          "B3+D4+G4/1",
+          "D4+F#4+A4/1",
+          "D4+F#4+A4/2","D4+F#4+A4/2"
+        ],
+        "bass": [
+          "G2/2","D2/2",
+          "A2/2","D2/2",
+          "G2/2","C2/2",
+          "G2/2","D2/2",
+          "G2/2","A2/2",
+          "D2/2","D2/2",
+          "G2/1",
+          "D2/1",
+          "D2/2","D2/2"
+        ]
+      }
+    },
+
+    {
+      "task_id": "t3_A_minor_deceptive_cadence",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": [
+          "C4+E4+A4/2","B3+D4+G#4/4","C4+E4+A4/4",
+          "D4+F4+A4/2","E4+G#4+B4/2",
+          "C4+E4+A4/2","D4+F4+B4/4","E4+G#4+B4/4",
+          "C4+E4+A4/2","E4+G#4+B4/2",
+          "F4+A4+D5/2","E4+G#4+B4/2",
+          "C4+E4+A4/1",
+          "E4+G#4+B4/1",
+          "C4+E4+A4/2","C4+E4+A4/2"
+        ],
+        "bass": [
+          "A2/2","E2/2",
+          "D2/2","E2/2",
+          "A2/2","D2/2",
+          "E2/2","A2/2",
+          "A2/2","E2/2",
+          "F2/2","E2/2",
+          "A2/1",
+          "E2/1",
+          "A2/2","A2/2"
+        ]
+      }
+    },
+
+    {
+      "task_id": "t4_C_major_full_authentic_cadence_with_rhythm",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4+G4+C5/2","F4+A4+C5/4","E4+G4+C5/4",
+          "D4+F4+A4/2","G4+B4+D5/2",
+          "E4+G4+C5/2","F4+A4+C5/4","G4+B4+D5/4",
+          "E4+G4+C5/2","D4+F4+B4/2",
+          "E4+G4+C5/2","G4+B4+D5/2",
+          "E4+G4+C5/1",
+          "F4+A4+C5/2","G4+B4+D5/2",
+          "E4+G4+C5/2","E4+G4+C5/2"
+        ],
+        "bass": [
+          "C2/2","F2/2",
+          "D2/2","G2/2",
+          "C2/2","F2/2",
+          "G2/2","C2/2",
+          "C2/2","G2/2",
+          "C2/2","G2/2",
+          "C2/1",
+          "F2/2","G2/2",
+          "C2/2","C2/2"
+        ]
+      }
+    }
+
+  ]
+}

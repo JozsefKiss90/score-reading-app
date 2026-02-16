@@ -1,0 +1,71 @@
+{
+  "exercise_id": "ex_04_01_two_voice_coordination",
+  "title": "Kétszólamú olvasás – alapkoordináció",
+  "description": "Alap kétkezes sight-reading gyakorlatok koordinációra, ritmikai stabilitással",
+  "tasks": [
+    {
+      "task_id": "t1_parallel_motion",
+      "type": "sight_reading",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/4","D4/4","E4/4","F4/4"
+        ],
+        "bass": [
+          "C3/4","D3/4","E3/4","F3/4"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_contrary_motion",
+      "type": "sight_reading",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/4","D4/4","E4/4","F4/4"
+        ],
+        "bass": [
+          "F2/4","E2/4","D2/4","C2/4"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_static_vs_moving",
+      "type": "comparison",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "E4/4","F4/4","G4/4","A4/4"
+        ],
+        "bass": [
+          "C3/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_rhythmic_offset",
+      "type": "comparison",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/8","D4/8","E4/4","F4/4"
+        ],
+        "bass": [
+          "C3/4","C3/4","G2/4","G2/4"
+        ]
+      }
+    }
+  ]
+}

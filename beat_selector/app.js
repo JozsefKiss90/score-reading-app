@@ -3,6 +3,7 @@ import { State } from './state.js';
 import { Geom } from './geom.js';
 import { Cursor } from './cursor.js';
 import { Sidebar } from './sidebar.js';
+import { KeyboardView } from './keyboard_view.js';
 
 export function createApp(boot){
   return new App(boot);
@@ -18,6 +19,53 @@ class App {
     this.NUDGE_GAIN=0.35;
     this.SMOOTH_ALPHA=0.4;
     this.MONO_TOL=1.5;
+
+    // MIDI failsafe (kept, but the real fix is resolving correct SVG doc)
+    this.MIDI_STUCK_MS = 2000;
+    this._midiReleaseTimers = new Map(); // pitch -> timeoutId
+    this.keyboard = new KeyboardView(this.state, { minMidi: 24, maxMidi: 84, showLabels: true });
+
+  }
+
+    // ------------------------------------------------------------------
+  // MIDI  SVG robustness helpers
+  // ------------------------------------------------------------------
+  _normMidiPitch(p){
+    const n = Number(p);
+    if(!Number.isFinite(n)) return null;
+    const i = Math.trunc(n);
+    if(i < 0 || i > 127) return null;
+    return i;
+  }
+
+  _safeRemoveClass(el, cls){
+    if(!el) return;
+    try { el.classList.remove(cls); return; } catch {}
+    try {
+      const cur = (el.getAttribute('class') || '');
+      const next = cur.split(/\s+/).filter(x => x && x !== cls).join(' ');
+      if(next) el.setAttribute('class', next);
+      else el.removeAttribute('class');
+    } catch {}
+  }
+
+
+  // --------- SVG access (CRITICAL FIX) -----------------------------------
+  // Always use the embedded <object id="page"> SVG document. Do NOT rely on Dom.svgRoot().
+  _svgDoc(){
+    const obj = Dom.pageObj();
+    return obj?.contentDocument || null;
+  }
+
+  _svgRoot(){
+    const doc = this._svgDoc();
+    // in an <object type="image/svg+xml">, documentElement is the <svg>
+    return doc ? (doc.querySelector('svg') || doc.documentElement) : null;
+  }
+
+  _svgGetById(id){
+    const doc = this._svgDoc();
+    return doc ? doc.getElementById(id) : null;
   }
 
   // ------------------------------------------------------------------
@@ -55,15 +103,16 @@ class App {
     S.selNoteIds = new Set();
     S.selNotesByMidi = new Map();
 
-    // Remove blue and green classes from the SVG.
-    const svg = Dom.svgRoot();
+    const svg = this._svgRoot();
     if(svg){
-      svg.querySelectorAll('.note-hl').forEach(n=>n.classList.remove('note-hl'));
-      svg.querySelectorAll('.midi-ok').forEach(n=>n.classList.remove('midi-ok'));
+      svg.querySelectorAll('.note-hl').forEach(n=>{
+        try { n.classList.remove('note-hl'); } catch { this._safeRemoveClass(n,'note-hl'); }
+      });
+      svg.querySelectorAll('.midi-ok').forEach(n=>this._safeRemoveClass(n,'midi-ok'));
     }
 
-    // Clear applied MIDI state (we keep S.midiDown so held keys can reapply after rebuild).
     S.midiActiveIdsByMidi = new Map();
+    // NOTE: do not clear S.midiDown here; held keys should reapply if needed.
   }
 
   setBeatBoxesVisible(on){
@@ -72,7 +121,6 @@ class App {
     this._updateBeatVisibility();
 
     if(!S.beatVisible){
-      // Clear selection when hiding beat UI
       S.selBeats = new Map();
       this._clearNoteSelectionAndHighlights();
       Sidebar.rebuild(S, Cursor.setNoteHighlight, () => this.refreshMidiHighlights());
@@ -113,6 +161,7 @@ class App {
 
     const obj=Dom.pageObj();
     obj.addEventListener('load', ()=>{
+      // After object load, embedded SVG doc is available
       Geom.scanMeasures(S);
       this._ensureBeatBoxes();
 
@@ -128,9 +177,12 @@ class App {
         }
       }
 
-      // Ensure SVG styles exist before any highlighting is applied.
+      // Re-apply selection and MIDI into the *current* SVG doc
       this.refreshMidiHighlights();
       this.setTheme('amber');
+
+      // Mark ready after SVG is actually present
+      S.readySvg = true;
     }, {once:true});
 
     obj.data = (svgUrl.indexOf('?')===-1 ? svgUrl+'?ts='+Date.now() : svgUrl);
@@ -140,11 +192,6 @@ class App {
     const S=this.state;
     const frame=Dom.frame();
     this._destroyBeatBoxes();
-
-    // UI model:
-    // - Exactly ONE overlay element per measure ("measureBox").
-    // - Beats are represented as internal separators, and selection is computed from
-    //   click position within the measure box. No per-beat boxes exist in the DOM.
 
     const renderSelection = (mdiv, abs, beats) => {
       mdiv.querySelectorAll('.beatFill').forEach(n=>n.remove());
@@ -173,7 +220,6 @@ class App {
       const box=S.boxesByAbs[abs];
       if(!box) continue;
 
-      // BEAT_TIMES_MAP keys are JSON-serialized in Python; prefer string keys.
       const beats = (S.boot.BEAT_TIMES_MAP?.[String(abs)]?.length)
                  || (S.boot.BEAT_TIMES_MAP?.[abs]?.length)
                  || 1;
@@ -187,7 +233,6 @@ class App {
       mdiv.dataset.abs=String(abs);
       mdiv.dataset.beats=String(beats);
 
-      // Ensure visibility without requiring CSS edits
       mdiv.style.position='absolute';
       mdiv.style.boxSizing='border-box';
       mdiv.style.border='2px solid var(--hl-stroke)';
@@ -202,7 +247,6 @@ class App {
       mdiv.style.width=Math.max(0, Math.round(span)-pad*2)+'px';
       mdiv.style.height=Math.max(0, Math.round(box.bottom-box.top)-pad*2)+'px';
 
-      // Internal beat separators (visual only)
       for(let b=1; b<beats; b++){
         const sep=document.createElement('div');
         sep.className='beatSep';
@@ -211,12 +255,12 @@ class App {
         sep.style.bottom='0px';
         sep.style.width='1px';
         sep.style.left=Math.round((b/beats)*10000)/100+'%';
+        // In dark mode this will still be OK because it's just a separator overlay in HTML
         sep.style.background='rgba(0,0,0,0.18)';
         sep.style.pointerEvents='none';
         mdiv.appendChild(sep);
       }
 
-      // Click selects a beat by x-position within the measure box
       mdiv.addEventListener('click', (ev)=>{
         ev.stopPropagation();
         const rect=mdiv.getBoundingClientRect();
@@ -279,7 +323,7 @@ class App {
   }
 
   handleResize(){
-    if(!Dom.svgRoot()) return;
+    if(!this._svgRoot()) return;
     Geom.scanMeasures(this.state);
     this._ensureBeatBoxes();
 
@@ -300,63 +344,143 @@ class App {
   }
 
   // ------------------------------------------------------------------
+  // MIDI failsafe
+  // ------------------------------------------------------------------
+  _armMidiFailsafe(pitch){
+    const S = this.state;
+    const prev = this._midiReleaseTimers.get(pitch);
+    if(prev) clearTimeout(prev);
+
+    const tid = setTimeout(() => {
+      if(S.midiDown.has(pitch)){
+        S.midiDown.delete(pitch);
+        this._clearMidiForPitch(pitch);
+      }
+      this._midiReleaseTimers.delete(pitch);
+    }, this.MIDI_STUCK_MS);
+
+    this._midiReleaseTimers.set(pitch, tid);
+  }
+
+  _clearMidiFailsafe(pitch){
+    const prev = this._midiReleaseTimers.get(pitch);
+    if(prev) clearTimeout(prev);
+    this._midiReleaseTimers.delete(pitch);
+  }
+
+  // ------------------------------------------------------------------
   // MIDI bridge (called from Python)
   // ------------------------------------------------------------------
   onMidiNoteOn(pitch, velocity, timestamp){
     const S = this.state;
-    const p = Number(pitch);
-    if(!Number.isFinite(p)) return;
+    const p = this._normMidiPitch(pitch);
+    if(p === null) return;
+    const v = Number(velocity);
+    if(Number.isFinite(v) && v <= 0){
+      this.onMidiNoteOff(p, timestamp);
+      return;
+    }
+    console.log("[MIDI][JS] NoteOn", { rawPitch: pitch, p, velocity, timestamp });
 
     S.midiDown.add(p);
+    console.log("[MIDI][JS] midiDown after add =", Array.from(S.midiDown.values()));
+    globalThis.__lastMidiEvent = {
+      type: "on",
+      pitch: p,
+      velocity: Number(velocity),
+      ts: Number(timestamp),
+      midiDown: Array.from(S.midiDown.values())
+    };
+
+    this._armMidiFailsafe(p);
+
+    // Always apply into current embedded SVG document
+    this._clearMidiForPitch(p);
     this._applyMidiForPitch(p);
+
+    // Hard-sync (defensive): ensures no stale .midi-ok survives across doc/theme changes.
+    this.refreshMidiHighlights();
+
   }
 
   onMidiNoteOff(pitch, timestamp){
+
     const S = this.state;
-    const p = Number(pitch);
-    if(!Number.isFinite(p)) return;
+
+    const p = this._normMidiPitch(pitch);
+    if(p === null) return;
+
+    console.log("[MIDI][JS] NoteOff", { rawPitch: pitch, p, timestamp });
+
+    this._clearMidiFailsafe(p);
+
+
+    // Update held-key state first...
 
     S.midiDown.delete(p);
-    this._clearMidiForPitch(p);
+    console.log("[MIDI][JS] midiDown after delete =", Array.from(S.midiDown.values()));
+    globalThis.__lastMidiEvent = {
+      type: "off",
+      pitch: p,
+      ts: Number(timestamp),
+      midiDown: Array.from(S.midiDown.values())
+    };
+
+    this.refreshMidiHighlights();
   }
 
   _applyMidiForPitch(pitch){
     const S = this.state;
-    const svg = Dom.svgRoot();
-    if(!svg) return;
+    const root = this._svgRoot();
+    if(!root) return;
 
     const ids = S.selNotesByMidi.get(pitch);
     if(!ids || ids.size===0) return;
 
-    let active = S.midiActiveIdsByMidi.get(pitch);
-    if(!active){
-      active = new Set();
-      S.midiActiveIdsByMidi.set(pitch, active);
-    }
-
+    const active = new Set();
     for(const id of ids){
-      const node = svg.ownerDocument.getElementById(id);
+      const node = this._svgGetById(id);
       if(node){
         Cursor.setMidiOk(node, true);
         active.add(id);
       }
     }
+
+    if(active.size){
+      S.midiActiveIdsByMidi.set(pitch, active);
+    }
   }
 
   _clearMidiForPitch(pitch){
     const S = this.state;
-    const svg = Dom.svgRoot();
-    if(!svg) return;
+    const root = this._svgRoot();
+    if(!root) return;
 
+    const cleared = new Set();
     const active = S.midiActiveIdsByMidi.get(pitch);
-    if(!active || active.size===0){
-      S.midiActiveIdsByMidi.delete(pitch);
-      return;
+    if(active){
+      for(const id of active){
+        const node = this._svgGetById(id);
+        if(node){
+          Cursor.setMidiOk(node, false);
+          this._safeRemoveClass(node, 'midi-ok');
+        }
+        cleared.add(id);
+      }
     }
 
-    for(const id of active){
-      const node = svg.ownerDocument.getElementById(id);
-      if(node) Cursor.setMidiOk(node, false);
+    // Defensive: if internal bookkeeping got out of sync (e.g. rebuild/page swap),
+    // also clear the currently-selected ids for this pitch.
+    const ids = S.selNotesByMidi.get(pitch);
+    if(ids){
+      for(const id of ids){
+        if(cleared.has(id)) continue;
+        const node = this._svgGetById(id);
+        if(node){
+          Cursor.setMidiOk(node, false);
+          this._safeRemoveClass(node, 'midi-ok');
+        }
+      }
     }
 
     S.midiActiveIdsByMidi.delete(pitch);
@@ -364,21 +488,27 @@ class App {
 
   refreshMidiHighlights(){
     const S = this.state;
-    const svg = Dom.svgRoot();
-    if(!svg) return;
+    const root = this._svgRoot();
+    if(!root) return;
 
-    // Clear all previously applied green highlights.
-    for(const [midi, ids] of S.midiActiveIdsByMidi.entries()){
-      for(const id of ids){
-        const node = svg.ownerDocument.getElementById(id);
-        if(node) Cursor.setMidiOk(node, false);
-      }
-    }
+    root.querySelectorAll('.midi-ok').forEach(n => this._safeRemoveClass(n, 'midi-ok'));
     S.midiActiveIdsByMidi = new Map();
 
-    // Re-apply based on currently held keys and current selection.
+    // Re-apply for currently held keys only (in case page reload happened)
     for(const midi of S.midiDown.values()){
       this._applyMidiForPitch(midi);
     }
+
+      Sidebar.updateMidiOk(S);
+
+      // Key coloring: green if pressed MIDI pitch is among selected notes, red otherwise.
+      const status = new Map();
+      for(const midi of S.midiDown.values()){
+        const ids = S.selNotesByMidi?.get?.(midi);
+        status.set(midi, (ids && ids.size > 0) ? 'ok' : 'bad');
+      }
+      S.midiKeyStatus = status;
+      this.keyboard?.setKeyStates?.(S.midiDown, status);
+
   }
 }

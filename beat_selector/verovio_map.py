@@ -223,9 +223,16 @@ class VerovioNoteMapper:
             for pk, ak, ok in self._PITCH_KEYS:
                 pname = el.attrib.get(pk)
                 octv = el.attrib.get(ok)
-                if pname and octv:
-                    acc = el.attrib.get(ak, "")
-                    return self._format_pitch(pname, acc, octv)
+                if not (pname and octv):
+                    continue
+
+                acc_raw = el.attrib.get(ak)
+                if acc_raw is None:
+                    continue
+                if str(acc_raw).strip() == "":
+                    continue
+
+                return self._format_pitch(pname, acc_raw, octv)
             return None
 
         # 1) On the note group itself

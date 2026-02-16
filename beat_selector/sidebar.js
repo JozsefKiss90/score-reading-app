@@ -32,6 +32,43 @@ export class Sidebar {
     return (oct + 1) * 12 + semitone;
   }
 
+  // Highlight pitch labels in the sidebar when their corresponding noteheads
+  // are highlighted in the SVG with .midi-ok.
+  static updateMidiOk(state){
+    const list = Dom.beatList();
+    if(!list) return;
+
+    // Clear existing label highlights
+    list.querySelectorAll('.noteItem.midi-ok').forEach(el => el.classList.remove('midi-ok'));
+
+    // Preferred: use the ids that App actually painted green
+    const activeIds = new Set();
+    if(state?.midiActiveIdsByMidi && typeof state.midiActiveIdsByMidi.values === 'function'){
+      for(const s of state.midiActiveIdsByMidi.values()){
+        if(!s) continue;
+        for(const id of s) activeIds.add(String(id));
+      }
+    }
+
+    // Fallback: derive from held keys + selected mapping
+    if(activeIds.size === 0 && state?.midiDown && state?.selNotesByMidi){
+      for(const midi of state.midiDown.values()){
+        const ids = state.selNotesByMidi.get(midi);
+        if(!ids) continue;
+        for(const id of ids) activeIds.add(String(id));
+      }
+    }
+
+    if(activeIds.size === 0) return;
+
+    list.querySelectorAll('.noteItem[data-note-id]').forEach(el => {
+      const id = String(el.dataset.noteId || '');
+      if(id && activeIds.has(id)) el.classList.add('midi-ok');
+    });
+  }
+
+  // Sidebar selection is BEAT-based: selecting a beat implicitly selects
+  // *all* notes in that beat for MIDI highlighting.
   static rebuild(state, onHighlight, onSelectionChanged){
     const list = Dom.beatList();
     if(!list) return;
@@ -61,16 +98,14 @@ export class Sidebar {
       }
     }
 
-    // Prune old note selection to only notes still visible in the sidebar after rebuild.
-    const oldSel = state.selNoteIds || new Set();
-    const newSel = new Set();
+    const selNoteIds = new Set();
     const selByMidi = new Map();
 
     const addSelMidi = (midi, id) => {
       if(midi === null || midi === undefined) return;
       let s = selByMidi.get(midi);
       if(!s){ s = new Set(); selByMidi.set(midi, s); }
-      s.add(id);
+      s.add(String(id));
     };
 
     for(const [abs, beats] of byAbs.entries()){
@@ -103,42 +138,11 @@ export class Sidebar {
           if(id) item.dataset.noteId = id;
           if(midi !== null && midi !== undefined) item.dataset.midi = String(midi);
 
-          const isSel = !!(id && oldSel.has(id));
-          if(isSel){
-            item.classList.add('sel');
-            newSel.add(id);
+          // Beat selection implies selecting all notes in the beat.
+          if(id){
+            selNoteIds.add(id);
             if(midi !== null && midi !== undefined) addSelMidi(midi, id);
           }
-
-          item.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            if(!id) return;
-
-            const on = !item.classList.contains('sel');
-            item.classList.toggle('sel', on);
-
-            // Update selection sets
-            if(on) state.selNoteIds.add(id);
-            else state.selNoteIds.delete(id);
-
-            // Blue selection highlight
-            const node = svg.ownerDocument.getElementById(id);
-            if(node) onHighlight(node, on);
-
-            // Maintain midiPitch -> selected note ids
-            if(midi !== null && midi !== undefined){
-              let set = state.selNotesByMidi.get(midi);
-              if(on){
-                if(!set){ set = new Set(); state.selNotesByMidi.set(midi, set); }
-                set.add(id);
-              } else if(set){
-                set.delete(id);
-                if(set.size === 0) state.selNotesByMidi.delete(midi);
-              }
-            }
-
-            if(typeof onSelectionChanged === 'function') onSelectionChanged();
-          });
 
           wrap.appendChild(item);
         });
@@ -147,14 +151,18 @@ export class Sidebar {
       list.appendChild(wrap);
     }
 
-    state.selNoteIds = newSel;
+    // Update selection sets used by App for MIDI mapping.
+    state.selNoteIds = selNoteIds;
     state.selNotesByMidi = selByMidi;
 
-    // Apply blue highlight after rebuild.
+    // Apply blue highlight to all selected notes (i.e., notes in selected beats).
     for(const id of state.selNoteIds){
       const node = svg.ownerDocument.getElementById(id);
       if(node) onHighlight(node, true);
     }
+
+    // Keep sidebar pitch labels in sync with current MIDI-highlighted notes.
+    Sidebar.updateMidiOk(state);
 
     if(typeof onSelectionChanged === 'function') onSelectionChanged();
   }

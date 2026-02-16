@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
-
+import time
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
 os.environ.setdefault("QT_OPENGL", "software")
 
@@ -36,6 +36,19 @@ except Exception:
     except Exception:
         MidiService = None
 
+# --- Live MIDI audio monitoring (Fluidsynth) ---
+try:
+    from audio.midi_player import MidiPlayer
+except Exception:
+    try:
+        from .midi_player import MidiPlayer
+    except Exception:
+        MidiPlayer = None
+
+try:
+    from config import DEFAULT_SF2
+except Exception:
+    DEFAULT_SF2 = None
 
 def dlog(*args):
     print("[ScoreViewBeats]", *args, flush=True)
@@ -91,6 +104,22 @@ class ScoreViewBeats(QWidget):
         # MIDI (optional): forward note events into the embedded beat selector page.
         self._midi_service = None
         self._owns_midi_service = False
+
+        def _dbg_note_on(*args):
+                dlog(f"[MIDI SIG] noteOn args={args!r}")
+                # Accept (pitch, vel, ts) or (pitch, vel) or other shapes.
+                pitch = args[0] if len(args) >= 1 else -1
+                vel   = args[1] if len(args) >= 2 else 0
+                ts    = args[-1] if len(args) >= 3 else time.time()
+                self._on_midi_note_on(int(pitch), int(vel), float(ts))
+
+        def _dbg_note_off(*args):
+            dlog(f"[MIDI SIG] noteOff args={args!r}")
+            # Accept (pitch, ts), (pitch, vel, ts), or (pitch) shapes.
+            pitch = args[0] if len(args) >= 1 else -1
+            ts    = args[-1] if len(args) >= 2 else time.time()
+            self._on_midi_note_off(int(pitch), float(ts))
+
         if midi_service is not None:
             self._midi_service = midi_service
         elif MidiService is not None:
@@ -104,10 +133,29 @@ class ScoreViewBeats(QWidget):
 
         if self._midi_service is not None:
             try:
-                self._midi_service.noteOn.connect(self._on_midi_note_on)
-                self._midi_service.noteOff.connect(self._on_midi_note_off)
+                self._midi_service.noteOn.connect(_dbg_note_on)
+                self._midi_service.noteOff.connect(_dbg_note_off)
+
+                dlog("[MIDI] connected debug wrappers for noteOn/noteOff")
+
+                dlog("[MIDI] connected noteOn/noteOff signals to ScoreViewBeats slots")
             except Exception as e:
                 dlog("[MIDI] connect failed:", e)
+
+        # --- Audio monitor synth (optional) ---
+        self._midi_player = None
+        self._midi_audio_enabled = True  # set False if you want silent highlight-only
+
+        if MidiPlayer is not None:
+            try:
+                # IMPORTANT: if DEFAULT_SF2 is None or invalid, MidiPlayer will be silent (it prints a warning).
+                self._midi_player = MidiPlayer(DEFAULT_SF2)
+                dlog(f"[AUDIO] MidiPlayer ready. soundfont={DEFAULT_SF2!r}")
+            except Exception as e:
+                dlog("[AUDIO] MidiPlayer init failed:", e)
+                self._midi_player = None
+        else:
+            dlog("[AUDIO] MidiPlayer import failed; no in-app sound.")
 
         self._tk = verovio.toolkit()
         self._tk.setOptions({
@@ -156,6 +204,7 @@ class ScoreViewBeats(QWidget):
         self._last_logged: Tuple[int, int] | None = None
 
         self._mapper = VerovioNoteMapper(self._tk, self.measures, self.events_by_index, dlog=dlog)
+        dlog("events_by_index[0] sample:", self.events_by_index[0][:12])
 
         dlog("about to _load_page(0)")
         self._load_page(0)
@@ -352,27 +401,118 @@ class ScoreViewBeats(QWidget):
     # ------------------------------------------------------------------
     # MIDI -> JS bridge
     # ------------------------------------------------------------------
-    def _run_js_safe(self, code: str):
+    def _run_js_safe(self, code: str, label: Optional[str] = None):
+        """
+        Run JS and (optionally) print the returned value via callback.
+        This lets us confirm whether the page received the MIDI event
+        and whether the JS handler executed without errors.
+        """
         try:
-            self.web.page().runJavaScript(code)
-        except Exception:
-            pass
+            if label:
+                def _cb(res: Any):
+                    dlog(f"[JS:{label}] result={res!r}")
+                self.web.page().runJavaScript(code, _cb)
+            else:
+                self.web.page().runJavaScript(code)
+        except Exception as e:
+            dlog("[JS] runJavaScript ERROR:", e)
 
+ 
     @pyqtSlot(int, int, float)
     def _on_midi_note_on(self, pitch: int, velocity: int, timestamp: float):
+        # Terminal log: did Python receive NoteOn at all?
+        dlog(
+            f"[MIDI ON ] pitch={int(pitch)} vel={int(velocity)} ts={float(timestamp):.6f} "
+            f"html_ready={self._html_ready} page={self._current_page}"
+        )
+
         # Many sources encode NoteOff as NoteOn with velocity 0.
         if int(velocity) == 0:
+            dlog(f"[MIDI ON ] velocity=0 => treating as NoteOff (pitch={int(pitch)})")
             self._on_midi_note_off(int(pitch), float(timestamp))
             return
-        self._run_js_safe(
-            f"window.onMidiNoteOn && window.onMidiNoteOn({int(pitch)}, {int(velocity)}, {float(timestamp)});"
-        )
+
+        # --- LIVE AUDIO: NoteOn ---
+        if self._midi_audio_enabled and self._midi_player is not None:
+            try:
+                vel = max(1, min(int(velocity), 127))
+                self._midi_player.fs.noteon(0, int(pitch), vel)
+            except Exception as e:
+                dlog("[AUDIO] noteon failed:", e)
+
+        # Call JS handler, but return a debug object so we can print it in Python.
+        js = f"""
+    (() => {{
+    const out = {{
+        evt: "on",
+        pitch: {int(pitch)},
+        velocity: {int(velocity)},
+        ts: {float(timestamp)},
+        haveOn: !!window.onMidiNoteOn,
+        haveOff: !!window.onMidiNoteOff,
+    }};
+    try {{
+        if (window.onMidiNoteOn) window.onMidiNoteOn({int(pitch)}, {int(velocity)}, {float(timestamp)});
+        out.called = true;
+    }} catch (e) {{
+        out.err = String(e);
+    }}
+    try {{
+        const s = window.ScoreApp && window.ScoreApp.state;
+        if (s && s.midiDown) out.midiDown = Array.from(s.midiDown.values());
+        if (s && s.midiActiveIdsByMidi) out.activeKeys = Array.from(s.midiActiveIdsByMidi.keys());
+    }} catch (e) {{}}
+    try {{
+        out.lastMidiEvent = (globalThis && globalThis.__lastMidiEvent) ? globalThis.__lastMidiEvent : null;
+    }} catch (e) {{}}
+    return out;
+    }})()
+    """
+        self._run_js_safe(js, label="midi_on")
+
 
     @pyqtSlot(int, float)
     def _on_midi_note_off(self, pitch: int, timestamp: float):
-        self._run_js_safe(
-            f"window.onMidiNoteOff && window.onMidiNoteOff({int(pitch)}, {float(timestamp)});"
+        # Terminal log: did Python receive NoteOff at all?
+        dlog(
+            f"[MIDI OFF] pitch={int(pitch)} ts={float(timestamp):.6f} "
+            f"html_ready={self._html_ready} page={self._current_page}"
         )
+
+        # --- LIVE AUDIO: NoteOff ---
+        if self._midi_audio_enabled and self._midi_player is not None:
+            try:
+                self._midi_player.fs.noteoff(0, int(pitch))
+            except Exception as e:
+                dlog("[AUDIO] noteoff failed:", e)
+
+        js = f"""
+    (() => {{
+    const out = {{
+        evt: "off",
+        pitch: {int(pitch)},
+        ts: {float(timestamp)},
+        haveOn: !!window.onMidiNoteOn,
+        haveOff: !!window.onMidiNoteOff,
+    }};
+    try {{
+        if (window.onMidiNoteOff) window.onMidiNoteOff({int(pitch)}, {float(timestamp)});
+        out.called = true;
+    }} catch (e) {{
+        out.err = String(e);
+    }}
+    try {{
+        const s = window.ScoreApp && window.ScoreApp.state;
+        if (s && s.midiDown) out.midiDown = Array.from(s.midiDown.values());
+        if (s && s.midiActiveIdsByMidi) out.activeKeys = Array.from(s.midiActiveIdsByMidi.keys());
+    }} catch (e) {{}}
+    try {{
+        out.lastMidiEvent = (globalThis && globalThis.__lastMidiEvent) ? globalThis.__lastMidiEvent : null;
+    }} catch (e) {{}}
+    return out;
+    }})()
+    """
+        self._run_js_safe(js, label="midi_off")
 
     def closeEvent(self, event):
         try:
@@ -391,6 +531,12 @@ class ScoreViewBeats(QWidget):
                     except Exception:
                         pass
         finally:
+            try:
+                if getattr(self, "_midi_player", None) is not None:
+                    self._midi_player.shutdown()
+            except Exception:
+                pass
+
             super().closeEvent(event)
 
     def _log_svg_pitch_attrs(self, svg: str, limit: int = 20):

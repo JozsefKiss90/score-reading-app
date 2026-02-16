@@ -1,0 +1,61 @@
+{
+  "exercise_id": "ex_06_03_03_chord_inversions",
+  "title": "Akkordfordítások – invariánsok felismerése",
+  "description": "Triádok és szeptimek fordításainak szemantikai azonosítása",
+  "tasks": [
+    {
+      "task_id": "t1_major_triad_inversions",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "C4+E4+G4/1",
+          "E4+G4+C5/1",
+          "G3+C4+E4/1"
+        ],
+        "bass": ["C2/1","E2/1","G2/1"]
+      }
+    },
+    {
+      "task_id": "t2_minor_triad_inversions",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": [
+          "A3+C4+E4/1",
+          "C4+E4+A4/1",
+          "E3+A3+C4/1"
+        ],
+        "bass": ["A2/1","C3/1","E3/1"]
+      }
+    },
+    {
+      "task_id": "t3_dominant7_inversions",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": [
+          "G3+B3+D4+F4/1",
+          "B3+D4+F4+G4/1",
+          "D4+F4+G4+B4/1",
+          "F4+G4+B4+D5/1"
+        ],
+        "bass": ["G2/1","B2/1","D3/1","F3/1"]
+      }
+    },
+    {
+      "task_id": "t4_half_diminished_inversions",
+      "type": "recognition",
+      "key": "B half-diminished",
+      "score": {
+        "treble": [
+          "B3+D4+F4+A4/1",
+          "D4+F4+A4+B4/1",
+          "F4+A4+B4+D5/1",
+          "A4+B4+D5+F5/1"
+        ],
+        "bass": ["B2/1","D3/1","F3/1","A3/1"]
+      }
+    }
+  ]
+}

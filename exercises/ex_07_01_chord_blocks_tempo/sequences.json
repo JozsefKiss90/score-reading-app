@@ -1,0 +1,153 @@
+{
+  "exercise_id": "ex_07_01_chord_blocks_tempo",
+  "title": "7.1 – Akkordblokkok tempóban (Komplex, integrált)",
+  "description": "Tempóban történő harmonikus olvasás: blokkgondolkodás (basszus+felső szólam), funkció-ív, domináns-előkészítés, fordítás-érzet, ritmikai variáció, szekunder dominánsok és moll domináns. Minden task több réteget aktivál egyszerre.",
+  "tasks": [
+    {
+      "task_id": "t1_C_major_seq_inversions_cadence",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/0.5","G4/0.5","A4/1",
+          "F4/0.5","A4/0.5","B4/1",
+          "C5/1","B4/0.5","A4/0.5",
+          "G4/1","A4/0.5","B4/0.5",
+          "C5/1","D5/1","C5/1"
+        ],
+        "bass": [
+          "C2/1","A2/1","F2/1","G2/1",
+          "E2/1","D2/1","G2/1","C2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_G_major_ii_V_I_with_passing",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": [
+          "B3/0.5","D4/0.5","E4/1",
+          "C4/0.5","E4/0.5","F#4/1",
+          "A4/1","G4/0.5","F#4/0.5",
+          "E4/1","F#4/0.5","G4/0.5",
+          "A4/1","B4/1","A4/1"
+        ],
+        "bass": [
+          "G2/1","E2/1","A2/1","D2/1",
+          "G2/1","B1/1","A1/1","D2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_A_minor_V_major_and_resolution",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": [
+          "C4/0.5","E4/0.5","F4/1",
+          "D4/0.5","F4/0.5","G#4/1",
+          "A4/1","G#4/0.5","F4/0.5",
+          "E4/1","F4/0.5","G#4/0.5",
+          "A4/1","B4/1","A4/1"
+        ],
+        "bass": [
+          "A2/1","F2/1","D2/1","E2/1",
+          "A2/1","C2/1","B1/1","E2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_D_major_secondary_dominants_chain",
+      "type": "recognition",
+      "key": "D major",
+      "score": {
+        "treble": [
+          "F#4/0.5","A4/0.5","B4/1",
+          "G4/0.5","B4/0.5","C#5/1",
+          "E5/1","D5/0.5","C#5/0.5",
+          "B4/1","C#5/0.5","D5/0.5",
+          "E5/1","F#5/1","E5/1"
+        ],
+        "bass": [
+          "D2/1","B1/1","E2/1","A1/1",
+          "D2/1","F#1/1","E1/1","A1/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t5_F_major_cadential_64_suspension_feel",
+      "type": "recognition",
+      "key": "F major",
+      "score": {
+        "treble": [
+          "A4/1","G4/0.5","A4/0.5",
+          "Bb4/1","A4/0.5","G4/0.5",
+          "A4/1","C5/1",
+          "D5/0.5","C5/0.5","Bb4/1",
+          "C5/1","A4/1","A4/1"
+        ],
+        "bass": [
+          "F2/1","D2/1","Bb1/1","C2/1",
+          "F2/1","C2/1","Bb1/1","C2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t6_E_minor_circle_motion_with_leading_tone",
+      "type": "recognition",
+      "key": "E minor",
+      "score": {
+        "treble": [
+          "G4/0.5","B4/0.5","C5/1",
+          "A4/0.5","C5/0.5","D5/1",
+          "F#5/1","E5/0.5","D5/0.5",
+          "C5/1","D5/0.5","F#5/0.5",
+          "G5/1","F#5/1","E5/1"
+        ],
+        "bass": [
+          "E2/1","C2/1","A1/1","B1/1",
+          "E2/1","G1/1","F#1/1","B1/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t7_Bb_major_fast_filtering_with_mixture",
+      "type": "recognition",
+      "key": "Bb major",
+      "score": {
+        "treble": [
+          "D4/0.5","F4/0.5","G4/1",
+          "Eb4/0.5","G4/0.5","A4/1",
+          "Bb4/1","A4/0.5","G4/0.5",
+          "F4/1","G4/0.5","A4/0.5",
+          "Bb4/1","C5/1","Bb4/1"
+        ],
+        "bass": [
+          "Bb1/1","G1/1","Eb2/1","F2/1",
+          "Bb1/1","D2/1","C2/1","F2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t8_C_major_extended_phrase_with_deceptive",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/0.5","G4/0.5","A4/1",
+          "F4/0.5","A4/0.5","B4/1",
+          "C5/1","B4/0.5","A4/0.5",
+          "G4/1","F4/0.5","E4/0.5",
+          "D4/1","E4/0.5","F4/0.5",
+          "G4/1","A4/1","G4/1","E4/1"
+        ],
+        "bass": [
+          "C2/1","A2/1","F2/1","G2/1",
+          "A2/1","F2/1","D2/1","G2/1",
+          "C2/2"
+        ]
+      }
+    }
+  ]
+}

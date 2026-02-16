@@ -1,0 +1,74 @@
+{
+  "exercise_id": "ex_04_04_repertoire_like_etudes",
+  "title": "Valós repertoár-szerű etűdök",
+  "description": "Zeneileg hiteles kétszólamú etűdök sight-reading fejlesztésre",
+  "tasks": [
+    {
+      "task_id": "t1_cantabile_with_bass",
+      "type": "sight_reading",
+      "key": "G major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "B4/4","A4/8","G4/8","A4/4",
+          "B4/4","D5/4","C5/2",
+          "B4/4","A4/4","G4/2"
+        ],
+        "bass": [
+          "G2/2","D3/2",
+          "E3/2","C3/2",
+          "G2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_broken_chord_texture",
+      "type": "comparison",
+      "key": "E minor",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "E5/4","D5/4","B4/2",
+          "G4/4","A4/4","B4/2"
+        ],
+        "bass": [
+          "E2/8","B2/8","E3/4","G3/4",
+          "F#3/4","B2/4","E3/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_inner_voice_feel",
+      "type": "comparison",
+      "key": "F major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "A4/4","G4/8","F4/8","E4/4",
+          "F4/4","A4/2"
+        ],
+        "bass": [
+          "F2/4","C3/4","D3/4","Bb2/4",
+          "C3/2","F2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_continuous_flow",
+      "type": "comparison",
+      "key": "D minor",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "F4/8","G4/8","A4/4","C5/4",
+          "Bb4/4","A4/2",
+          "G4/4","F4/2"
+        ],
+        "bass": [
+          "D3/4","A2/4","Bb2/4","C3/4",
+          "F2/2","A2/2"
+        ]
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import zipfile
 from pathlib import Path
 
 # Path to your MXL file
-mxl_path = Path("Prelude_No._15_in_D_flat_major_Op._28_The_Raindrop_Prelude.mxl")
+mxl_path = Path("resources/the-well-tempered-clavier-book-1-prelude-1-in-c-major-by-johann-sebastian-bach.mxl")
 
 # Output folder where XML will be extracted
 output_folder = Path("mxl_extracted")

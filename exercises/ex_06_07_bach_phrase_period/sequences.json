@@ -1,0 +1,65 @@
+{
+  "exercise_id": "ex_06_07_bach_phrase_period",
+  "title": "Frázisstruktúra és periódus Bachnál",
+  "description": "Bach-stílusú frázismodellek felismerése kadenciák alapján",
+  "tasks": [
+    {
+      "task_id": "t1_half_phrase",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/0.5","F4/0.5","G4/1",
+          "B4/1"
+        ],
+        "bass": [
+          "C2/1","G2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_full_cadence_phrase",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "B4/0.5","C5/0.5","E5/1",
+          "G4/1"
+        ],
+        "bass": [
+          "G2/1","C2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_period_model",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/0.5","F4/0.5","G4/1",
+          "B4/1",
+          "B4/0.5","C5/0.5","E5/1"
+        ],
+        "bass": [
+          "C2/1","G2/1","G2/1","C2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_sequence_to_cadence",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/0.5","D4/0.5",
+          "F4/0.5","E4/0.5",
+          "G4/1","B4/1","C5/1"
+        ],
+        "bass": [
+          "C2/1","D2/1","G2/1","C2/1"
+        ]
+      }
+    }
+  ]
+}

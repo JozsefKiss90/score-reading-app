@@ -1,0 +1,61 @@
+{
+  "exercise_id": "ex_06_03_02_seventh_chords",
+  "title": "Négyeshangzatok (szeptimek) – intervallum-képletek",
+  "description": "Gyökállású, zárt fekvésű, tercalapú négyeshangzatok felismerése",
+  "tasks": [
+    {
+      "task_id": "t1_major_major7",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": ["C4+E4+G4+B4/1"],
+        "bass": ["C2/1"]
+      }
+    },
+    {
+      "task_id": "t2_dominant7",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": ["G3+B3+D4+F4/1"],
+        "bass": ["G2/1"]
+      }
+    },
+    {
+      "task_id": "t3_minor7",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": ["A3+C4+E4+G4/1"],
+        "bass": ["A2/1"]
+      }
+    },
+    {
+      "task_id": "t4_minor_major7",
+      "type": "recognition",
+      "key": "A harmonic minor",
+      "score": {
+        "treble": ["A3+C4+E4+G#4/1"],
+        "bass": ["A2/1"]
+      }
+    },
+    {
+      "task_id": "t5_half_diminished",
+      "type": "recognition",
+      "key": "B half-diminished",
+      "score": {
+        "treble": ["B3+D4+F4+A4/1"],
+        "bass": ["B2/1"]
+      }
+    },
+    {
+      "task_id": "t6_fully_diminished7",
+      "type": "recognition",
+      "key": "B fully diminished",
+      "score": {
+        "treble": ["B3+D4+F4+Ab4/1"],
+        "bass": ["B2/1"]
+      }
+    }
+  ]
+}

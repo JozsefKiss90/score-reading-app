@@ -9,5 +9,6 @@ export const Dom = {
     const o = Dom.pageObj();
     try { return o?.contentDocument || null; } catch { return null; }
   },
+  keyboard: () => document.getElementById('keyboard'),
   svgRoot: () => Dom.svgDoc()?.querySelector('svg') || null,
 };

@@ -2,6 +2,8 @@
 import { clamp } from "./utils.js";
 import { PC_TO_INDEX, pcToIndex } from "./cof.js";
 import { inferChordFromPitchClasses, PC_NAMES_SHARP } from "./chord.js";
+import { buildMiddleRing } from "./middle_ring.js";
+import { analyzeChordDiatonic } from "./diatonic_analyze.js";
 
 export class MiniMapState {
   constructor(opts = {}) {
@@ -29,10 +31,61 @@ export class MiniMapState {
     this._pcLastOnTs = new Array(12).fill(0);
     this._lastChordUpdateTs = 0;
 
+    // IMPORTANT: default FALSE so harmony reflects ONLY currently held notes.
+    this.includeRecentStrikesForChord =
+      (opts.includeRecentStrikesForChord != null) ? !!opts.includeRecentStrikesForChord : false;
+
     // Outputs
-    this.chord = null;     // {name, rootPc, chordTones, confidence, ...}
-    this.tonicPc = null;   // inferred tonic PC
-    this.function = null;  // {badge:"T|S|D|X", tonicPc, distFifths, confidence}
+    this.chord = null;
+    this.tonicPc = null;
+    this.function = null;
+    this.middleRing = null;
+    this.chordDiatonic = null;
+
+    // Keep opts for reset behavior if needed later
+    this._opts = { ...opts };
+  }
+
+  /**
+   * Hard reset: clears held notes, trail, harmonic energy accumulator, inferred chord/tonic/function,
+   * and any "recent strikes" timestamps.
+   */
+  reset(ts = performance.now()) {
+    const t = Number(ts ?? performance.now());
+
+    // clear held notes & recent strikes
+    this.activeMidi.clear();
+    this._pcLastOnTs.fill(0);
+
+    // clear visuals / accumulators
+    this.pcTrail.length = 0;
+    this.pcEnergy.fill(0);
+    this.pcEnergyLastTs = t;
+
+    // clear inference outputs
+    this.chord = null;
+    this.tonicPc = null;
+    this.function = null;
+    this.middleRing = null;
+    this.chordDiatonic = null;
+
+    // clear last-event info
+    this.lastPc = null;
+    this.lastVel = 0;
+    this.lastTs = t;
+
+    this._lastChordUpdateTs = t;
+  }
+
+  /**
+   * "Panic" is a lighter reset that at least ensures no stuck notes drive harmony.
+   * Use this if you want to keep the harmonic energy history but drop all held notes.
+   */
+  panic(ts = performance.now()) {
+    const t = Number(ts ?? performance.now());
+    this.activeMidi.clear();
+    this.lastTs = t;
+    this._updateChordAndFunction(t);
   }
 
   noteOn(midi, velocity, ts) {
@@ -71,9 +124,12 @@ export class MiniMapState {
   noteOff(midi, ts) {
     const t = Number(ts ?? performance.now());
     if (!Number.isFinite(midi)) return;
+
     this.activeMidi.delete(midi);
     this.lastTs = t;
-    // no chord update required immediately; tick will handle it
+
+    // Update immediately so chord/scale drop released notes right away
+    this._updateChordAndFunction(t);
   }
 
   tick(nowTs) {
@@ -101,30 +157,42 @@ export class MiniMapState {
     this.pcEnergyLastTs = t;
   }
 
-  activePitchClasses() {
-    const set = new Set();
-    for (const midi of this.activeMidi) {
-      const pc = ((midi % 12) + 12) % 12;
-      set.add(pc);
-    }
-    return set;
-  }
+    // Backward-compatible: some UI code expects this to exist.
+  // Returns currently held pitch classes (Set<int 0..11>).
+activePitchClasses() {
+  const pcs = new Set();
+  for (const midi of this.activeMidi) pcs.add(((midi % 12) + 12) % 12);
+  return pcs;
+}
 
-  activePitchClassesWithinWindow(nowTs) {
+
+
+  // Pitch classes used for chord/scale inference:
+  // - Always includes currently held notes
+  // - Optionally includes recently struck PCs (disabled by default)
+  pitchClassesForChord(nowTs) {
     const t = Number.isFinite(nowTs) ? nowTs : performance.now();
     const pcs = new Set();
 
+    // Always: currently held notes only
     for (const midi of this.activeMidi) {
-      const pc = ((midi % 12) + 12) % 12;
-      pcs.add(pc);
+      pcs.add(((midi % 12) + 12) % 12);
     }
 
-    const cutoff = t - this.chordActiveWindowMs;
-    for (let pc = 0; pc < 12; pc++) {
-      if ((this._pcLastOnTs[pc] || 0) >= cutoff) pcs.add(pc);
+    // Optional: include recently struck pitch classes for rolled chords
+    if (this.includeRecentStrikesForChord) {
+      const cutoff = t - this.chordActiveWindowMs;
+      for (let pc = 0; pc < 12; pc++) {
+        if ((this._pcLastOnTs[pc] || 0) >= cutoff) pcs.add(pc);
+      }
     }
 
-    return [...pcs].sort((a,b)=>a-b);
+    return [...pcs].sort((a, b) => a - b);
+  }
+
+  // Backward-compatible name (if other code calls it)
+  activePitchClassesWithinWindow(nowTs) {
+    return this.pitchClassesForChord(nowTs);
   }
 
   computeHarmonicCenterVec() {
@@ -163,13 +231,29 @@ export class MiniMapState {
     const t = Number.isFinite(nowTs) ? nowTs : performance.now();
     this._lastChordUpdateTs = t;
 
-    const pcs = this.activePitchClassesWithinWindow(t);
+    // 1) chord inference from CURRENTLY HELD notes (plus optional recent strikes)
+    const pcs = this.pitchClassesForChord(t);
     const chord = inferChordFromPitchClasses(pcs, { pcNames: PC_NAMES_SHARP, minPcs: 2 });
     this.chord = chord;
 
+    // 2) tonic inference from harmonic center (energy), independent of held-note set
     const tonicPc = this._inferTonicPcFromCenter();
     this.tonicPc = tonicPc;
 
+    // 3) build/update middle ring when tonic/mode changes
+    const keyCtx = { tonicPc: this.tonicPc, mode: "major", confidence: 0.6, source: "midi", ts: t };
+    if (
+      !this.middleRing ||
+      this.middleRing.key.tonicPc !== keyCtx.tonicPc ||
+      this.middleRing.key.mode !== keyCtx.mode
+    ) {
+      this.middleRing = buildMiddleRing(keyCtx);
+    }
+
+    // 4) analyze current chord against the middle ring
+    this.chordDiatonic = analyzeChordDiatonic(this.chord, this.middleRing);
+
+    // 5) functional badge
     this.function = this._inferFunctionBadge(tonicPc, chord);
   }
 
@@ -194,7 +278,7 @@ export class MiniMapState {
     if (tonicPc == null || !chord) return null;
 
     const tonicIdx = pcToIndex(tonicPc);
-    const rootIdx  = pcToIndex(chord.rootPc);
+    const rootIdx = pcToIndex(chord.rootPc);
     if (tonicIdx == null || rootIdx == null) return null;
 
     let d = (rootIdx - tonicIdx);

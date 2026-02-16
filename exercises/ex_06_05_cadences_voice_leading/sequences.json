@@ -1,0 +1,63 @@
+{
+  "exercise_id": "ex_06_06_bach_cadences_texture",
+  "title": "Kadenciák Bach-szerű kottaszövetben",
+  "description": "Polifon textúrában megjelenő kadenciák felismerése",
+  "tasks": [
+    {
+      "task_id": "t1_bach_authentic",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "B4/0.5","C5/0.5","E5/1",
+          "F4/1","E4/1"
+        ],
+        "bass": [
+          "G2/1","C2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_bach_plagal",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "A4/1","G4/1",
+          "F4/1","E4/1"
+        ],
+        "bass": [
+          "F2/1","C2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_bach_half",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "E4/1","D4/1",
+          "F4/1"
+        ],
+        "bass": [
+          "C2/1","G2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_bach_deceptive",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": [
+          "B4/1","C5/1",
+          "F4/1","E4/1"
+        ],
+        "bass": [
+          "G2/1","A2/1"
+        ]
+      }
+    }
+  ]
+}

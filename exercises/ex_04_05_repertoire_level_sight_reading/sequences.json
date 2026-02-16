@@ -1,0 +1,78 @@
+{
+  "exercise_id": "ex_04_05_repertoire_level_sight_reading",
+  "title": "Repertoár-szintű sight-reading",
+  "description": "Darab-logikájú, többütemes kétszólamú sight-reading gyakorlatok",
+  "tasks": [
+    {
+      "task_id": "t1_classical_period",
+      "type": "sight_reading",
+      "key": "C major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "E4/4","F4/4","G4/2",
+          "G4/4","A4/4","G4/2",
+          "E4/4","D4/4","C4/2"
+        ],
+        "bass": [
+          "C3/2","G2/2",
+          "C3/2","G2/2",
+          "C3/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_romantic_melody_accompaniment",
+      "type": "comparison",
+      "key": "A minor",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "E5/4","D5/4","C5/2",
+          "B4/4","A4/4","C5/2",
+          "E5/2"
+        ],
+        "bass": [
+          "A2/8","E3/8","A3/4",
+          "G2/8","E3/8","A3/4",
+          "A2/2"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_modulatory_passage",
+      "type": "comparison",
+      "key": "G major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "B4/4","A4/4","G4/2",
+          "A4/4","B4/4","C5/2",
+          "D5/2"
+        ],
+        "bass": [
+          "G2/2","D3/2",
+          "E3/2","C3/2",
+          "D3/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_continuous_repertoire_flow",
+      "type": "comparison",
+      "key": "E minor",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "G4/8","A4/8","B4/4","E5/4",
+          "D5/4","B4/2",
+          "A4/4","G4/2"
+        ],
+        "bass": [
+          "E3/4","B2/4","C3/4","A2/4",
+          "B2/2","E3/2"
+        ]
+      }
+    }
+  ]
+}

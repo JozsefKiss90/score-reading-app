@@ -18,11 +18,15 @@
     background:#fff;
     display:flex;                /* score + sidebar */
   }
-  #scorePane{
-    position:relative;
-    flex:1 1 auto;
-    height:100%;
-  }
+#scorePane{
+  position:relative;
+  flex:1 1 auto;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
   #side{
     width:260px;
     max-width:33vw;
@@ -51,7 +55,7 @@
     margin:3px 0;
     padding:3px 6px;
     border-radius:4px;
-    cursor:pointer;
+    cursor:default;
   }
   #beatList .noteItem:hover{
     background:#e2e8f0;
@@ -60,6 +64,18 @@
     background:#dbeafe;
     outline:1px solid #60a5fa;
   }
+
+  #beatList .noteItem.midi-ok{
+  background:#dcfce7;
+  outline:1px solid #16a34a;
+  color:#14532d;
+}
+
+.dark-score #beatList .noteItem.midi-ok {
+  background: #052e16;
+  outline: 1px solid #16a34a;
+  color: #86efac;
+}
 
   #barHL {
     position:absolute; top:0; left:0; width:0; height:0;
@@ -81,66 +97,167 @@
     background:rgba(0,0,0,.55);
     padding:6px 8px; border-radius:6px;
   }
-  object, svg {
-    display:block; width:100%; height:100%;
-    background:#fff !important;
-  }
 
-  .beatBox {
-    position:absolute;
-    background:var(--beat-fill);
-    outline:1px solid var(--beat-stroke);
-    outline-offset:-1px;
-    border-radius:4px;
-    pointer-events:auto;
-    cursor:pointer;
-    z-index:600;
-    display:none;
-  }
-  .beatBox.sel {
-    outline: 3px solid #ff3b30;
-    background: rgba(255, 214, 10, 0.45);
-  }
+object#page{
+  display:block;
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  background:transparent;
+}
+
+/* Keep SVG background transparent; sizing is controlled by the <object> */
+svg{
+  background:transparent;
+}
+#keyboardWrap{
+  flex:0 0 140px;
+  height:140px;
+  border-top:1px solid #e5e7eb;
+  background:#fff;
+  overflow:hidden;
+}
+
+.dark-score #keyboardWrap{
+  border-top:1px solid #222;
+  background:#000;
+}
+
+/* Keyboard surface */
+#keyboard{
+  position:relative;
+  height:100%;
+  width:100%;
+  user-select:none;
+}
+
+/* White keys */
+.keyW{
+  position:absolute;
+  top:0; bottom:0;
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.25);
+  border-bottom:2px solid rgba(0,0,0,0.35);
+  box-sizing:border-box;
+}
+.dark-score .keyW{
+  background:#111;
+  border:1px solid rgba(255,255,255,0.18);
+  border-bottom:2px solid rgba(255,255,255,0.25);
+}
+
+/* Press feedback: green if correct, red if wrong */
+.keyOkW{ background:#86efac !important; border-color:#16a34a !important; }
+.keyOkB{ background:#16a34a !important; border-color:#14532d !important; }
+.keyBadW{ background:#fecaca !important; border-color:#ef4444 !important; }
+.keyBadB{ background:#ef4444 !important; border-color:#7f1d1d !important; }
+
+/* Black keys */
+.keyB{
+  position:absolute;
+  top:0;
+  height:62%;
+  background:#111;
+  border:1px solid rgba(0,0,0,0.6);
+  border-radius:0 0 3px 3px;
+  box-sizing:border-box;
+  z-index:5;
+}
+.dark-score .keyB{
+  background:#000;
+  border:1px solid rgba(255,255,255,0.25);
+}
+
+.keyDownW{ background:#86efac !important; border-color:#16a34a !important; }
+.keyDownB{ background:#16a34a !important; border-color:#14532d !important; }
+
+.keyLbl{
+  position:absolute;
+  left:50%;
+  bottom:4px;
+  transform:translateX(-50%);
+  font: 10px/1 system-ui;
+  color: rgba(0,0,0,0.75);
+  pointer-events:none;
+  white-space:nowrap;
+}
+
+.dark-score .keyLbl{
+  color: rgba(255,255,255,0.75);
+}
+
+/* Labels on black keys: smaller + higher contrast */
+.keyLblB{
+  bottom:6px;
+  font-size:9px;
+  color: rgba(255,255,255,0.85);
+}
+.dark-score .keyLblB{
+  color: rgba(255,255,255,0.85);
+}
+
+.beatBox {
+  position:absolute;
+  background:var(--beat-fill);
+  outline:1px solid var(--beat-stroke);
+  outline-offset:-1px;
+  border-radius:4px;
+  pointer-events:auto;
+  cursor:pointer;
+  z-index:600;
+  display:none;
+}
+.beatBox.sel {
+  outline: 3px solid #ff3b30;
+  background: rgba(255, 214, 10, 0.45);
+}
 
   /* Container background */
-.dark-score body { background: #000; }
+.dark-score body,
+.dark-score #frame,
+.dark-score #scorePane { background: #000; }
 
-/* The SVG background itself */
-.dark-score #score svg { background: #000; }
+/* =========================
+   DARK MODE — SIDEBAR
+   ========================= */
 
-/* Force most Verovio-drawn primitives to white */
-.dark-score #score svg path,
-.dark-score #score svg line,
-.dark-score #score svg rect,
-.dark-score #score svg circle,
-.dark-score #score svg ellipse,
-.dark-score #score svg polygon,
-.dark-score #score svg polyline,
-.dark-score #score svg text {
-  stroke: #fff !important;
-  fill: #fff !important;
+.dark-score #side {
+  background: #0b0b0b;
+  color: #e5e7eb;
+  border-left: 1px solid #222;
 }
 
-/* Some SVG elements are intended to be unfilled; keep that behavior */
-.dark-score #score svg [fill="none"] { fill: none !important; }
-.dark-score #score svg [stroke="none"] { stroke: none !important; }
-
-/* Preserve your highlight classes (do NOT let theme override them) */
-.dark-score #score svg .note-hl {
-  /* whatever you use for selection highlight */
-  stroke: #3aa0ff !important;
-  fill: #3aa0ff !important;
+.dark-score #side h3 {
+  color: #93c5fd;
 }
 
-.dark-score #score svg .midi-ok {
-  stroke: #20c020 !important;
-  fill: #20c020 !important;
+.dark-score #beatList .beatEntry {
+  background: #111827;
+  border: 1px solid #1f2933;
 }
 
-/* If you have beat-box overlays/cursor overlays, also preserve them explicitly.
-   Example class names shown—adjust to your actual ones. */
-.dark-score #score svg .beatbox { fill: rgba(255,255,255,0.10) !important; stroke: rgba(255,255,255,0.35) !important; }
-.dark-score #score svg .cursor  { stroke: #ffcc00 !important; }
+.dark-score #beatList .beatTitle {
+  color: #e5e7eb;
+}
+
+.dark-score #beatList .beatSubTitle {
+  color: #9ca3af;
+}
+
+.dark-score #beatList .noteItem {
+  color: #e5e7eb;
+}
+
+.dark-score #beatList .noteItem:hover {
+  background: #1f2937;
+}
+
+.dark-score #beatList .noteItem.sel {
+  background: #1e3a8a;
+  outline: 1px solid #60a5fa;
+  color: #fff;
+}
+
 </style></head>
 <body>
 <div id="frame">
@@ -149,6 +266,9 @@
     <div id="cursor"></div>
     <object id="page" type="image/svg+xml" data=""></object>
     <div id="hud">loading…</div>
+    <div id="keyboardWrap">
+      <div id="keyboard"></div>
+    </div>
   </div>
   <aside id="side">
     <h3>Selected beats</h3>
@@ -203,43 +323,44 @@
     // Background
     svgDoc.documentElement.style.background = "#000";
 
-    // Force most score primitives to white; preserve highlight classes.
-    styleEl.textContent = `
-      svg { background: #000 !important; }
+  styleEl.textContent = `
+        svg { background: #000 !important; }
 
-      path, line, rect, circle, ellipse, polygon, polyline, text {
-        stroke: #fff !important;
-        fill: #fff !important;
-      }
+        /* Paint only the rendered score layer white.
+          IMPORTANT: do NOT force-fill <defs> glyphs. If glyph definitions are forced
+          to a fixed color, per-note highlighting via classes cannot override them. */
+        svg > g path,
+        svg > g line,
+        svg > g rect,
+        svg > g circle,
+        svg > g ellipse,
+        svg > g polygon,
+        svg > g polyline,
+        svg > g text,
+        svg > g use {
+          stroke: #fff !important;
+          fill: #fff !important;
+        }
 
-      [fill="none"] { fill: none !important; }
-      [stroke="none"] { stroke: none !important; }
-
-      /* Preserve highlights */
-      .note-hl { stroke: #3aa0ff !important; fill: #3aa0ff !important; }
-      .midi-ok { stroke: #20c020 !important; fill: #20c020 !important; }
-    `;
+        svg > g [fill="none"] { fill: none !important; }
+        svg > g [stroke="none"] { stroke: none !important; }
+      `;
   }
 
   let darkEnabled = false;
 
-  window.setDarkMode = function(enabled) {
-    darkEnabled = !!enabled;
+ window.setDarkMode = function(enabled) {
+  darkEnabled = !!enabled;
 
-    // Apply to parent page backgrounds too
-    document.body.style.background = darkEnabled ? "#000" : "#fff";
-    document.getElementById("frame").style.background = darkEnabled ? "#000" : "#fff";
-    document.getElementById("scorePane").style.background = darkEnabled ? "#000" : "#fff";
-    const side = document.getElementById("side");
-    side.style.background = darkEnabled ? "#0b0b0b" : "#fafafa";
-    side.style.color = darkEnabled ? "#eee" : "#111";
-    side.style.borderLeftColor = darkEnabled ? "#222" : "#e5e7eb";
+  document.documentElement.classList.toggle("dark-score", darkEnabled);
 
-    // Apply into the embedded SVG document (object)
-    const obj = document.getElementById("page");
-    const svgDoc = obj?.contentDocument;
-    ensureDarkStyle(svgDoc, darkEnabled);
-  };
+  // SVG styling (unchanged)
+  const obj = document.getElementById("page");
+  const svgDoc = obj?.contentDocument;
+  ensureDarkStyle(svgDoc, darkEnabled);
+  window.ScoreApp?.refreshMidiHighlights?.();
+};
+
 
   // Re-apply dark style whenever a new SVG is loaded into the <object>
   const obj = document.getElementById("page");

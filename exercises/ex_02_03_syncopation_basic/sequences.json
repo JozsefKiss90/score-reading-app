@@ -1,0 +1,80 @@
+{
+  "exercise_id": "ex_02_03_syncopation_basic",
+  "title": "Szinkópa: hangsúly az ütemen kívül",
+  "description": "Alap szinkópált ritmusok olvasása stabil pulzus mellett 4/4-ben",
+  "tasks": [
+    {
+      "task_id": "t1_simple_syncopation",
+      "type": "sight_reading",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/8","C4/4","D4/8","E4/4"
+        ],
+        "bass": [
+          "C3/8","C3/4","D3/8","E3/4"
+        ]
+      }
+    },
+
+    {
+      "task_id": "t2_offbeat_entries",
+      "type": "comparison",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/4","D4/8","E4/4","F4/8",
+          "G4/4"
+        ],
+        "bass": [
+          "C3/4","D3/8","E3/4","F3/8",
+          "G3/4"
+        ]
+      }
+    },
+
+    {
+      "task_id": "t3_syncopated_chain",
+      "type": "comparison",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "E4/8","E4/4","D4/8","C4/4",
+          "D4/8","E4/4"
+        ],
+        "bass": [
+          "E3/8","E3/4","D3/8","C3/4",
+          "D3/8","E3/4"
+        ]
+      }
+    },
+
+    {
+      "task_id": "t4_syncopation_with_rest",
+      "type": "comparison",
+      "key": "C major",
+      "rules": {
+        "allow_accidentals": false
+      },
+      "score": {
+        "treble": [
+          "C4/8","C4/4","R/8","D4/4",
+          "E4/4"
+        ],
+        "bass": [
+          "C3/8","C3/4","R/8","D3/4",
+          "E3/4"
+        ]
+      }
+    }
+  ]
+}

@@ -5,9 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>COF Mini-map (ES Modules) + Chord/Function Test</title>
   <style>
-    body { margin: 0; height: 100vh; background: #0f1115; overflow: hidden;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    #scorePane { position: relative; width: 100%; height: 100%; }
+  html, body { height: 100%; }
+
+  :root{
+    --kbdH: 140px;
+    --kbdGap: 16px;
+    --pad: 16px;
+  }
+
+  #scorePane{
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* minimap host is what we position; minimap renders inside it */
+  #minimapHost{
+    position: absolute;
+    right: var(--pad);
+    bottom: calc(var(--pad) + var(--kbdH) + var(--kbdGap));
+    width: 420px;
+    height: 420px;
+    z-index: 1200;
+  }
+
     .controls {
       position: absolute; left: 16px; top: 16px; z-index: 2000;
       display: flex; gap: 8px; align-items: center; padding: 10px 12px;
@@ -24,23 +45,156 @@
     .controls button:hover { background: rgba(255,255,255,0.10); }
     .controls .sep { width: 10px; }
     .controls small { opacity: 0.85; }
+
+    /* Keyboard host */
+    #cofKeyboard{
+      position:absolute;
+      left:var(--pad);
+      right:var(--pad);
+      bottom:var(--pad);
+      height:var(--kbdH);
+      z-index:1500;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.30);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      overflow:hidden;
+    }
+
+    #cofKeyboard .keyW,
+    #cofKeyboard .keyB{
+      position:absolute;
+      box-sizing:border-box;
+      user-select:none;
+      touch-action:none;
+    }
+
+    /* white keys fill height */
+    #cofKeyboard .keyW{
+      top:0;
+      bottom:0;
+      border-right:1px solid rgba(0,0,0,0.35);
+      background: rgba(240,240,245,0.90);
+    }
+
+    /* black keys should start at top */
+    #cofKeyboard .keyB{
+      top:0;
+      height:62%;
+      border-radius:0 0 6px 6px;
+      background: rgba(25,25,30,0.95);
+      border:1px solid rgba(0,0,0,0.65);
+    }
+
+    #cofKeyboard .keyW { z-index: 1; }
+    #cofKeyboard .keyB { z-index: 2; }
+
+
+    /* State colors (match your class names in keyboard_view.js) */
+    #cofKeyboard .keyDownW{ background: rgba(180,210,255,0.95); }
+    #cofKeyboard .keyDownB{ background: rgba(90,120,190,0.98); }
+
+    #cofKeyboard .keyOkW{ background: rgba(170,235,190,0.95); }
+    #cofKeyboard .keyOkB{ background: rgba(60,170,110,0.98); }
+
+    #cofKeyboard .keyBadW{ background: rgba(255,190,190,0.95); }
+    #cofKeyboard .keyBadB{ background: rgba(200,80,80,0.98); }
+    /* White-key labels at the bottom */
+    #cofKeyboard .keyLbl{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:6px;
+      font-size:12px;
+      line-height:12px;
+      text-align:center;
+      color: rgba(0,0,0,0.65);
+      pointer-events:none;
+    }
+
+    /* Black-key labels inside the black key */
+    #cofKeyboard .keyLblB{
+      bottom:8px;
+      font-size:11px;
+      color: rgba(255,255,255,0.85);
+    }
+
   </style>
 </head>
 <body>
   <div id="scorePane">
     <div class="controls">
       <button id="themeBtn">Toggle theme</button>
-      <span class="sep"></span>
-      <button id="playSeq">Play chords</button>
-      <small>Keys: Z X C (triad), V B N (V7), A S D (scale)</small>
+      <button id="resetBtn">Reset</button>
     </div>
+    <div id="minimapHost"></div>
+    <div id="cofKeyboard"></div>
   </div>
 
   <script type="module">
-    import { bootCOFMiniMap } from "./minimap_center.js";
 
-    const mm = bootCOFMiniMap({ ui: { hostId: "scorePane", sizePx: 420 } });
-    window.mm = mm;
+import { bootCOFMiniMap } from "./minimap_center.js";
+import { KeyboardView } from "./keyboard_view.js"; // your existing file
+
+
+// 1) Boot minimap
+const mm = bootCOFMiniMap({
+  ui: { hostId: "minimapHost", sizePx: 420 },
+  state: { includeRecentStrikesForChord: false }
+});
+
+window.mm = mm;
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  // Reset minimap inference + visuals
+  mm.reset();
+
+  // Also clear the keyboard-side held note tracking so highlights match immediately
+  heldMidis.clear();
+
+  // Optional: broadcast for any other components you add later
+  window.dispatchEvent(new CustomEvent("ui:reset"));
+});
+
+// 2) Boot keyboard
+const kb = new KeyboardView(null, {
+  hostId: "cofKeyboard",
+  minMidi: 24,
+  maxMidi: 84,
+  showLabels: true
+});
+
+window.kb = kb;
+
+bindKeyboardPointerEvents(kb);
+
+// 3) Keep track of physically held MIDI notes (from real MIDI or on-screen keyboard)
+const heldMidis = new Set();
+
+// Accept the same calls Python makes in the score app...
+// === PyQt MIDI bridge compatibility (same entry points as beatpage.html) ===
+window.onMidiNoteOn = (pitch, velocity = 100, ts = performance.now()) => {
+  window.dispatchEvent(new CustomEvent("midi:noteon", {
+    detail: { midi: Number(pitch), velocity: Number(velocity), ts: Number(ts), source: "pyqt" }
+  }));
+};
+
+window.onMidiNoteOff = (pitch, ts = performance.now()) => {
+  window.dispatchEvent(new CustomEvent("midi:noteoff", {
+    detail: { midi: Number(pitch), ts: Number(ts), source: "pyqt" }
+  }));
+};
+
+
+// 4) Animation loop: drive keyboard from minimap inference
+function loop() {
+  const hl = computeKeyboardHighlight(mm.state);
+  kb.setPcHighlights({ ...hl, heldMidis });
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
 
     let dark = true;
     document.getElementById("themeBtn").addEventListener("click", () => {
@@ -60,20 +214,100 @@
       window.dispatchEvent(new CustomEvent("midi:noteoff", { detail: { midi, ts: performance.now() } }));
     }
 
+    function dispatchNoteOn(midi, velocity = 100) {
+      window.dispatchEvent(new CustomEvent("midi:noteon", {
+        detail: { midi, velocity, ts: performance.now() }
+      }));
+    }
+
+    function dispatchNoteOff(midi) {
+      window.dispatchEvent(new CustomEvent("midi:noteoff", {
+        detail: { midi, ts: performance.now() }
+      }));
+    }
+
+    function bindKeyboardPointerEvents(kbView) {
+      const root = kbView.el;
+      const held = new Set();
+
+    function midiFromTarget(t) {
+      const el = t?.closest?.("[data-midi]");
+      if (!el) return null;
+      const midi = Number(el.dataset.midi);
+      return Number.isFinite(midi) ? midi : null;
+    }
+
+    root.addEventListener("pointerdown", (e) => {
+      const midi = midiFromTarget(e.target);
+      if (midi == null) return;
+      if (held.has(midi)) return;
+      held.add(midi);
+      root.setPointerCapture?.(e.pointerId);
+      dispatchNoteOn(midi, 105);
+    });
+
+    root.addEventListener("pointerup", (e) => {
+      const midi = midiFromTarget(e.target);
+      // If pointerup happens off-key, release all (safe fallback)
+      if (midi == null) {
+        for (const m of held) dispatchNoteOff(m);
+        held.clear();
+        return;
+      }
+      if (!held.has(midi)) return;
+      held.delete(midi);
+      dispatchNoteOff(midi);
+    });
+
+    root.addEventListener("pointercancel", () => {
+      for (const m of held) dispatchNoteOff(m);
+      held.clear();
+    });
+  }
+
+    function pcsFromMiddleRing(mmState) {
+      const mr = mmState?.middleRing;
+      return mr?.scale?.pcs ? mr.scale.pcs.slice() : [];
+    }
+
+    function pcsFromChord(mmState) {
+      const ch = mmState?.chord;
+      return ch?.chordTones ? ch.chordTones.slice() : [];
+    }
+
+    function pcsFromExtras(mmState) {
+      const ch = mmState?.chord;
+      return ch?.extras ? ch.extras.slice() : [];
+    }
+
+    // Decide what is "ok" vs "bad" for visualization (tweak to taste)
+    function computeKeyboardHighlight(mmState) {
+      const scalePcs = pcsFromMiddleRing(mmState);
+      const chordPcs = pcsFromChord(mmState);
+      const extrasPcs = pcsFromExtras(mmState);
+
+      // "ok" = chord tones
+      const okPcs = chordPcs;
+
+      // "bad" = chord extras that are out-of-scale, OR any pressed note out-of-scale
+      const scaleSet = new Set(scalePcs);
+      const badPcs = extrasPcs.filter(pc => !scaleSet.has(pc));
+
+      // Which pitch classes do we even show?
+      // Option A: show chord only
+      // const pcs = chordPcs;
+      //
+      // Option B: show chord + scale context (recommended for “progression” feel)
+      const pcs = Array.from(new Set([...scalePcs, ...chordPcs, ...extrasPcs]));
+
+      return { pcs, okPcs, badPcs };
+    }
+
     async function playChord(notes, holdMs=500) {
       for (const n of notes) noteOn(n, 110);
       await new Promise(r => setTimeout(r, holdMs));
       for (const n of notes) noteOff(n);
     }
-
-    document.getElementById("playSeq").addEventListener("click", async () => {
-      // C major -> G7 -> C major
-      await playChord([60,64,67], 600);
-      await new Promise(r => setTimeout(r, 180));
-      await playChord([67,71,74,77], 600); // G B D F (G7)
-      await new Promise(r => setTimeout(r, 180));
-      await playChord([60,64,67], 600);
-    });
 
     // Quick keyboard triggers (simple, momentary)
     const chords = {

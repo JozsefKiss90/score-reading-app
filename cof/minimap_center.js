@@ -19,6 +19,7 @@ export class COFMiniMap {
     this._onNoteOn = this._onNoteOn.bind(this);
     this._onNoteOff = this._onNoteOff.bind(this);
     this._onTheme = this._onTheme.bind(this);
+    this._onReset = this._onReset.bind(this);
     this._onWinResize = this._onWinResize.bind(this);
 
     this._initEvents();
@@ -31,16 +32,23 @@ export class COFMiniMap {
     window.removeEventListener("midi:noteon", this._onNoteOn);
     window.removeEventListener("midi:noteoff", this._onNoteOff);
     window.removeEventListener("ui:theme", this._onTheme);
+    window.removeEventListener("ui:reset", this._onReset);
     window.removeEventListener("resize", this._onWinResize);
     this.ui?.destroy();
     this.ui = null;
     this.state = null;
   }
 
+  reset() {
+    this.state?.reset(performance.now());
+    this.requestDraw();
+  }
+
   _initEvents() {
     window.addEventListener("midi:noteon", this._onNoteOn);
     window.addEventListener("midi:noteoff", this._onNoteOff);
     window.addEventListener("ui:theme", this._onTheme);
+    window.addEventListener("ui:reset", this._onReset);
     window.addEventListener("resize", this._onWinResize);
   }
 
@@ -53,6 +61,10 @@ export class COFMiniMap {
     this.dark = dark;
     this.ui?.setDark(dark);
     this.requestDraw();
+  }
+
+  _onReset() {
+    this.reset();
   }
 
   _onNoteOn(e) {

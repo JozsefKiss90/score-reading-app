@@ -1,0 +1,75 @@
+{
+  "exercise_id": "ex_05_02_harmonic_patterns_broken_chords",
+  "title": "Harmonikus minták és törthangzatok",
+  "description": "Törthangzat-alapú kíséretminták szemantikai olvasása",
+  "tasks": [
+    {
+      "task_id": "t1_basic_broken_triad",
+      "type": "sight_reading",
+      "key": "C major",
+      "rules": { "allow_accidentals": false },
+      "score": {
+        "treble": [
+          "E4/2","G4/2",
+          "E4/1"
+        ],
+        "bass": [
+          "C3/8","E3/8","G3/4",
+          "C3/8","E3/8","G3/4",
+          "C3/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t2_alberti_like_semantics",
+      "type": "comparison",
+      "key": "G major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "B4/2","A4/2",
+          "G4/1"
+        ],
+        "bass": [
+          "G2/8","D3/8","B3/8","D3/8",
+          "A2/8","E3/8","C3/8","E3/8",
+          "G2/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t3_waltz_pattern",
+      "type": "comparison",
+      "key": "F major",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "A4/2","G4/2",
+          "F4/1"
+        ],
+        "bass": [
+          "F2/4","C3/4","A3/4",
+          "Bb2/4","F3/4","D3/4",
+          "C3/1"
+        ]
+      }
+    },
+    {
+      "task_id": "t4_minor_broken_harmony",
+      "type": "comparison",
+      "key": "A minor",
+      "rules": { "allow_accidentals": true },
+      "score": {
+        "treble": [
+          "C5/2","B4/2",
+          "A4/1"
+        ],
+        "bass": [
+          "A2/8","E3/8","C3/8","E3/8",
+          "G2/8","E3/8","B2/8","E3/8",
+          "A2/1"
+        ]
+      }
+    }
+  ]
+}

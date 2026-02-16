@@ -30,7 +30,7 @@ def prepare_web_assets() -> WebAssets:
         raise FileNotFoundError(f"HTML template not found: {html_template}")
 
     js_source_dir = module_dir
-    wanted = ["app.js", "dom.js", "cursor.js", "geom.js", "sidebar.js", "state.js", "utils.js"]
+    wanted = ["app.js", "dom.js", "cursor.js", "geom.js", "sidebar.js", "state.js", "utils.js", "keyboard_view.js"]
     for name in wanted:
         if not (js_source_dir / name).exists():
             raise FileNotFoundError(f"Missing JS module: {js_source_dir / name}")

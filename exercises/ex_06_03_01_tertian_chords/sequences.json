@@ -1,0 +1,43 @@
+{
+  "exercise_id": "ex_06_03_01_tertian_chords",
+  "title": "Tercalapú akkordok – intervallum-képletek",
+  "description": "Valódi terc–terc rétegződésű hármashangzatok felismerése",
+  "tasks": [
+    {
+      "task_id": "t1_major_triad",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": ["E4+G4+C5/1"],
+        "bass": ["C3/1"]
+      }
+    },
+    {
+      "task_id": "t2_minor_triad",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": ["C5+E5+A5/1"],
+        "bass": ["A2/1"]
+      }
+    },
+    {
+      "task_id": "t3_diminished_triad",
+      "type": "recognition",
+      "key": "B diminished",
+      "score": {
+        "treble": ["D4+F4+B4/1"],
+        "bass": ["B2/1"]
+      }
+    },
+    {
+      "task_id": "t4_augmented_triad",
+      "type": "recognition",
+      "key": "C augmented",
+      "score": {
+        "treble": ["E4+G#4+C5/1"],
+        "bass": ["C3/1"]
+      }
+    }
+  ]
+}

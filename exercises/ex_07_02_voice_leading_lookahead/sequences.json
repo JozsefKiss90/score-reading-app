@@ -1,0 +1,79 @@
+{
+  "exercise_id": "ex_07_02_voice_leading_lookahead",
+  "title": "7.2 – Hangvezetés előreolvasása",
+  "description": "Előreolvasás két szólamon: a treble és a basszus következő stabil célhangjainak előre érzékelése. A rövid (0.5) hangok többnyire köztes hangok; a hosszabb (1–2) hangok többnyire célhangok.",
+  "tasks": [
+    {
+      "task_id": "t1_C_major_target_tones_with_passing",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": ["E4/1","F4/0.5","G4/0.5","A4/1","G4/0.5","F4/0.5","E4/1","D4/0.5","E4/0.5","C4/2"],
+        "bass":   ["C2/2","G2/2","A1/2","G2/2","C2/2"]
+      }
+    },
+    {
+      "task_id": "t2_C_major_arrival_points_stronger",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": ["G4/1","A4/0.5","G4/0.5","F4/1","E4/1","D4/0.5","E4/0.5","F4/1","E4/0.5","D4/0.5","C4/2"],
+        "bass":   ["F2/2","G2/2","C2/2","G2/2","C2/2"]
+      }
+    },
+    {
+      "task_id": "t3_G_major_leading_to_G_arrival",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": ["B3/1","C4/0.5","D4/0.5","E4/1","D4/0.5","C4/0.5","B3/1","A3/0.5","B3/0.5","G3/2"],
+        "bass":   ["G2/2","D2/2","E2/2","D2/2","G2/2"]
+      }
+    },
+    {
+      "task_id": "t4_A_minor_halfstep_pull_to_A",
+      "type": "recognition",
+      "key": "A minor",
+      "score": {
+        "treble": ["C4/1","D4/0.5","E4/0.5","F4/1","E4/0.5","D4/0.5","C4/1","B3/1","A3/2"],
+        "bass":   ["A2/2","E2/2","F2/2","E2/2","A2/2"]
+      }
+    },
+    {
+      "task_id": "t5_D_major_contrary_motion_focus",
+      "type": "recognition",
+      "key": "D major",
+      "score": {
+        "treble": ["F#4/1","E4/0.5","F#4/0.5","G4/1","A4/1","G4/0.5","F#4/0.5","E4/1","D4/2"],
+        "bass":   ["D2/2","A1/2","B1/2","A1/2","D2/2"]
+      }
+    },
+    {
+      "task_id": "t6_F_major_dense_treble_sparse_bass",
+      "type": "recognition",
+      "key": "F major",
+      "score": {
+        "treble": ["A4/0.5","Bb4/0.5","C5/1","Bb4/0.5","A4/0.5","G4/1","A4/0.5","G4/0.5","F4/2"],
+        "bass":   ["F2/2","C2/2","D2/2","C2/2","F2/2"]
+      }
+    },
+    {
+      "task_id": "t7_C_major_two_step_lookahead_longer_phrase",
+      "type": "recognition",
+      "key": "C major",
+      "score": {
+        "treble": ["E4/1","G4/1","F4/0.5","E4/0.5","D4/1","E4/1","G4/0.5","A4/0.5","B4/1","C5/2"],
+        "bass":   ["C2/2","A1/2","D2/2","G2/2","C2/2"]
+      }
+    },
+    {
+      "task_id": "t8_G_major_arrival_then_restart_in_motion",
+      "type": "recognition",
+      "key": "G major",
+      "score": {
+        "treble": ["D4/1","E4/0.5","F#4/0.5","G4/2","G4/0.5","A4/0.5","B4/1","A4/0.5","G4/0.5","F#4/1","G4/2"],
+        "bass":   ["G2/2","D2/2","G2/2","E2/2","D2/2","G2/2"]
+      }
+    }
+  ]
+}
