@@ -1,0 +1,64 @@
+{
+  "schema": "harmony-trainer/v1",
+  "exercises": [
+    {
+      "exercise_id": "c_major_all_triads",
+      "title": "C major — all seven diatonic triads",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "I ii iii IV V vi vii° in C major (block triads).",
+      "key": "C major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "g_major_all_triads",
+      "title": "G major — all seven diatonic triads",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "I ii iii IV V vi vii° in G major (block triads).",
+      "key": "G major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "ii_v_i_c_g_d",
+      "title": "ii–V–I in C, G, and D major",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The ii–V–I progression transposed across three keys.",
+      "pattern": [
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "C",
+        "G",
+        "D"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "all_V_major",
+      "title": "All V triads across major keys (horizontal degree)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The dominant triad in all 12 major keys.",
+      "degree": "V",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "a_minor_all_triads_arp",
+      "title": "A natural minor — all triads (arpeggiated)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "i ii° III iv v VI VII in A natural minor (arpeggios).",
+      "key": "A minor",
+      "schema": "harmony-trainer/v1"
+    }
+  ]
+}
