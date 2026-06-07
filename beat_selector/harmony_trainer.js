@@ -257,6 +257,8 @@
       ".dark-score #htCurrent .exp{color:#cbd5e1;}",
       ".dark-score .htCard{background:#0b0b0b;border-color:#1f2933;color:#e5e7eb;}",
       ".dark-score .htCard.active{background:#1e3a8a;border-color:#60a5fa;}",
+      /* hide the dormant native beat-selector UI while the trainer owns the panel */
+      "body.ht-active #side > h3, body.ht-active #side > #beatList{display:none;}",
     ].join("\n");
     document.head.appendChild(st);
   }
@@ -375,6 +377,7 @@
     finished = false;
 
     ensureStyles();
+    if (document.body) document.body.classList.add("ht-active");
     buildPanelSkeleton();
     wrapMidiHandlers();
     applySelection();

@@ -30,6 +30,7 @@ from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
     roman_token_to_index,
+    key_signature_fifths,
     parse_key,
     _canon_mode,
     _mode_word,
@@ -99,6 +100,29 @@ class HarmonyExerciseSpec:
                 raise ValueError(f"Unknown quality {self.quality!r}")
         if self.drill == "function" and not self.pattern:
             raise ValueError("function drill requires 'pattern'")
+
+        # Reject theoretical keys that need more than 7 sharps/flats (e.g.
+        # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
+        for k in self._all_keys():
+            self._check_key_range(k)
+
+    def _all_keys(self) -> List[str]:
+        keys: List[str] = []
+        if self.key:
+            keys.append(self.key)
+        keys.extend(self.keys or [])
+        return keys
+
+    def _check_key_range(self, key: str) -> None:
+        tonic, parsed_mode = parse_key(key)
+        mode = _canon_mode(parsed_mode) if parsed_mode else self.mode
+        fifths = key_signature_fifths(tonic, mode)
+        if not -7 <= fifths <= 7:
+            raise ValueError(
+                f"Key {key!r} needs {fifths} sharps/flats; MusicXML key "
+                f"signatures only support -7..+7. Use the practical enharmonic "
+                f"spelling instead (e.g. Ab major rather than G# major)."
+            )
 
     # --- JSON round-tripping ------------------------------------------
     def to_dict(self) -> Dict:

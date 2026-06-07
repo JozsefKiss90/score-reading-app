@@ -130,6 +130,31 @@ class TestANaturalMinorTriads(unittest.TestCase):
             ["minor", "diminished", "major", "minor", "minor", "major", "major"],
         )
 
+    def test_a_natural_minor_spelled_pitches(self):
+        triads = generate_diatonic_triads("A", "natural_minor")
+        self.assertEqual([t.pitches for t in triads], [
+            ["A", "C", "E"],   # i
+            ["B", "D", "F"],   # ii°
+            ["C", "E", "G"],   # III
+            ["D", "F", "A"],   # iv
+            ["E", "G", "B"],   # v
+            ["F", "A", "C"],   # VI
+            ["G", "B", "D"],   # VII
+        ])
+
+    def test_c_natural_minor_spelled_pitches(self):
+        # Flat-key minor: guards accidental spelling on the minor path.
+        triads = generate_diatonic_triads("C", "natural_minor")
+        self.assertEqual([t.pitches for t in triads], [
+            ["C", "Eb", "G"],   # i
+            ["D", "F", "Ab"],   # ii°
+            ["Eb", "G", "Bb"],  # III
+            ["F", "Ab", "C"],   # iv
+            ["G", "Bb", "D"],   # v
+            ["Ab", "C", "Eb"],  # VI
+            ["Bb", "D", "F"],   # VII
+        ])
+
 
 class TestIntervalLayers(unittest.TestCase):
     def test_major_layer(self):
@@ -177,6 +202,29 @@ class TestIntervalLayers(unittest.TestCase):
         self.assertEqual(a.roman, "V")
         self.assertEqual(a.function_label, "dominant")
         self.assertEqual(a.degree_index, 4)
+
+    def test_identify_chromatic_chord_not_mislabelled(self):
+        # D major in C major shares a root with ii (D minor) but is NOT ii.
+        a = identify_triad_from_pitches(["D", "F#", "A"], key="C major")
+        self.assertEqual(a.chord_quality, "major")
+        self.assertEqual(a.chord_symbol, "D")
+        self.assertIsNone(a.roman)            # not labelled "ii"
+        self.assertNotIn("minor", a.explanation_text)
+
+    def test_identify_enharmonic_explanation_consistent(self):
+        # Db major == V in F# major (which spells it C#); explanation must use
+        # the input's spelling, not contradict the reported root.
+        a = identify_triad_from_pitches(["Db", "F", "Ab"], key="F# major")
+        self.assertEqual(a.roman, "V")
+        self.assertEqual(a.root, "Db")
+        self.assertIn("Db", a.explanation_text)
+        self.assertIn("enharmonic to C#", a.explanation_text)
+
+    def test_identify_enharmonic_duplicate_is_unknown(self):
+        # C and B# are the same pitch class -> only 2 distinct tones.
+        a = identify_triad_from_pitches(["C", "B#", "E"])
+        self.assertEqual(a.chord_quality, "unknown")
+        self.assertIsNone(a.root)
 
 
 class TestTransposition(unittest.TestCase):

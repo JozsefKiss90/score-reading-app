@@ -117,9 +117,21 @@ class HarmonyTrainerWindow(QWidget):
         w.deleteLater()
         self._score_widget = None
 
+    def _cleanup_temp(self):
+        """Delete generated temp MusicXML files (best-effort)."""
+        for p in self._tmp_paths:
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
+        self._tmp_paths.clear()
+
     def _make_temp_score(self, spec: HarmonyExerciseSpec) -> Tuple[Path, dict]:
         compiled = compile_exercise(spec)
         musicxml, payload = build_exercise(compiled)
+
+        # Only one score is shown at a time; drop the previous temp file.
+        self._cleanup_temp()
 
         tmp = tempfile.NamedTemporaryFile(
             prefix="harmony_", suffix=".xml", delete=False)
@@ -128,6 +140,10 @@ class HarmonyTrainerWindow(QWidget):
         tmp_path.write_text(musicxml, encoding="utf-8")
         self._tmp_paths.append(tmp_path)
         return tmp_path, payload
+
+    def closeEvent(self, event):
+        self._cleanup_temp()
+        super().closeEvent(event)
 
     def load_index(self, idx: int):
         if not self._specs:
@@ -148,24 +164,54 @@ class HarmonyTrainerWindow(QWidget):
         self._score_widget = ScoreViewBeats(str(mxl_path), midi_service=self._midi_service)
         self._score_container.addWidget(self._score_widget, 1)
 
-        self._inject_trainer(self._score_widget, payload)
+        # The trainer owns the MIDI-highlight state and uses single-page scores,
+        # so hide the viewer's beat-selector toggle (which would fight over
+        # selNotesByMidi) and the page-nav buttons (the trainer navigates by
+        # chord in its own panel).
+        for attr in ("btnBeats", "btnPrev", "btnNext"):
+            btn = getattr(self._score_widget, attr, None)
+            if btn is not None:
+                btn.hide()
 
-    def _inject_trainer(self, widget, payload: dict):
-        def try_inject():
+        self._ensure_trainer(self._score_widget, payload)
+
+    def _ensure_trainer(self, widget, payload: dict):
+        """(Re)inject the controller whenever it is missing.
+
+        ScoreViewBeats reloads the QWebEngine page on page navigation, which
+        wipes the injected controller. A light poll re-injects it on the initial
+        load and after any such reload, without modifying the shared viewer.
+        """
+        init_js = "window.HarmonyTrainer && window.HarmonyTrainer.init(%s);" % (
+            json.dumps(payload),
+        )
+
+        def tick():
             w = self._score_widget
             if w is None or w is not widget:
-                return  # exercise was switched again
+                return  # exercise switched -> stop this watcher
             if not getattr(w, "_html_ready", False):
-                QTimer.singleShot(60, try_inject)
+                QTimer.singleShot(120, tick)
                 return
-            # 1) define window.HarmonyTrainer, 2) initialise it with the payload.
-            w._run_js_safe(self._trainer_js, label="harmony_trainer_js")
-            init_js = "window.HarmonyTrainer && window.HarmonyTrainer.init(%s);" % (
-                json.dumps(payload),
-            )
-            w._run_js_safe(init_js, label="harmony_trainer_init")
 
-        QTimer.singleShot(60, try_inject)
+            def on_check(installed):
+                ww = self._score_widget
+                if ww is None or ww is not widget:
+                    return
+                if not installed:
+                    ww._run_js_safe(self._trainer_js, label="harmony_trainer_js")
+                    ww._run_js_safe(init_js, label="harmony_trainer_init")
+                QTimer.singleShot(600, tick)
+
+            try:
+                w.web.page().runJavaScript(
+                    "!!(window.HarmonyTrainer && window.HarmonyTrainer.state)",
+                    on_check,
+                )
+            except Exception:
+                QTimer.singleShot(600, tick)
+
+        QTimer.singleShot(80, tick)
 
 
 def _load_specs(argv: List[str]) -> List[HarmonyExerciseSpec]:

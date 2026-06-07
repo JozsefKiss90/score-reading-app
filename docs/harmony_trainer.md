@@ -173,10 +173,14 @@ than replacing it:
 * **Arpeggio mode** expects the tones **in order** (root → third → fifth);
   pressing the wrong next note shows red, and each correct note advances.
 
-The runtime payload (built by `build_trainer_payload`) carries the spec-named
-fields `TRAINER_MODE`, `TARGET_CHORDS`, `TARGET_BY_MEASURE`, and
+The runtime payload (built by `build_trainer_payload`) drives the controller
+entirely through `TARGET_CHORDS`; the JS recomputes the per-tone expectation
+itself from each target's `pitchClasses` (all tones for block, advancing
+root → third → fifth for arpeggio). The payload also exposes the additional
+spec-named fields `TRAINER_MODE`, `TARGET_BY_MEASURE`, and
 `EXPECTED_MIDI_BY_MEASURE_OR_BEAT` (per-measure for block, per-beat for
-arpeggio).
+arpeggio) for inspection and the Python-side tests; the current controller does
+not read them.
 
 The guide panel also has **Prev / Next / Reset** controls and a clickable chord
 list, so you can jump to any chord for free practice.

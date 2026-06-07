@@ -44,6 +44,7 @@ function makeNode() {
   return {
     id: "", className: "", textContent: "", _innerHTML: "",
     dataset: {}, style: {}, firstChild: null,
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     set innerHTML(v) { this._innerHTML = v; }, get innerHTML() { return this._innerHTML; },
     appendChild() {}, insertBefore() {}, addEventListener() {},
     remove() {}, querySelector() { return null; }, querySelectorAll() { return []; },
@@ -215,6 +216,45 @@ function assert(cond, msg) {
   h.window.HarmonyTrainer.goTo(99); // clamps
   assert(h.window.HarmonyTrainer.state().idx === 1, "goTo clamps to last");
   console.log("Test C (navigation): PASS");
+})();
+
+// === Test D: re-init does not stack MIDI handlers ===========================
+(function testReinitNoStacking() {
+  const payload = {
+    title: "C arp", render: "arpeggio",
+    TARGET_CHORDS: [
+      target(0, "arpeggio", "I", "C", "C", "major", ["C", "E", "G"], [0, 4, 7], [60, 64, 67], "M3+m3", "tonic", "tonic"),
+    ],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  h.window.HarmonyTrainer.init(payload); // re-init on the SAME window/page
+  // One physical root press must advance arpIndex by exactly 1. If init()
+  // stacked the wrappers, afterNoteOn would fire twice and jump arpIndex to 2.
+  h.noteOn(60);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+    "re-init does not stack handlers (single advance per note)");
+  h.noteOff(60);
+  console.log("Test D (re-init no stacking): PASS");
+})();
+
+// === Test E: velocity-0 note-on is treated as a note-off ====================
+(function testVelocityZero() {
+  const payload = {
+    title: "C arp", render: "arpeggio",
+    TARGET_CHORDS: [
+      target(0, "arpeggio", "I", "C", "C", "major", ["C", "E", "G"], [0, 4, 7], [60, 64, 67], "M3+m3", "tonic", "tonic"),
+    ],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  // Many MIDI sources encode note-off as note-on velocity 0.
+  h.noteOn(60, 0);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+    "velocity-0 does not advance the arpeggio");
+  assert(!h.state.midiDown.has(60),
+    "velocity-0 routed to note-off (key is not held)");
+  console.log("Test E (velocity-0 note-off): PASS");
 })();
 
 console.log("\nAll harmony_trainer.js behavioural checks passed (" + passed + " assertions).");

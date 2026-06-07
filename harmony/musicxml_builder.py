@@ -27,7 +27,6 @@ from theory.diatonic_harmony import (
     DiatonicTriad,
     key_signature_fifths,
     parse_pitch_class,
-    note_pc,
     LETTER_INDEX,
     LETTER_BASE_PC,
 )
@@ -121,27 +120,32 @@ def _note_xml(step: str, alter: int, octave: int, ticks: int, note_type: str,
 
     accidental_xml = ""
     if eff_alter != (ks_alter or 0):
-        if eff_alter > 0:
-            accidental_xml = "<accidental>sharp</accidental>"
-        elif eff_alter < 0:
-            accidental_xml = "<accidental>flat</accidental>"
-        else:  # eff_alter == 0 but key sig would alter it -> natural sign
-            accidental_xml = "<accidental>natural</accidental>"
+        # Includes correct glyphs for double accidentals (future harmonic minor
+        # can produce e.g. F double-sharp); diatonic content stays within +/-1.
+        name = {2: "double-sharp", 1: "sharp", 0: "natural",
+                -1: "flat", -2: "flat-flat"}.get(eff_alter)
+        if name is not None:
+            accidental_xml = f"<accidental>{name}</accidental>"
 
     chord_xml = "<chord/>" if is_chord_tone else ""
+    # MusicXML note child order: chord?, pitch, duration, voice, type,
+    # accidental, staff (DTD-conformant).
     return (
         f"<note>{chord_xml}"
         f"<pitch><step>{step}</step>{alter_xml}<octave>{octave}</octave></pitch>"
+        f"<duration>{ticks}</duration>"
+        f"<voice>{voice}</voice>"
+        f"<type>{note_type}</type>"
         f"{accidental_xml}"
-        f"<duration>{ticks}</duration><type>{note_type}</type>"
-        f"<voice>{voice}</voice><staff>{staff}</staff></note>"
+        f"<staff>{staff}</staff></note>"
     )
 
 
 def _rest_xml(ticks: int, note_type: str, staff: int, voice: int) -> str:
     return (
-        f"<note><rest/><duration>{ticks}</duration><type>{note_type}</type>"
-        f"<voice>{voice}</voice><staff>{staff}</staff></note>"
+        f"<note><rest/><duration>{ticks}</duration>"
+        f"<voice>{voice}</voice><type>{note_type}</type>"
+        f"<staff>{staff}</staff></note>"
     )
 
 

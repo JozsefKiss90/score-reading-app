@@ -555,11 +555,14 @@ def identify_triad_from_pitches(pitches: List[str],
             interval_layer="", chord_symbol=None,
         )
 
-    # De-duplicate by pitch class while keeping the first spelling.
-    by_pc = {}
-    for name in cleaned:
-        pc = note_pc(name)
-        by_pc.setdefault(pc, name)
+    # Collapse octave/enharmonic duplicates to distinct pitch classes; a triad
+    # needs exactly three (e.g. C-B#-E has only two pitch classes -> unknown).
+    distinct = list({note_pc(n): n for n in cleaned}.values())
+    if len(distinct) != 3:
+        return TriadAnalysis(
+            pitches=cleaned, root=None, chord_quality="unknown",
+            interval_layer="", chord_symbol=None,
+        )
 
     root_name: Optional[str] = None
     third_name: Optional[str] = None
@@ -567,14 +570,12 @@ def identify_triad_from_pitches(pitches: List[str],
     lower = upper = -1
 
     # Try each note as a candidate root; pick the rotation that stacks thirds.
-    for cand in cleaned:
+    for cand in distinct:
         rpc = note_pc(cand)
         others = sorted(
-            (n for n in cleaned if n is not cand),
+            (n for n in distinct if n is not cand),
             key=lambda n: (note_pc(n) - rpc) % 12,
         )
-        if len(others) != 2:
-            continue
         i1 = (note_pc(others[0]) - rpc) % 12
         i2 = (note_pc(others[1]) - note_pc(others[0])) % 12
         if i1 in (3, 4) and i2 in (3, 4):
@@ -583,11 +584,11 @@ def identify_triad_from_pitches(pitches: List[str],
             break
 
     if root_name is None:
-        # Fall back: treat the input order as a literal stack of intervals.
-        rpc = note_pc(cleaned[0])
-        lower = (note_pc(cleaned[1]) - rpc) % 12
-        upper = (note_pc(cleaned[2]) - note_pc(cleaned[1])) % 12
-        root_name, third_name, fifth_name = cleaned[0], cleaned[1], cleaned[2]
+        # No tertian stacking found: report the literal stack (quality unknown).
+        rpc = note_pc(distinct[0])
+        lower = (note_pc(distinct[1]) - rpc) % 12
+        upper = (note_pc(distinct[2]) - note_pc(distinct[1])) % 12
+        root_name, third_name, fifth_name = distinct[0], distinct[1], distinct[2]
 
     quality = _classify_thirds(lower, upper)
     layer = _layer_string(lower, upper)
@@ -611,8 +612,27 @@ def identify_triad_from_pitches(pitches: List[str],
     triads = generate_diatonic_triads(tonic, mode)
     root_pc = note_pc(root_name)
     match = next((t for t in triads if note_pc(t.root) == root_pc), None)
-    if match is None:
+
+    # Only adopt the diatonic degree's Roman / function / explanation when the
+    # *played* quality matches that degree. A chromatically altered chord that
+    # merely shares a root (e.g. a D-major chord in C major) must not be
+    # mislabelled "ii"; fall back to the quality-only analysis instead.
+    if match is None or match.chord_quality != quality:
         return analysis
+
+    if match.root == root_name:
+        explanation = match.explanation_text
+    else:
+        # Same pitch class, different spelling (e.g. Db vs C#): keep the degree
+        # labels but describe the chord using the *input's* spelling so the
+        # explanation never contradicts the reported root.
+        explanation = (
+            f"In {match.key}, {root_name} (enharmonic to {match.root}) is scale "
+            f"degree {match.degree_index + 1} ({match.scale_degree_name}). "
+            f"Stacking diatonic thirds (1–3–5) gives "
+            f"{root_name}–{third_name}–{fifth_name}, a {quality} triad ({layer}). "
+            f"Its harmonic function is {match.function_label}."
+        )
 
     return TriadAnalysis(
         pitches=cleaned,
@@ -626,5 +646,5 @@ def identify_triad_from_pitches(pitches: List[str],
         roman=match.roman,
         function_label=match.function_label,
         scale_degree_name=match.scale_degree_name,
-        explanation_text=match.explanation_text,
+        explanation_text=explanation,
     )
