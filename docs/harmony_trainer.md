@@ -131,14 +131,19 @@ A ready-to-run set lives in
 
 ### Staff annotations
 
-Every measure is labelled above the staff with:
+Every chord is labelled on the staff using Verovio-native, auto-positioned
+elements, so labels never overlap no matter how Verovio packs the measures:
 
-```
-C major | ii | Dm | m3+M3 | predominant
-key     | RN | sym| layer | function
-```
+* the **chord symbol** (`Dm`, `G`, `B°`) — a `<harmony>` element above the
+  treble staff, and
+* the **Roman numeral** (`ii`, `V`, `vii°`) — a `<numeral>` element below it.
 
-The sidebar guide panel shows the full breakdown for the current chord:
+(Free `<words>` text was avoided: Verovio neither resizes it to a given
+font-size nor widens measures to fit it, so per-measure prose overlaps badly.)
+
+The **interval layer** and **harmonic function** — plus the key, scale, chord
+tones, and a written explanation — are shown in the sidebar guide panel for the
+current chord:
 
 ```
 G major — V (dominant)

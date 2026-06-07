@@ -94,8 +94,12 @@ class TestMusicXmlGeneration(unittest.TestCase):
         self.assertTrue(treble[2][4])
 
     def test_annotation_present(self):
-        self.assertIn("C major | I | C | M3+m3 | tonic", self.xml)
-        self.assertIn("C major | ii | Dm | m3+M3 | predominant", self.xml)
+        # Chord symbol via <harmony>, Roman numeral via <numeral>.
+        self.assertIn("<root-step>D</root-step>", self.xml)
+        self.assertIn('<kind text="m">minor</kind>', self.xml)        # ii = Dm
+        self.assertIn('<kind text="°">diminished</kind>', self.xml)   # vii° = B°
+        self.assertIn('<numeral-root text="ii">2', self.xml)
+        self.assertIn('<numeral-root text="vii°">7', self.xml)
 
 
 class TestArpeggioGeneration(unittest.TestCase):

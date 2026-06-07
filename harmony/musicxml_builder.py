@@ -20,6 +20,7 @@ This module is pure: it only builds strings / dicts, no Qt or Verovio.
 
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Optional, Tuple
 
 from harmony.exercise_spec import CompiledChord, CompiledExercise
@@ -149,17 +150,51 @@ def _rest_xml(ticks: int, note_type: str, staff: int, voice: int) -> str:
     )
 
 
-def _annotation_text(triad: DiatonicTriad) -> str:
-    return (f"{triad.key} | {triad.roman} | {triad.chord_symbol} | "
-            f"{triad.interval_layer} | {triad.function_label}")
+# chord-symbol kind: quality -> (display-text suffix, MusicXML kind value)
+_HARMONY_KIND = {
+    "major": ("", "major"),
+    "minor": ("m", "minor"),
+    "diminished": ("°", "diminished"),
+    "augmented": ("+", "augmented"),
+}
+_ROMAN_VALUE = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7}
 
 
-def _direction_words(text: str, staff: int = 1) -> str:
+def _chord_symbol_harmony(triad: DiatonicTriad) -> str:
+    """A <harmony> chord symbol (e.g. "Dm", "B°") shown above the treble staff."""
+    step, alter = parse_pitch_class(triad.root)
+    root_alter = f"<root-alter>{alter}</root-alter>" if alter else ""
+    text, kind = _HARMONY_KIND.get(triad.chord_quality, ("", "major"))
     return (
-        f'<direction placement="above"><direction-type>'
-        f"<words>{_xml_escape(text)}</words>"
-        f"</direction-type><staff>{staff}</staff></direction>"
+        '<harmony placement="above">'
+        f"<root><root-step>{step}</root-step>{root_alter}</root>"
+        f'<kind text="{_xml_escape(text)}">{kind}</kind>'
+        "</harmony>"
     )
+
+
+def _roman_numeral_harmony(triad: DiatonicTriad) -> str:
+    """A <numeral> Roman-numeral label (e.g. "ii", "vii°") below the staff."""
+    base = re.sub(r"[^IVX]", "", triad.roman.upper())
+    value = _ROMAN_VALUE.get(base, 1)
+    return (
+        '<harmony placement="below">'
+        f'<numeral><numeral-root text="{_xml_escape(triad.roman)}">{value}'
+        "</numeral-root></numeral>"
+        '<kind text="">none</kind>'
+        "</harmony>"
+    )
+
+
+def _annotation_xml(triad: DiatonicTriad) -> str:
+    """On-staff labels via Verovio-native, auto-positioned elements.
+
+    Chord symbol above the treble staff, Roman numeral below it. These never
+    overlap (unlike free <words> text, which Verovio neither resizes nor
+    measure-fits). The interval layer, harmonic function, key, scale, and
+    explanation are shown in the sidebar guide panel for the current chord.
+    """
+    return _chord_symbol_harmony(triad) + _roman_numeral_harmony(triad)
 
 
 def _treble_block(triad: DiatonicTriad, fifths: int) -> str:
@@ -206,7 +241,7 @@ def _measure_xml(chord: CompiledChord, m_no: int, fifths: int,
     else:
         attr_block = ""
 
-    annotation = _direction_words(_annotation_text(triad))
+    annotation = _annotation_xml(triad)
 
     if chord.render == "arpeggio":
         treble = _treble_arpeggio(triad, fifths)
