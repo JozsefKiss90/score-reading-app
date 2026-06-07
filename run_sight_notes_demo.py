@@ -941,7 +941,7 @@ def main(argv: List[str] | None = None) -> int:
     app = QApplication(argv)
 
     PROJECT_ROOT = Path(__file__).resolve().parent
-    json_path = PROJECT_ROOT / "exercises" / "ex_07_05_polyphonic_harmonic_reading" / "sequences.json"
+    json_path = PROJECT_ROOT / "exercises" / "ex_07_06_fast_chord_filtering_bach_iteration" / "sequences.json"
 
     exercises = load_exercises(json_path)
 

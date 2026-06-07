@@ -1,0 +1,28 @@
+
+
+{
+  "exercise_id": "ex_07_06_fast_chord_filtering",
+  "title": "7.6 – Gyors akkord-szűrés (Bach-közeli textúrával)",
+  "description": "Gyors szűrés: strukturális akkord-pilléreket (hosszabb, + tokenek) kell követni, miközben a két szólam Bach-közeli figurációt játszik (törthangzatok, rövid átmenők/váltók, imitációs gesztusok). 8 ütem / task.",
+  "tasks": [
+    {
+  "task_id": "bwv935_coordination_isolate_bass_enters_bar3",
+  "type": "recognition",
+  "key": "D minor",
+  "score": {
+    "treble": [
+      "F4/8","A4/8","F4/8","A4/8","G4/8","A4/8","F4/8","E4/8",
+      "F4/8","A4/8","F4/8","A4/8","G4/8","A4/8","C5/8","A4/8",
+      "F4/8","A4/8","G4/8","A4/8","Bb4/8","A4/8","G4/8","F4/8",
+      "E4/8","G4/8","F4/8","E4/8","D4/8","E4/8","F4/8","E4/8"
+    ],
+    "bass": [
+      "D2/1",
+      "A1/1",
+      "D2/4","A1/4","Bb1/4","A1/4",
+      "D2/8","A1/8","Bb1/8","C2/8","D2/8","E2/8","F2/8","E2/8"
+    ]
+  }
+}
+  ]
+}
