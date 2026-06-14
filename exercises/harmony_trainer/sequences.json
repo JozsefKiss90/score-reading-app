@@ -2,32 +2,592 @@
   "schema": "harmony-trainer/v1",
   "exercises": [
     {
-      "exercise_id": "c_major_all_triads",
-      "title": "C major — all seven diatonic triads",
+      "exercise_id": "major_fullkey_block_C",
+      "title": "C major — all 7 triads (block)",
       "drill": "full_key",
       "render": "block",
       "mode": "major",
-      "description": "I ii iii IV V vi vii° in C major (block triads).",
+      "description": "All seven diatonic triads of C major (block).",
       "key": "C major",
       "schema": "harmony-trainer/v1"
     },
     {
-      "exercise_id": "g_major_all_triads",
-      "title": "G major — all seven diatonic triads",
+      "exercise_id": "major_fullkey_block_Df",
+      "title": "Db major — all 7 triads (block)",
       "drill": "full_key",
       "render": "block",
       "mode": "major",
-      "description": "I ii iii IV V vi vii° in G major (block triads).",
+      "description": "All seven diatonic triads of Db major (block).",
+      "key": "Db major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_D",
+      "title": "D major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of D major (block).",
+      "key": "D major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_Ef",
+      "title": "Eb major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of Eb major (block).",
+      "key": "Eb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_E",
+      "title": "E major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of E major (block).",
+      "key": "E major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_F",
+      "title": "F major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of F major (block).",
+      "key": "F major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_Gf",
+      "title": "Gb major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of Gb major (block).",
+      "key": "Gb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_G",
+      "title": "G major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of G major (block).",
       "key": "G major",
       "schema": "harmony-trainer/v1"
     },
     {
-      "exercise_id": "ii_v_i_c_g_d",
-      "title": "ii–V–I in C, G, and D major",
+      "exercise_id": "major_fullkey_block_Af",
+      "title": "Ab major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of Ab major (block).",
+      "key": "Ab major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_A",
+      "title": "A major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of A major (block).",
+      "key": "A major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_Bf",
+      "title": "Bb major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of Bb major (block).",
+      "key": "Bb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_block_B",
+      "title": "B major — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "major",
+      "description": "All seven diatonic triads of B major (block).",
+      "key": "B major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_A",
+      "title": "A minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of A natural minor (block).",
+      "key": "A minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_Bf",
+      "title": "Bb minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of Bb natural minor (block).",
+      "key": "Bb minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_B",
+      "title": "B minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of B natural minor (block).",
+      "key": "B minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_C",
+      "title": "C minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of C natural minor (block).",
+      "key": "C minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_Cs",
+      "title": "C# minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of C# natural minor (block).",
+      "key": "C# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_D",
+      "title": "D minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of D natural minor (block).",
+      "key": "D minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_Ef",
+      "title": "Eb minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of Eb natural minor (block).",
+      "key": "Eb minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_E",
+      "title": "E minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of E natural minor (block).",
+      "key": "E minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_F",
+      "title": "F minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of F natural minor (block).",
+      "key": "F minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_Fs",
+      "title": "F# minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of F# natural minor (block).",
+      "key": "F# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_G",
+      "title": "G minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of G natural minor (block).",
+      "key": "G minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_block_Gs",
+      "title": "G# minor — all 7 triads (block)",
+      "drill": "full_key",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of G# natural minor (block).",
+      "key": "G# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_i_block",
+      "title": "I across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The I triad transposed through all 12 major keys (block).",
+      "degree": "I",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_ii_block",
+      "title": "ii across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The ii triad transposed through all 12 major keys (block).",
+      "degree": "ii",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_iii_block",
+      "title": "iii across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The iii triad transposed through all 12 major keys (block).",
+      "degree": "iii",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_iv_block",
+      "title": "IV across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The IV triad transposed through all 12 major keys (block).",
+      "degree": "IV",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_v_block",
+      "title": "V across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The V triad transposed through all 12 major keys (block).",
+      "degree": "V",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_vi_block",
+      "title": "vi across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The vi triad transposed through all 12 major keys (block).",
+      "degree": "vi",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_vii_block",
+      "title": "vii° across all 12 major keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "major",
+      "description": "The vii° triad transposed through all 12 major keys (block).",
+      "degree": "vii°",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_i_block",
+      "title": "i across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i triad transposed through all 12 natural minor keys (block).",
+      "degree": "i",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_ii_block",
+      "title": "ii° across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The ii° triad transposed through all 12 natural minor keys (block).",
+      "degree": "ii°",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_iii_block",
+      "title": "III across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The III triad transposed through all 12 natural minor keys (block).",
+      "degree": "III",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_iv_block",
+      "title": "iv across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The iv triad transposed through all 12 natural minor keys (block).",
+      "degree": "iv",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_v_block",
+      "title": "v across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The v triad transposed through all 12 natural minor keys (block).",
+      "degree": "v",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_vi_block",
+      "title": "VI across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The VI triad transposed through all 12 natural minor keys (block).",
+      "degree": "VI",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_vii_block",
+      "title": "VII across all 12 natural minor keys (block)",
+      "drill": "horizontal_degree",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The VII triad transposed through all 12 natural minor keys (block).",
+      "degree": "VII",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_major_in_major_1",
+      "title": "Major triads across major keys (set 1)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every major diatonic triad across C, Db, D, Eb (major).",
+      "quality": "major",
+      "keys": [
+        "C",
+        "Db",
+        "D",
+        "Eb"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_major_in_major_2",
+      "title": "Major triads across major keys (set 2)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every major diatonic triad across E, F, Gb, G (major).",
+      "quality": "major",
+      "keys": [
+        "E",
+        "F",
+        "Gb",
+        "G"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_major_in_major_3",
+      "title": "Major triads across major keys (set 3)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every major diatonic triad across Ab, A, Bb, B (major).",
+      "quality": "major",
+      "keys": [
+        "Ab",
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_minor_in_major_1",
+      "title": "Minor triads across major keys (set 1)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every minor diatonic triad across C, Db, D, Eb (major).",
+      "quality": "minor",
+      "keys": [
+        "C",
+        "Db",
+        "D",
+        "Eb"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_minor_in_major_2",
+      "title": "Minor triads across major keys (set 2)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every minor diatonic triad across E, F, Gb, G (major).",
+      "quality": "minor",
+      "keys": [
+        "E",
+        "F",
+        "Gb",
+        "G"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_minor_in_major_3",
+      "title": "Minor triads across major keys (set 3)",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every minor diatonic triad across Ab, A, Bb, B (major).",
+      "quality": "minor",
+      "keys": [
+        "Ab",
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "quality_diminished_in_major_1",
+      "title": "Diminished triads across major keys",
+      "drill": "quality",
+      "render": "block",
+      "mode": "major",
+      "description": "Every diminished diatonic triad across all 12 keys (major).",
+      "quality": "diminished",
+      "keys": [
+        "C",
+        "Db",
+        "D",
+        "Eb",
+        "E",
+        "F",
+        "Gb",
+        "G",
+        "Ab",
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_major_1",
+      "title": "I–IV–V–I — C, Db, D (major)",
       "drill": "function",
       "render": "block",
       "mode": "major",
-      "description": "The ii–V–I progression transposed across three keys.",
+      "description": "The I–IV–V–I progression transposed across C, Db, D (major).",
+      "pattern": [
+        "I",
+        "IV",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "C",
+        "Db",
+        "D"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_major_2",
+      "title": "I–IV–V–I — Eb, E, F (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The I–IV–V–I progression transposed across Eb, E, F (major).",
+      "pattern": [
+        "I",
+        "IV",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "Eb",
+        "E",
+        "F"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_major_3",
+      "title": "I–IV–V–I — Gb, G, Ab (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The I–IV–V–I progression transposed across Gb, G, Ab (major).",
+      "pattern": [
+        "I",
+        "IV",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "Gb",
+        "G",
+        "Ab"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_major_4",
+      "title": "I–IV–V–I — A, Bb, B (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The I–IV–V–I progression transposed across A, Bb, B (major).",
+      "pattern": [
+        "I",
+        "IV",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_ii_v_i_major_1",
+      "title": "ii–V–I — C, Db, D, Eb (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The ii–V–I progression transposed across C, Db, D, Eb (major).",
       "pattern": [
         "ii",
         "V",
@@ -35,29 +595,670 @@
       ],
       "keys": [
         "C",
-        "G",
+        "Db",
+        "D",
+        "Eb"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_ii_v_i_major_2",
+      "title": "ii–V–I — E, F, Gb, G (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The ii–V–I progression transposed across E, F, Gb, G (major).",
+      "pattern": [
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "E",
+        "F",
+        "Gb",
+        "G"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_ii_v_i_major_3",
+      "title": "ii–V–I — Ab, A, Bb, B (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The ii–V–I progression transposed across Ab, A, Bb, B (major).",
+      "pattern": [
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "Ab",
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_vi_ii_v_i_major_1",
+      "title": "vi–ii–V–I — C, Db, D (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The vi–ii–V–I progression transposed across C, Db, D (major).",
+      "pattern": [
+        "vi",
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "C",
+        "Db",
         "D"
       ],
       "schema": "harmony-trainer/v1"
     },
     {
-      "exercise_id": "all_V_major",
-      "title": "All V triads across major keys (horizontal degree)",
-      "drill": "horizontal_degree",
+      "exercise_id": "function_vi_ii_v_i_major_2",
+      "title": "vi–ii–V–I — Eb, E, F (major)",
+      "drill": "function",
       "render": "block",
       "mode": "major",
-      "description": "The dominant triad in all 12 major keys.",
+      "description": "The vi–ii–V–I progression transposed across Eb, E, F (major).",
+      "pattern": [
+        "vi",
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "Eb",
+        "E",
+        "F"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_vi_ii_v_i_major_3",
+      "title": "vi–ii–V–I — Gb, G, Ab (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The vi–ii–V–I progression transposed across Gb, G, Ab (major).",
+      "pattern": [
+        "vi",
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "Gb",
+        "G",
+        "Ab"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_vi_ii_v_i_major_4",
+      "title": "vi–ii–V–I — A, Bb, B (major)",
+      "drill": "function",
+      "render": "block",
+      "mode": "major",
+      "description": "The vi–ii–V–I progression transposed across A, Bb, B (major).",
+      "pattern": [
+        "vi",
+        "ii",
+        "V",
+        "I"
+      ],
+      "keys": [
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_natural_minor_1",
+      "title": "i–iv–v–i — A, Bb, B (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–iv–v–i progression transposed across A, Bb, B (natural minor).",
+      "pattern": [
+        "i",
+        "iv",
+        "v",
+        "i"
+      ],
+      "keys": [
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_natural_minor_2",
+      "title": "i–iv–v–i — C, C#, D (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–iv–v–i progression transposed across C, C#, D (natural minor).",
+      "pattern": [
+        "i",
+        "iv",
+        "v",
+        "i"
+      ],
+      "keys": [
+        "C",
+        "C#",
+        "D"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_natural_minor_3",
+      "title": "i–iv–v–i — Eb, E, F (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–iv–v–i progression transposed across Eb, E, F (natural minor).",
+      "pattern": [
+        "i",
+        "iv",
+        "v",
+        "i"
+      ],
+      "keys": [
+        "Eb",
+        "E",
+        "F"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_iv_v_i_natural_minor_4",
+      "title": "i–iv–v–i — F#, G, G# (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–iv–v–i progression transposed across F#, G, G# (natural minor).",
+      "pattern": [
+        "i",
+        "iv",
+        "v",
+        "i"
+      ],
+      "keys": [
+        "F#",
+        "G",
+        "G#"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_vi_vii_i_natural_minor_1",
+      "title": "i–VI–VII–i — A, Bb, B (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–VI–VII–i progression transposed across A, Bb, B (natural minor).",
+      "pattern": [
+        "i",
+        "VI",
+        "VII",
+        "i"
+      ],
+      "keys": [
+        "A",
+        "Bb",
+        "B"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_vi_vii_i_natural_minor_2",
+      "title": "i–VI–VII–i — C, C#, D (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–VI–VII–i progression transposed across C, C#, D (natural minor).",
+      "pattern": [
+        "i",
+        "VI",
+        "VII",
+        "i"
+      ],
+      "keys": [
+        "C",
+        "C#",
+        "D"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_vi_vii_i_natural_minor_3",
+      "title": "i–VI–VII–i — Eb, E, F (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–VI–VII–i progression transposed across Eb, E, F (natural minor).",
+      "pattern": [
+        "i",
+        "VI",
+        "VII",
+        "i"
+      ],
+      "keys": [
+        "Eb",
+        "E",
+        "F"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "function_i_vi_vii_i_natural_minor_4",
+      "title": "i–VI–VII–i — F#, G, G# (natural minor)",
+      "drill": "function",
+      "render": "block",
+      "mode": "natural_minor",
+      "description": "The i–VI–VII–i progression transposed across F#, G, G# (natural minor).",
+      "pattern": [
+        "i",
+        "VI",
+        "VII",
+        "i"
+      ],
+      "keys": [
+        "F#",
+        "G",
+        "G#"
+      ],
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_C",
+      "title": "C major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of C major (arpeggio).",
+      "key": "C major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_Df",
+      "title": "Db major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of Db major (arpeggio).",
+      "key": "Db major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_D",
+      "title": "D major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of D major (arpeggio).",
+      "key": "D major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_Ef",
+      "title": "Eb major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of Eb major (arpeggio).",
+      "key": "Eb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_E",
+      "title": "E major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of E major (arpeggio).",
+      "key": "E major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_F",
+      "title": "F major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of F major (arpeggio).",
+      "key": "F major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_Gf",
+      "title": "Gb major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of Gb major (arpeggio).",
+      "key": "Gb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_G",
+      "title": "G major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of G major (arpeggio).",
+      "key": "G major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_Af",
+      "title": "Ab major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of Ab major (arpeggio).",
+      "key": "Ab major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_A",
+      "title": "A major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of A major (arpeggio).",
+      "key": "A major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_Bf",
+      "title": "Bb major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of Bb major (arpeggio).",
+      "key": "Bb major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_fullkey_arpeggio_B",
+      "title": "B major — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "All seven diatonic triads of B major (arpeggio).",
+      "key": "B major",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_A",
+      "title": "A minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of A natural minor (arpeggio).",
+      "key": "A minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_Bf",
+      "title": "Bb minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of Bb natural minor (arpeggio).",
+      "key": "Bb minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_B",
+      "title": "B minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of B natural minor (arpeggio).",
+      "key": "B minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_C",
+      "title": "C minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of C natural minor (arpeggio).",
+      "key": "C minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_Cs",
+      "title": "C# minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of C# natural minor (arpeggio).",
+      "key": "C# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_D",
+      "title": "D minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of D natural minor (arpeggio).",
+      "key": "D minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_Ef",
+      "title": "Eb minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of Eb natural minor (arpeggio).",
+      "key": "Eb minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_E",
+      "title": "E minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of E natural minor (arpeggio).",
+      "key": "E minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_F",
+      "title": "F minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of F natural minor (arpeggio).",
+      "key": "F minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_Fs",
+      "title": "F# minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of F# natural minor (arpeggio).",
+      "key": "F# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_G",
+      "title": "G minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of G natural minor (arpeggio).",
+      "key": "G minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_fullkey_arpeggio_Gs",
+      "title": "G# minor — all 7 triads (arpeggio)",
+      "drill": "full_key",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "All seven diatonic triads of G# natural minor (arpeggio).",
+      "key": "G# minor",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_i_arpeggio",
+      "title": "I across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The I triad transposed through all 12 major keys (arpeggio).",
+      "degree": "I",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_ii_arpeggio",
+      "title": "ii across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The ii triad transposed through all 12 major keys (arpeggio).",
+      "degree": "ii",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_iii_arpeggio",
+      "title": "iii across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The iii triad transposed through all 12 major keys (arpeggio).",
+      "degree": "iii",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_iv_arpeggio",
+      "title": "IV across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The IV triad transposed through all 12 major keys (arpeggio).",
+      "degree": "IV",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_v_arpeggio",
+      "title": "V across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The V triad transposed through all 12 major keys (arpeggio).",
       "degree": "V",
       "schema": "harmony-trainer/v1"
     },
     {
-      "exercise_id": "a_minor_all_triads_arp",
-      "title": "A natural minor — all triads (arpeggiated)",
-      "drill": "full_key",
+      "exercise_id": "major_degree_vi_arpeggio",
+      "title": "vi across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The vi triad transposed through all 12 major keys (arpeggio).",
+      "degree": "vi",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "major_degree_vii_arpeggio",
+      "title": "vii° across all 12 major keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "major",
+      "description": "The vii° triad transposed through all 12 major keys (arpeggio).",
+      "degree": "vii°",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_i_arpeggio",
+      "title": "i across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
       "render": "arpeggio",
       "mode": "natural_minor",
-      "description": "i ii° III iv v VI VII in A natural minor (arpeggios).",
-      "key": "A minor",
+      "description": "The i triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "i",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_ii_arpeggio",
+      "title": "ii° across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The ii° triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "ii°",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_iii_arpeggio",
+      "title": "III across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The III triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "III",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_iv_arpeggio",
+      "title": "iv across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The iv triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "iv",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_v_arpeggio",
+      "title": "v across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The v triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "v",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_vi_arpeggio",
+      "title": "VI across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The VI triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "VI",
+      "schema": "harmony-trainer/v1"
+    },
+    {
+      "exercise_id": "natural_minor_degree_vii_arpeggio",
+      "title": "VII across all 12 natural minor keys (arpeggio)",
+      "drill": "horizontal_degree",
+      "render": "arpeggio",
+      "mode": "natural_minor",
+      "description": "The VII triad transposed through all 12 natural minor keys (arpeggio).",
+      "degree": "VII",
       "schema": "harmony-trainer/v1"
     }
   ]

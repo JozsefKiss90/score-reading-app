@@ -1,0 +1,879 @@
+"""Interactive Harmony Atlas -- the central theoretical navigation layer.
+
+The Atlas is the visual + theoretical map that sits *above* the Harmony Trainer
+(``harmony.exercise_spec`` / ``harmony.musicxml_builder``) and, later, above
+cadence- and real-score analysis.  It turns the whole invariant tonal system
+into an interactive graph: scales, scale degrees, interval layers, chord
+qualities, harmonic functions, transposition, and cadences -- every element
+clickable and resolvable to a *playable* :class:`HarmonyExerciseSpec`.
+
+Design rules (the module's contract -- see the Atlas spec, "Implementation
+rules"):
+
+* **Single source of truth.**  Nothing here re-encodes a chord table, a quality,
+  a Roman numeral, a function, or an interval layer.  Every value is *derived*
+  from :mod:`theory.diatonic_harmony` (the pure theory engine) and every
+  launchable exercise is a :class:`harmony.exercise_spec.HarmonyExerciseSpec`
+  expanded by the existing compiler.  No hard-coded chord lists.
+* **Deterministic.**  Same inputs -> identical nodes, edges, views, ids.
+* **Pure.**  No Qt / Verovio / MIDI here, so it is unit-testable headlessly and
+  serialises to JSON (:meth:`Atlas.to_json`) for any UI (the web Atlas renders
+  this payload).
+* **Extensible.**  The node/edge ontology (:class:`AtlasNode` / :class:`AtlasEdge`)
+  and the reserved :class:`ScoreAnalysis` interface are shaped so that seventh
+  chords, harmonic/melodic minor, modal harmony, and automatic score analysis
+  (Bach/Mozart/Chopin -> highlight their position in the Atlas) slot in without
+  an architectural redesign.
+
+The cadence *progressions* (the token patterns such as ``["ii","V","I"]``) are
+shared with the trainer: the canonical ones are imported from
+:mod:`harmony.exercise_spec` so they have one definition; the Atlas only adds
+the pop ``I-V-vi-IV`` and the two-chord cadence *types* (authentic / plagal /
+half / deceptive), which are progressions, not theory tables.
+"""
+
+from __future__ import annotations
+
+from collections import OrderedDict
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Tuple
+
+from theory.diatonic_harmony import (
+    DiatonicTriad,
+    generate_diatonic_triads,
+    generate_scale,
+    key_signature_fifths,
+    QUALITY_TO_INTERVAL_LAYER,
+)
+from harmony.exercise_spec import (
+    HarmonyExerciseSpec,
+    compile_exercise,
+    DEFAULT_MAJOR_KEYS,
+    DEFAULT_MINOR_KEYS,
+    MAX_CHORDS_PER_SPEC,
+    _FUNCTION_PATTERNS_MAJOR,
+    _FUNCTION_PATTERNS_MINOR,
+    _quality_specs as _es_quality_specs,
+)
+
+
+SCHEMA_VERSION = "harmony-atlas/v1"
+
+#: The two modes the Atlas currently maps (extensible: harmonic/melodic minor,
+#: modes, ... are added by extending the theory engine's ``_MODE_STEPS``).
+MODES = ["major", "natural_minor"]
+
+#: Reference tonics used to read the *invariant* per-degree pattern (Part I /
+#: the global diatonic map). The pattern is identical in every key -- that is the
+#: whole point -- so any key works; C major / A natural minor are the clearest.
+_REFERENCE_TONIC = {"major": "C", "natural_minor": "A"}
+
+#: Canonical cadences (Part VI). The major/minor progression patterns are shared
+#: with the trainer (single definition); the Atlas adds the pop I-V-vi-IV.
+#: Each entry: (tokens, label, mode, cadence_type).
+_EXTRA_CADENCES = [
+    (["I", "V", "vi", "IV"], "I–V–vi–IV", "major", "deceptive"),
+]
+
+#: Two-chord cadence *types* (Part IX progress dashboard tracks these).
+#: Derived as function-drill patterns, not hard-coded chords.
+_CADENCE_TYPES = [
+    (["V", "I"], "Authentic", "major", "authentic"),
+    (["IV", "I"], "Plagal", "major", "plagal"),
+    (["I", "V"], "Half", "major", "half"),
+    (["V", "vi"], "Deceptive", "major", "deceptive"),
+]
+
+#: Heuristic cadence-type tag for the shared trainer progressions, by label.
+_PROGRESSION_TYPE = {
+    "I–IV–V–I": "authentic",
+    "ii–V–I": "authentic",
+    "vi–ii–V–I": "authentic",
+    "i–iv–v–i": "authentic",
+    "i–VI–VII–i": "aeolian",
+}
+
+
+# ---------------------------------------------------------------------------
+# Small shared helpers
+# ---------------------------------------------------------------------------
+
+def _slug(text: str) -> str:
+    """Identifier-safe token (``"Bb" -> "Bf"``, ``"vii°" -> "vii"``)."""
+    out = (text.replace("#", "s").replace("b", "f")
+               .replace("°", "dim").replace("–", "_"))
+    return "".join(ch if (ch.isalnum() or ch == "_") else "_" for ch in out)
+
+
+def _mode_short(mode: str) -> str:
+    return "major" if mode == "major" else "minor"
+
+
+def _mode_long(mode: str) -> str:
+    return "major" if mode == "major" else "natural minor"
+
+
+def _keys_for(mode: str) -> List[str]:
+    return DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+
+
+# ---------------------------------------------------------------------------
+# Ontology: nodes and edges (Part X)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AtlasNode:
+    """A node in the harmonic ontology.
+
+    ``kind`` is one of: ``scale``, ``degree``, ``triad``, ``quality``,
+    ``function``, ``layer``, ``cadence``.  ``spec`` (when present) is the
+    playable exercise generated when the node is clicked.  ``data`` holds
+    kind-specific display fields (roman, chord symbol, tones, layer, ...).
+    """
+
+    id: str
+    kind: str
+    label: str
+    data: Dict = field(default_factory=dict)
+    spec: Optional[HarmonyExerciseSpec] = None
+
+    def to_dict(self) -> Dict:
+        d = {"id": self.id, "kind": self.kind, "label": self.label,
+             "data": self.data}
+        if self.spec is not None:
+            d["spec"] = self.spec.to_dict()
+        return d
+
+
+@dataclass(frozen=True)
+class AtlasEdge:
+    """A typed, directed relationship between two nodes.
+
+    ``relation`` is one of: ``belongs_to``, ``transposes_to``, ``same_quality``,
+    ``same_function``, ``same_interval_layer``, ``precedes``, ``dominant_of``,
+    ``subdominant_of``, ``tonic_of``.
+    """
+
+    source: str
+    target: str
+    relation: str
+
+    def to_dict(self) -> Dict:
+        return {"source": self.source, "target": self.target,
+                "relation": self.relation}
+
+
+RELATIONS = [
+    "belongs_to", "transposes_to", "same_quality", "same_function",
+    "same_interval_layer", "precedes", "dominant_of", "subdominant_of",
+    "tonic_of",
+]
+
+
+# ---------------------------------------------------------------------------
+# Stable node ids
+# ---------------------------------------------------------------------------
+
+def scale_id(key: str, mode: str) -> str:
+    return f"scale:{key}:{mode}"
+
+
+def degree_id(mode: str, roman: str) -> str:
+    return f"degree:{mode}:{roman}"
+
+
+def triad_id(key: str, mode: str, degree_index: int) -> str:
+    return f"triad:{key}:{mode}:{degree_index}"
+
+
+def quality_id(quality: str) -> str:
+    return f"quality:{quality}"
+
+
+def function_id(mode: str, function_label: str) -> str:
+    return f"function:{mode}:{function_label}"
+
+
+def layer_id(layer: str) -> str:
+    return f"layer:{layer}"
+
+
+def cadence_id(slug: str) -> str:
+    return f"cadence:{slug}"
+
+
+# ---------------------------------------------------------------------------
+# Spec factories -- every clickable element resolves to one of these.
+# These construct HarmonyExerciseSpec instances (the public trainer API);
+# they never re-implement compilation or theory.
+# ---------------------------------------------------------------------------
+
+def full_key_spec(key: str, mode: str, render: str = "block") -> HarmonyExerciseSpec:
+    short = _mode_short(mode)
+    return HarmonyExerciseSpec(
+        exercise_id=f"atlas_fullkey_{mode}_{_slug(key)}_{render}",
+        title=f"{key} {short} — all 7 triads ({render})",
+        drill="full_key", render=render, mode=mode, key=f"{key} {short}",
+        description=f"All seven diatonic triads of {key} {_mode_long(mode)} ({render}).",
+    )
+
+
+def degree_spec(roman: str, mode: str, render: str = "block") -> HarmonyExerciseSpec:
+    return HarmonyExerciseSpec(
+        exercise_id=f"atlas_degree_{mode}_{_slug(roman)}_{render}",
+        title=f"{roman} across all 12 {_mode_long(mode)} keys ({render})",
+        drill="horizontal_degree", render=render, mode=mode, degree=roman,
+        description=f"The {roman} triad transposed through all 12 {_mode_long(mode)} keys.",
+    )
+
+
+def quality_drills(mode: str) -> "Dict[str, List[HarmonyExerciseSpec]]":
+    """Cap-respecting quality recognition drills, grouped by quality.
+
+    Reuses :func:`harmony.exercise_spec._quality_specs`, so the readability
+    chunking (every spec stays within :data:`MAX_CHORDS_PER_SPEC` -- a "major
+    triads across keys" drill is split into several short specs) lives in exactly
+    one place rather than being re-implemented here.  Returns ``quality -> [specs]``.
+    """
+    out: Dict[str, List[HarmonyExerciseSpec]] = {}
+    for spec in _es_quality_specs(mode):
+        out.setdefault(spec.quality, []).append(spec)
+    return out
+
+
+def function_spec(tokens: List[str], label: str, mode: str, keys: List[str],
+                  render: str = "block") -> HarmonyExerciseSpec:
+    keys_label = "all 12 keys" if len(keys) == len(_keys_for(mode)) else ", ".join(keys)
+    return HarmonyExerciseSpec(
+        exercise_id=f"atlas_function_{_slug(label)}_{mode}_{_slug('_'.join(keys))}",
+        title=f"{label} — {keys_label} ({_mode_long(mode)})",
+        drill="function", render=render, mode=mode, pattern=list(tokens), keys=list(keys),
+        description=f"The {label} progression across {keys_label} ({_mode_long(mode)}).",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Node + edge construction
+# ---------------------------------------------------------------------------
+
+def _reference_triads(mode: str) -> List[DiatonicTriad]:
+    """The 7 diatonic triads of the reference key -- the invariant degree pattern."""
+    return generate_diatonic_triads(_REFERENCE_TONIC[mode], mode)
+
+
+def _degree_romans(mode: str) -> List[str]:
+    """Quality-cased Roman numerals per degree, derived from the theory engine."""
+    return [t.roman for t in _reference_triads(mode)]
+
+
+def _build_nodes_and_edges() -> Tuple["OrderedDict[str, AtlasNode]", List[AtlasEdge]]:
+    nodes: "OrderedDict[str, AtlasNode]" = OrderedDict()
+    edges: List[AtlasEdge] = []
+    edge_seen = set()
+
+    def add_node(node: AtlasNode) -> None:
+        nodes[node.id] = node
+
+    def add_edge(source: str, target: str, relation: str) -> None:
+        key = (source, target, relation)
+        if key in edge_seen:
+            return
+        edge_seen.add(key)
+        edges.append(AtlasEdge(source, target, relation))
+
+    # --- quality + interval-layer nodes (derived 1:1 from the theory table) ---
+    # Diatonic content only ever produces these three; augmented is reserved
+    # (it appears once we add e.g. harmonic minor's III+), so we expose it as a
+    # node but mark it non-diatonic so the UI can show it greyed/optional.
+    for quality, layer in QUALITY_TO_INTERVAL_LAYER.items():
+        diatonic = quality in ("major", "minor", "diminished")
+        add_node(AtlasNode(
+            id=quality_id(quality), kind="quality", label=quality,
+            data={"intervalLayer": layer, "diatonic": diatonic},
+        ))
+        add_node(AtlasNode(
+            id=layer_id(layer), kind="layer", label=layer,
+            data={"quality": quality, "diatonic": diatonic},
+        ))
+        add_edge(quality_id(quality), layer_id(layer), "same_interval_layer")
+
+    # --- degree nodes (abstract, per mode) + function nodes ------------------
+    for mode in MODES:
+        ref = _reference_triads(mode)
+        for t in ref:
+            d_id = degree_id(mode, t.roman)
+            add_node(AtlasNode(
+                id=d_id, kind="degree", label=t.roman,
+                data={
+                    "mode": mode,
+                    "roman": t.roman,
+                    "degreeNumber": t.degree_number,
+                    "degreeIndex": t.degree_index,
+                    "quality": t.chord_quality,
+                    "intervalLayer": t.interval_layer,
+                    "functionLabel": t.function_label,
+                    "scaleDegreeName": t.scale_degree_name,
+                },
+                spec=degree_spec(t.roman, mode),
+            ))
+            f_id = function_id(mode, t.function_label)
+            if f_id not in nodes:
+                add_node(AtlasNode(
+                    id=f_id, kind="function", label=t.function_label,
+                    data={"mode": mode, "functionLabel": t.function_label,
+                          "romans": []},
+                ))
+            nodes[f_id].data["romans"].append(t.roman)
+            # degree -> quality / layer / function (invariant relationships)
+            add_edge(d_id, quality_id(t.chord_quality), "same_quality")
+            add_edge(d_id, layer_id(t.interval_layer), "same_interval_layer")
+            add_edge(d_id, f_id, "same_function")
+
+        # functional relationships at the degree level (T/S/D gravity).
+        tonic_roman = ref[0].roman  # I or i
+        for t in ref:
+            d_id = degree_id(mode, t.roman)
+            if t.degree_index == 0:
+                continue
+            fl = t.function_label
+            if fl == "dominant":
+                add_edge(d_id, degree_id(mode, tonic_roman), "dominant_of")
+            elif fl in ("subdominant", "predominant"):
+                add_edge(d_id, degree_id(mode, tonic_roman), "subdominant_of")
+            elif fl == "tonic":
+                add_edge(d_id, degree_id(mode, tonic_roman), "tonic_of")
+
+    # --- scale + concrete triad nodes (24 keys x 7 degrees) ------------------
+    for mode in MODES:
+        keys = _keys_for(mode)
+        for key in keys:
+            scale = generate_scale(key, mode)
+            s_id = scale_id(key, mode)
+            add_node(AtlasNode(
+                id=s_id, kind="scale", label=scale.key,
+                data={
+                    "key": key,
+                    "mode": mode,
+                    "tonic": scale.tonic,
+                    "scalePitches": list(scale.scale_pitches),
+                    "fifths": scale.fifths,
+                },
+                spec=full_key_spec(key, mode),
+            ))
+            for t in generate_diatonic_triads(key, mode):
+                t_id = triad_id(key, mode, t.degree_index)
+                add_node(AtlasNode(
+                    id=t_id, kind="triad",
+                    label=f"{t.chord_symbol} ({t.roman})",
+                    data={
+                        "key": key,
+                        "mode": mode,
+                        "roman": t.roman,
+                        "degreeIndex": t.degree_index,
+                        "degreeNumber": t.degree_number,
+                        "root": t.root,
+                        "chordSymbol": t.chord_symbol,
+                        "quality": t.chord_quality,
+                        "chordTones": list(t.pitches),
+                        "intervalLayer": t.interval_layer,
+                        "functionLabel": t.function_label,
+                        "scaleDegreeName": t.scale_degree_name,
+                    },
+                    # Clicking a concrete chord practises its key in context;
+                    # the focus index lets the UI/trainer jump to this chord.
+                    spec=full_key_spec(key, mode),
+                ))
+                nodes[t_id].data["focusDegreeIndex"] = t.degree_index
+                add_edge(t_id, s_id, "belongs_to")
+                add_edge(t_id, degree_id(mode, t.roman), "belongs_to")
+                add_edge(t_id, quality_id(t.chord_quality), "same_quality")
+                add_edge(t_id, function_id(mode, t.function_label), "same_function")
+                add_edge(t_id, layer_id(t.interval_layer), "same_interval_layer")
+
+        # transposes_to: chain each degree across the circle of keys.
+        for di in range(7):
+            for i in range(len(keys) - 1):
+                add_edge(triad_id(keys[i], mode, di),
+                         triad_id(keys[i + 1], mode, di), "transposes_to")
+
+    # --- cadence nodes (Part VI) + cadence types (Part IX) -------------------
+    shared = ([(toks, lab, "major") for toks, lab in _FUNCTION_PATTERNS_MAJOR]
+              + [(toks, lab, "natural_minor") for toks, lab in _FUNCTION_PATTERNS_MINOR])
+    for toks, label, mode in shared:
+        ctype = _PROGRESSION_TYPE.get(label, "other")
+        _add_cadence(nodes, edges, edge_seen, add_node, add_edge,
+                     toks, label, mode, ctype, family="progression")
+    for toks, label, mode, ctype in _EXTRA_CADENCES:
+        _add_cadence(nodes, edges, edge_seen, add_node, add_edge,
+                     toks, label, mode, ctype, family="progression")
+    for toks, label, mode, ctype in _CADENCE_TYPES:
+        _add_cadence(nodes, edges, edge_seen, add_node, add_edge,
+                     toks, label, mode, ctype, family="type")
+
+    return nodes, edges
+
+
+def _add_cadence(nodes, edges, edge_seen, add_node, add_edge,
+                 tokens, label, mode, ctype, family) -> None:
+    """Build a cadence node, derive its chords in the reference key, link precedes."""
+    ref_key = _REFERENCE_TONIC[mode]
+    # Realise the progression in the reference key for display + 'precedes' edges.
+    spec = function_spec(tokens, label, mode, [ref_key])
+    compiled = compile_exercise(spec)
+    chords = [
+        {"roman": c.triad.roman, "chordSymbol": c.triad.chord_symbol,
+         "chordTones": list(c.triad.pitches), "functionLabel": c.triad.function_label,
+         "degreeIndex": c.triad.degree_index}
+        for c in compiled.chords
+    ]
+    cid = cadence_id(f"{_slug(label)}_{mode}")
+    add_node(AtlasNode(
+        id=cid, kind="cadence", label=label,
+        data={
+            "mode": mode,
+            "tokens": list(tokens),
+            "cadenceType": ctype,
+            "family": family,                 # 'progression' | 'type'
+            "referenceKey": ref_key,
+            "chords": chords,
+            "functionPath": [c["functionLabel"] for c in chords],
+        },
+        spec=spec,
+    ))
+    # precedes: chord i -> chord i+1 (functional motion), linking the abstract degrees.
+    for a, b in zip(compiled.chords, compiled.chords[1:]):
+        add_edge(degree_id(mode, a.triad.roman),
+                 degree_id(mode, b.triad.roman), "precedes")
+
+
+# ---------------------------------------------------------------------------
+# Learning path (Part XI) and which level a spec belongs to
+# ---------------------------------------------------------------------------
+
+LEARNING_PATH = [
+    {"level": 1, "id": "scales", "title": "Scales",
+     "detail": "Hear and play each major / natural-minor scale."},
+    {"level": 2, "id": "triads", "title": "Triads",
+     "detail": "All seven diatonic triads of every key."},
+    {"level": 3, "id": "interval_layers", "title": "Interval layers",
+     "detail": "Recognise M3+m3 / m3+M3 / m3+m3 stacking."},
+    {"level": 4, "id": "transposition", "title": "Transposition",
+     "detail": "The same degree / pattern across all keys."},
+    {"level": 5, "id": "functions", "title": "Functions",
+     "detail": "Tonic / predominant / dominant recognition."},
+    {"level": 6, "id": "cadences", "title": "Cadences",
+     "detail": "Authentic, plagal, deceptive and full progressions."},
+    {"level": 7, "id": "real_music", "title": "Real music",
+     "detail": "Harmonic analysis of real scores (future)."},
+]
+
+#: Map a drill type -> learning-path level id. (Quality drills exercise the
+#: interval-layer/quality distinction; function drills exercise functions.)
+_DRILL_TO_LEVEL = {
+    "full_key": "triads",
+    "horizontal_degree": "transposition",
+    "quality": "interval_layers",
+    "function": "functions",
+}
+
+
+def level_for_spec(spec: HarmonyExerciseSpec) -> str:
+    """Which learning-path level a spec belongs to (Part XI / Part VII)."""
+    return _DRILL_TO_LEVEL.get(spec.drill, "triads")
+
+
+# ---------------------------------------------------------------------------
+# Reserved real-score analysis interface (Part VIII) -- design only.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class HarmonyAnnotation:
+    """One analysed vertical slice of a real score (reserved shape).
+
+    The fields mirror a :class:`DiatonicTriad`/atlas-triad so that, once
+    implemented, each annotation maps straight onto an Atlas ``triad`` node via
+    :meth:`Atlas.node_for_annotation`.
+    """
+
+    offset: float                      # musical time / beat position
+    measure: int
+    key: Optional[str] = None
+    mode: Optional[str] = None
+    roman: Optional[str] = None
+    chord_symbol: Optional[str] = None
+    quality: Optional[str] = None
+    chord_tones: List[str] = field(default_factory=list)
+    function_label: Optional[str] = None
+    interval_layer: Optional[str] = None
+    cadence_type: Optional[str] = None
+
+
+class ScoreAnalysis:
+    """Reserved interface for real-score harmonic analysis (Part VIII).
+
+    Implementations will feed vertical slices of an imported score through
+    :func:`theory.diatonic_harmony.identify_triad_from_pitches` (already the
+    seed) and return :class:`HarmonyAnnotation` objects that the Atlas can
+    highlight in place.  Nothing is implemented yet -- the methods raise so the
+    contract is explicit and callers can program against it now.
+
+    Future inputs: Bach preludes, Mozart sonatas, Chopin preludes.
+    """
+
+    def analyze_score(self, score_path: str) -> List[HarmonyAnnotation]:
+        raise NotImplementedError(
+            "Real-score analysis is reserved (Part VIII). "
+            "Will return ordered HarmonyAnnotation slices.")
+
+    def extract_harmony(self, score_path: str) -> List[HarmonyAnnotation]:
+        raise NotImplementedError(
+            "extract_harmony is reserved (Part VIII). "
+            "Will return per-slice chord identification.")
+
+    def extract_functions(self, score_path: str) -> List[str]:
+        raise NotImplementedError(
+            "extract_functions is reserved (Part VIII). "
+            "Will return the per-slice harmonic-function path.")
+
+    def extract_cadences(self, score_path: str) -> List[Dict]:
+        raise NotImplementedError(
+            "extract_cadences is reserved (Part VIII). "
+            "Will return detected cadence spans (type + location).")
+
+
+# ---------------------------------------------------------------------------
+# The Atlas
+# ---------------------------------------------------------------------------
+
+class Atlas:
+    """The whole harmonic map: ontology + views, all derived from theory."""
+
+    def __init__(self) -> None:
+        self.nodes, self.edges = _build_nodes_and_edges()
+
+    # -- node access -----------------------------------------------------
+    def node(self, node_id: str) -> Optional[AtlasNode]:
+        return self.nodes.get(node_id)
+
+    def nodes_of_kind(self, kind: str) -> List[AtlasNode]:
+        return [n for n in self.nodes.values() if n.kind == kind]
+
+    # -- Part I: global diatonic map ------------------------------------
+    def global_map(self, mode: str) -> List[Dict]:
+        """The invariant degree table for ``mode`` (degree, quality, layer, function)."""
+        rows = []
+        for t in _reference_triads(mode):
+            n = self.nodes[degree_id(mode, t.roman)]
+            rows.append({
+                "nodeId": n.id,
+                "roman": t.roman,
+                "quality": t.chord_quality,
+                "intervalLayer": t.interval_layer,
+                "functionLabel": t.function_label,
+                "scaleDegreeName": t.scale_degree_name,
+                "spec": n.spec.to_dict() if n.spec else None,
+            })
+        return rows
+
+    # -- Part II: horizontal transposition matrix -----------------------
+    def transposition_matrix(self, mode: str) -> Dict:
+        """Rows = degrees, columns = keys; each cell is a concrete triad node."""
+        keys = _keys_for(mode)
+        romans = _degree_romans(mode)
+        rows = []
+        for di, roman in enumerate(romans):
+            d_node = self.nodes[degree_id(mode, roman)]
+            cells = []
+            for key in keys:
+                t = self.nodes[triad_id(key, mode, di)]
+                cells.append({
+                    "nodeId": t.id,
+                    "key": key,
+                    "roman": t.data["roman"],
+                    "chordSymbol": t.data["chordSymbol"],
+                    "chordTones": t.data["chordTones"],
+                    "intervalLayer": t.data["intervalLayer"],
+                    "spec": t.spec.to_dict() if t.spec else None,
+                })
+            rows.append({
+                "degreeNodeId": d_node.id,
+                "roman": roman,
+                "rowSpec": d_node.spec.to_dict() if d_node.spec else None,
+                "cells": cells,
+            })
+        return {"mode": mode, "keys": keys, "rows": rows}
+
+    # -- Part III: quality matrix ---------------------------------------
+    def quality_matrix(self, mode: str = "major") -> List[Dict]:
+        """For each diatonic quality, every triad of that quality across keys.
+
+        The view *shows* all 12 keys, but the launchable drill respects the
+        readability cap: ``drills`` is the cap-respecting split (e.g. major-
+        quality across 12 keys becomes several short specs) and ``spec`` is the
+        first of those, so a click never launches an oversized exercise.
+        """
+        keys = _keys_for(mode)
+        drills = quality_drills(mode)
+        out = []
+        for quality in ("major", "minor", "diminished"):
+            entries = []
+            for key in keys:
+                for t in generate_diatonic_triads(key, mode):
+                    if t.chord_quality != quality:
+                        continue
+                    entries.append({
+                        "nodeId": triad_id(key, mode, t.degree_index),
+                        "key": key,
+                        "roman": t.roman,
+                        "chordSymbol": t.chord_symbol,
+                        "chordTones": list(t.pitches),
+                    })
+            chunks = drills.get(quality, [])
+            out.append({
+                "qualityNodeId": quality_id(quality),
+                "quality": quality,
+                "intervalLayer": QUALITY_TO_INTERVAL_LAYER[quality],
+                "spec": chunks[0].to_dict() if chunks else None,
+                "specs": [c.to_dict() for c in chunks],
+                "entries": entries,
+            })
+        return out
+
+    # -- Part IV: function map ------------------------------------------
+    def function_map(self, mode: str) -> Dict:
+        """Columns = keys, rows = function groups; each cell lists that function's chords."""
+        keys = _keys_for(mode)
+        ref = _reference_triads(mode)
+        # Ordered, de-duplicated function labels as they first appear.
+        order: List[str] = []
+        for t in ref:
+            if t.function_label not in order:
+                order.append(t.function_label)
+        # Romans per function (invariant), for the row's function-drill spec.
+        romans_by_fn: Dict[str, List[str]] = {fl: [] for fl in order}
+        for t in ref:
+            romans_by_fn[t.function_label].append(t.roman)
+
+        rows = []
+        for fl in order:
+            cells = []
+            for key in keys:
+                triads = [t for t in generate_diatonic_triads(key, mode)
+                          if t.function_label == fl]
+                cells.append({
+                    "key": key,
+                    "chords": [{"nodeId": triad_id(key, mode, t.degree_index),
+                                "roman": t.roman, "chordSymbol": t.chord_symbol}
+                               for t in triads],
+                    "spec": function_spec(romans_by_fn[fl], fl, mode, [key]).to_dict(),
+                })
+            rows.append({
+                "functionNodeId": function_id(mode, fl),
+                "functionLabel": fl,
+                "romans": romans_by_fn[fl],
+                "cells": cells,
+            })
+        return {"mode": mode, "keys": keys, "rows": rows}
+
+    # -- Part V: interval-layer map -------------------------------------
+    def interval_layer_map(self) -> List[Dict]:
+        """Each interval-layer formula, its quality, and a recognition drill."""
+        drills = quality_drills("major")
+        out = []
+        for n in self.nodes_of_kind("layer"):
+            quality = n.data["quality"]
+            chunks = drills.get(quality, [])
+            out.append({
+                "layerNodeId": n.id,
+                "intervalLayer": n.label,
+                "quality": quality,
+                "diatonic": n.data["diatonic"],
+                # Recognition drill = the (cap-respecting) quality drill for that
+                # quality in major mode. None for non-diatonic layers (augmented).
+                "spec": (chunks[0].to_dict() if n.data["diatonic"] and chunks else None),
+            })
+        return out
+
+    # -- Part VI: cadence map -------------------------------------------
+    def cadence_map(self) -> List[Dict]:
+        """Canonical cadences with Roman numerals, chords, type, and a drill."""
+        out = []
+        for n in self.nodes_of_kind("cadence"):
+            keys = _keys_for(n.data["mode"])
+            # The cadence realised in every key (Part VI: 'transposition to all keys').
+            table = []
+            for key in keys:
+                compiled = compile_exercise(
+                    function_spec(n.data["tokens"], n.label, n.data["mode"], [key]))
+                table.append({
+                    "key": key,
+                    "chords": [c.triad.chord_symbol for c in compiled.chords],
+                })
+            out.append({
+                "cadenceNodeId": n.id,
+                "label": n.label,
+                "mode": n.data["mode"],
+                "family": n.data["family"],
+                "cadenceType": n.data["cadenceType"],
+                "tokens": n.data["tokens"],
+                "referenceChords": n.data["chords"],
+                "functionPath": n.data["functionPath"],
+                "keysTable": table,
+                "spec": n.spec.to_dict() if n.spec else None,
+            })
+        return out
+
+    # -- Part XI: learning path -----------------------------------------
+    def learning_path(self) -> List[Dict]:
+        return [dict(level) for level in LEARNING_PATH]
+
+    # -- Part IX: progress map ------------------------------------------
+    def progress_map(self, completed_ids: Optional[set] = None) -> Dict:
+        """A completion dashboard (Scales / Triads / Functions / Cadences).
+
+        ``completed_ids`` is a set of completed ``exercise_id``s (the trainer /
+        UI persists this).  Each category's launchable items are derived from
+        the ontology nodes -- nothing hard-coded -- and a completion percentage
+        is reported per category and overall.
+        """
+        completed = completed_ids or set()
+        cadence_nodes = self.nodes_of_kind("cadence")
+        categories: "OrderedDict[str, List[HarmonyExerciseSpec]]" = OrderedDict([
+            ("Scales", [n.spec for n in self.nodes_of_kind("scale") if n.spec]),
+            ("Triads", [n.spec for n in self.nodes_of_kind("degree") if n.spec]),
+            ("Functions", [n.spec for n in cadence_nodes
+                           if n.spec and n.data["family"] == "progression"]),
+            ("Cadences", [n.spec for n in cadence_nodes
+                          if n.spec and n.data["family"] == "type"]),
+        ])
+
+        out_cats = []
+        for name, specs in categories.items():
+            total = len(specs)
+            done = sum(1 for s in specs if s.exercise_id in completed)
+            out_cats.append({
+                "category": name,
+                "total": total,
+                "completed": done,
+                "percent": round(100.0 * done / total, 1) if total else 0.0,
+                "items": [{"exerciseId": s.exercise_id, "title": s.title,
+                           "done": s.exercise_id in completed, "spec": s.to_dict()}
+                          for s in specs],
+            })
+        overall_total = sum(c["total"] for c in out_cats)
+        overall_done = sum(c["completed"] for c in out_cats)
+        return {
+            "categories": out_cats,
+            "overallPercent": round(100.0 * overall_done / overall_total, 1)
+            if overall_total else 0.0,
+        }
+
+    # -- Part X: graph ---------------------------------------------------
+    def graph(self, include_triads: bool = False) -> Dict:
+        """The ontology as nodes + edges.
+
+        By default the concrete per-key ``triad`` nodes (168 of them) are
+        omitted so the visual graph stays legible -- the abstract
+        degree/quality/function/layer/cadence/scale nodes carry the structure.
+        Pass ``include_triads=True`` for the full ontology (used by analysis).
+        """
+        if include_triads:
+            nodes = list(self.nodes.values())
+            node_ids = set(self.nodes.keys())
+            edges = self.edges
+        else:
+            nodes = [n for n in self.nodes.values() if n.kind != "triad"]
+            node_ids = {n.id for n in nodes}
+            edges = [e for e in self.edges
+                     if e.source in node_ids and e.target in node_ids]
+        return {
+            "relations": RELATIONS,
+            "nodes": [n.to_dict() for n in nodes],
+            "edges": [e.to_dict() for e in edges],
+        }
+
+    # -- Part VII: synchronisation --------------------------------------
+    def sync(self, target: Dict) -> Dict:
+        """Given a trainer payload *target* (one chord), the active Atlas nodes.
+
+        ``target`` is an entry from ``build_trainer_payload``'s ``TARGET_CHORDS``
+        (key, mode, roman, quality, intervalLayer, functionLabel, ...).  Returns
+        the ids the UI should highlight: current scale, degree, triad, quality,
+        interval layer, function -- plus the learning-path level.
+        """
+        key = _tonic_of(target.get("key", ""))
+        mode = target.get("mode") or "major"
+        roman = target.get("roman")
+        quality = target.get("quality")
+        layer = target.get("intervalLayer")
+        function = target.get("functionLabel")
+
+        degree_index = target.get("degreeNumber")
+        degree_index = (degree_index - 1) if isinstance(degree_index, int) else None
+
+        active = {
+            "scale": scale_id(key, mode) if key else None,
+            "degree": degree_id(mode, roman) if roman else None,
+            "triad": (triad_id(key, mode, degree_index)
+                      if key and degree_index is not None else None),
+            "quality": quality_id(quality) if quality else None,
+            "layer": layer_id(layer) if layer else None,
+            "function": function_id(mode, function) if function else None,
+        }
+        # Only report ids that actually exist in the ontology.
+        active = {k: (v if v in self.nodes else None) for k, v in active.items()}
+        # cadence position: if the target carries a cadence/group hint, leave for UI.
+        return {
+            "active": active,
+            "activeIds": [v for v in active.values() if v],
+            "level": _DRILL_TO_LEVEL.get(target.get("drill", ""), None),
+        }
+
+    def node_for_annotation(self, annotation: "HarmonyAnnotation") -> Optional[str]:
+        """Map a future :class:`HarmonyAnnotation` onto a triad node id (Part VIII)."""
+        if not (annotation.key and annotation.mode and annotation.roman):
+            return None
+        tonic = _tonic_of(annotation.key)
+        for di, roman in enumerate(_degree_romans(annotation.mode)):
+            if roman == annotation.roman:
+                nid = triad_id(tonic, annotation.mode, di)
+                return nid if nid in self.nodes else None
+        return None
+
+    # -- serialisation ---------------------------------------------------
+    def to_json(self, completed_ids: Optional[set] = None) -> Dict:
+        """The full JSON payload consumed by the web Atlas UI."""
+        return {
+            "schema": SCHEMA_VERSION,
+            "modes": MODES,
+            "keys": {"major": DEFAULT_MAJOR_KEYS, "natural_minor": DEFAULT_MINOR_KEYS},
+            # key -> full-key spec, so any view can make a key chip launchable.
+            "keySpecs": {m: {k: full_key_spec(k, m).to_dict() for k in _keys_for(m)}
+                         for m in MODES},
+            "globalMap": {m: self.global_map(m) for m in MODES},
+            "transpositionMatrix": {m: self.transposition_matrix(m) for m in MODES},
+            "qualityMatrix": {m: self.quality_matrix(m) for m in MODES},
+            "functionMap": {m: self.function_map(m) for m in MODES},
+            "intervalLayerMap": self.interval_layer_map(),
+            "cadenceMap": self.cadence_map(),
+            "learningPath": self.learning_path(),
+            "progress": self.progress_map(completed_ids),
+            "graph": self.graph(include_triads=False),
+        }
+
+
+def _tonic_of(key: str) -> str:
+    """'Eb minor' / 'Eb' -> 'Eb' (tonic token only)."""
+    return key.split()[0] if key else ""
+
+
+# Module-level convenience: a single shared, deterministic Atlas instance.
+_ATLAS: Optional[Atlas] = None
+
+
+def build_atlas() -> Atlas:
+    """Return the shared Atlas (built once; deterministic)."""
+    global _ATLAS
+    if _ATLAS is None:
+        _ATLAS = Atlas()
+    return _ATLAS

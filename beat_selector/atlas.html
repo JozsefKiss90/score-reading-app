@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive Harmony Atlas</title>
+  <link rel="stylesheet" href="atlas.css" />
+</head>
+<body>
+  <div id="atlasHeader">
+    <h1>Interactive Harmony Atlas</h1>
+    <div class="sub">The complete invariant tonal system — click any element to launch a Harmony Trainer exercise.</div>
+  </div>
+  <div id="atlasTabs"></div>
+  <div id="atlasContent"></div>
+
+  <script src="atlas.js"></script>
+  <script>
+    // The host (run_harmony_atlas_demo.py) injects window.ATLAS_DATA after load
+    // and calls AtlasUI.init(). When opened directly in a browser without data,
+    // show a hint instead of crashing.
+    (function () {
+      if (window.ATLAS_DATA && window.AtlasUI) {
+        window.AtlasUI.init(window.ATLAS_DATA);
+      } else {
+        var c = document.getElementById("atlasContent");
+        if (c) c.textContent =
+          "Waiting for Atlas data (launch via run_harmony_atlas_demo.py).";
+      }
+    })();
+  </script>
+</body>
+</html>

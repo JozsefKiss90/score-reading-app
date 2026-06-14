@@ -1,0 +1,93 @@
+/* Interactive Harmony Atlas -- styling for the web UI (beat_selector/atlas.html).
+   Rendered inside a QWebEngineView; consumes the JSON model from harmony.atlas. */
+
+:root{
+  --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0;
+  --card:#ffffff; --accent:#2563eb; --accent-soft:#dbeafe;
+  --major:#1d4ed8; --minor:#7c3aed; --dim:#b91c1c; --aug:#b45309;
+  --tonic:#16a34a; --pre:#d97706; --dom:#dc2626; --med:#0891b2; --sub:#9333ea;
+  --sync:#16a34a; --sync-bg:#dcfce7; --hover:#f59e0b; --hover-bg:#fef9c3;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--bg); color:var(--fg);
+  font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;
+}
+
+/* --- header / tabs --- */
+#atlasHeader{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card);}
+#atlasHeader h1{margin:0 0 6px;font-size:16px;color:#0b3a53;}
+#atlasHeader .sub{color:var(--muted);font-size:12px;}
+#atlasTabs{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5;}
+.atlasTab{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 10px;font:12px system-ui;color:#334155;}
+.atlasTab:hover{background:#f1f5f9;}
+.atlasTab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+#atlasContent{padding:12px;overflow:auto;}
+.viewTitle{margin:2px 0 8px;font-size:14px;font-weight:700;color:#0b3a53;}
+.viewHint{color:var(--muted);font-size:12px;margin:-4px 0 10px;}
+.modeToggle{display:inline-flex;gap:4px;margin:0 0 10px;}
+.modeToggle button{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 10px;font:12px system-ui;}
+.modeToggle button.active{background:var(--accent-soft);border-color:var(--accent);color:#1e3a8a;font-weight:600;}
+
+/* --- generic table/grid --- */
+table.atlas{border-collapse:collapse;font-size:12px;}
+table.atlas th,table.atlas td{border:1px solid var(--line);padding:4px 7px;text-align:left;white-space:nowrap;}
+table.atlas th{background:#f1f5f9;color:#334155;position:sticky;left:0;}
+.matrixWrap{overflow:auto;max-width:100%;}
+
+/* clickable cells/cards */
+.click{cursor:pointer;}
+.click:hover{outline:2px solid var(--accent);outline-offset:-2px;}
+.cell{cursor:pointer;}
+.cell .rn{font-weight:700;}
+.cell .sym{color:#0b3a53;font-weight:600;}
+.cell .tones{color:var(--muted);font-size:11px;}
+.cell .layer{color:var(--muted);font-size:11px;}
+
+/* quality colour coding */
+.q-major{color:var(--major);} .q-minor{color:var(--minor);}
+.q-diminished{color:var(--dim);} .q-augmented{color:var(--aug);}
+/* function colour coding */
+.f-tonic{color:var(--tonic);} .f-predominant{color:var(--pre);} .f-subdominant{color:var(--sub);}
+.f-dominant{color:var(--dom);} .f-mediant{color:var(--med);}
+
+/* sync + hover highlight (Part VII / Part I) */
+.sync-on{background:var(--sync-bg)!important;outline:2px solid var(--sync)!important;outline-offset:-2px;}
+.hover-on{background:var(--hover-bg)!important;outline:2px dashed var(--hover)!important;outline-offset:-2px;}
+
+/* cards / lists */
+.cardGrid{display:flex;flex-wrap:wrap;gap:8px;}
+.card{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:8px 10px;min-width:150px;}
+.card h3{margin:0 0 4px;font-size:13px;}
+.card .meta{color:var(--muted);font-size:11px;}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.chip{cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:11px;background:#fff;}
+.chip:hover{background:var(--accent-soft);}
+
+/* progress bars */
+.progRow{display:flex;align-items:center;gap:8px;margin:6px 0;}
+.progRow .name{width:90px;font-weight:600;}
+.bar{flex:1;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;}
+.bar>span{display:block;height:100%;background:var(--tonic);}
+.pct{width:48px;text-align:right;color:var(--muted);}
+
+/* learning path */
+.path{display:flex;flex-direction:column;gap:0;}
+.pathStep{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:8px 10px;}
+.pathStep.current{border-color:var(--accent);background:var(--accent-soft);}
+.pathArrow{text-align:center;color:var(--muted);font-size:16px;line-height:1;margin:2px 0;}
+.pathStep .lvl{color:var(--muted);font-size:11px;}
+
+/* graph (SVG) */
+#graphSvg{width:100%;height:560px;border:1px solid var(--line);border-radius:8px;background:#fff;}
+.gnode{cursor:pointer;}
+.gnode text{font:11px system-ui;fill:#0f172a;}
+.gedge{stroke:#cbd5e1;stroke-width:1;}
+.legend span{display:inline-block;margin-right:10px;font-size:11px;color:var(--muted);}
+
+/* dark mode */
+body.dark{--bg:#0b1220;--fg:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--card:#0f172a;--accent-soft:#1e3a8a;}
+body.dark table.atlas th{background:#111827;color:#cbd5e1;}
+body.dark .atlasTab{background:#0f172a;color:#cbd5e1;}

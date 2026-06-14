@@ -21,6 +21,7 @@ chords, cadences) without breaking existing fields.
 from __future__ import annotations
 
 import json
+from collections import OrderedDict
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -59,6 +60,40 @@ _FUNCTION_TOKEN_TO_ROMAN = {
 _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
 _VALID_QUALITY = {"major", "minor", "diminished", "augmented"}
+
+#: Readability cap: the maximum number of chords (== measures) in a single
+#: generated default spec.  It matches the project's existing shipped demo
+#: ("all V across the 12 keys" = 12 measures), the de-facto single-exercise
+#: length.  Drills that would exceed it (function patterns, multi-degree
+#: quality drills across all 12 keys) are split into several specs by
+#: key-group so every exercise stays short enough to read on the staff.
+MAX_CHORDS_PER_SPEC = 12
+
+#: Quality-cased Roman labels for each diatonic degree.  Used in titles and as
+#: ``horizontal_degree`` tokens (``roman_token_to_index`` tolerates the case and
+#: the ``°`` decoration, so e.g. "vii°" and "ii°" resolve to the right index).
+_MAJOR_DEGREE_LABELS = ["I", "ii", "iii", "IV", "V", "vi", "vii°"]
+_MINOR_DEGREE_LABELS = ["i", "ii°", "III", "iv", "v", "VI", "VII"]
+
+#: Function/Roman patterns required by the trainer, grouped by mode.  Each entry
+#: is ``(tokens, display_label)``.
+_FUNCTION_PATTERNS_MAJOR = [
+    (["I", "IV", "V", "I"], "I–IV–V–I"),
+    (["ii", "V", "I"], "ii–V–I"),
+    (["vi", "ii", "V", "I"], "vi–ii–V–I"),
+]
+_FUNCTION_PATTERNS_MINOR = [
+    (["i", "iv", "v", "i"], "i–iv–v–i"),
+    (["i", "VI", "VII", "i"], "i–VI–VII–i"),
+]
+
+#: The six launcher groups, in display order.
+GROUP_MAJOR_FULL_KEY = "Major full-key drills"
+GROUP_MINOR_FULL_KEY = "Minor full-key drills"
+GROUP_DEGREE = "Degree transposition drills"
+GROUP_QUALITY = "Quality recognition drills"
+GROUP_FUNCTION = "Function drills"
+GROUP_ARPEGGIO = "Arpeggio drills"
 
 
 # ---------------------------------------------------------------------------
@@ -316,3 +351,163 @@ def default_demo_specs() -> List[HarmonyExerciseSpec]:
             description="i ii° III iv v VI VII in A natural minor (arpeggios).",
         ),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Comprehensive default exercise sets (all 12 major + 12 natural-minor keys)
+# ---------------------------------------------------------------------------
+#
+# These builders expand the trainer to practise *every* major and natural-minor
+# key systematically, in both block and arpeggio rendering.  None of them
+# hard-code MusicXML: every entry is a :class:`HarmonyExerciseSpec` consumed by
+# :func:`compile_exercise` and the MusicXML builder.  Long drills are split into
+# several short specs (see :data:`MAX_CHORDS_PER_SPEC`) so each exercise stays
+# readable on the staff.
+
+def _key_slug(key: str) -> str:
+    """A stable, identifier-safe token for a tonic name (``"Bb" -> "Bf"``)."""
+    return key.replace("#", "s").replace("b", "f")
+
+
+def _roman_slug(label: str) -> str:
+    """A stable token for a Roman-numeral label (``"vii°" -> "vii"``)."""
+    return "".join(ch for ch in label if ch.isalpha()).lower()
+
+
+def _label_slug(label: str) -> str:
+    """A stable token for a function-pattern label (``"I–IV–V–I" -> "i_iv_v_i"``)."""
+    out = "".join(ch if ch.isalnum() else "_" for ch in label)
+    return "_".join(p for p in out.split("_") if p).lower()
+
+
+def _mode_words(mode: str) -> "tuple[str, str]":
+    """``(short, long)`` mode words: major->("major","major"); minor->("minor","natural minor")."""
+    return ("major", "major") if mode == "major" else ("minor", "natural minor")
+
+
+def _keys_label(chunk: List[str], all_keys: List[str]) -> str:
+    """Human label for a key subset: the full list, or 'all 12 keys'."""
+    if len(chunk) == len(all_keys):
+        return f"all {len(all_keys)} keys"
+    return ", ".join(chunk)
+
+
+def _chunk_keys(keys: List[str], chords_per_key: int) -> List[List[str]]:
+    """Split ``keys`` so each chunk yields at most :data:`MAX_CHORDS_PER_SPEC` chords."""
+    per = max(1, MAX_CHORDS_PER_SPEC // max(1, chords_per_key))
+    return [keys[i:i + per] for i in range(0, len(keys), per)]
+
+
+def _full_key_specs(mode: str, render: str) -> List[HarmonyExerciseSpec]:
+    """All seven triads of every key in ``mode`` (one spec per key)."""
+    short, long = _mode_words(mode)
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    specs = []
+    for k in keys:
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"{mode}_fullkey_{render}_{_key_slug(k)}",
+            title=f"{k} {short} — all 7 triads ({render})",
+            drill="full_key", render=render, mode=mode, key=f"{k} {short}",
+            description=f"All seven diatonic triads of {k} {long} ({render}).",
+        ))
+    return specs
+
+
+def _degree_specs(mode: str, render: str) -> List[HarmonyExerciseSpec]:
+    """One spec per scale degree, that degree's triad across all 12 keys."""
+    short, long = _mode_words(mode)
+    labels = _MAJOR_DEGREE_LABELS if mode == "major" else _MINOR_DEGREE_LABELS
+    specs = []
+    for label in labels:
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"{mode}_degree_{_roman_slug(label)}_{render}",
+            title=f"{label} across all 12 {long} keys ({render})",
+            drill="horizontal_degree", render=render, mode=mode, degree=label,
+            description=(f"The {label} triad transposed through all 12 {long} "
+                         f"keys ({render})."),
+        ))
+    return specs
+
+
+def _quality_specs(mode: str = "major") -> List[HarmonyExerciseSpec]:
+    """Quality-recognition drills (major / minor / diminished) across all keys.
+
+    A quality drill collects every diatonic triad of one quality across the 12
+    keys of ``mode``.  Where that exceeds the readability cap (the major- and
+    minor-quality drills have three triads per key) it is split by key-group.
+    """
+    short, long = _mode_words(mode)
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    specs = []
+    for quality in ("major", "minor", "diminished"):
+        # How many triads of this quality occur per key in this mode.
+        per_key = sum(1 for t in generate_diatonic_triads(keys[0], mode)
+                      if t.chord_quality == quality)
+        if per_key == 0:
+            continue
+        chunks = _chunk_keys(keys, per_key)
+        for ci, chunk in enumerate(chunks, start=1):
+            label = _keys_label(chunk, keys)
+            suffix = "" if len(chunks) == 1 else f" (set {ci})"
+            specs.append(HarmonyExerciseSpec(
+                exercise_id=f"quality_{quality}_in_{mode}_{ci}",
+                title=f"{quality.capitalize()} triads across {long} keys{suffix}",
+                drill="quality", render="block", mode=mode,
+                quality=quality, keys=list(chunk),
+                description=(f"Every {quality} diatonic triad across {label} "
+                             f"({long})."),
+            ))
+    return specs
+
+
+def _function_specs(mode: str, patterns) -> List[HarmonyExerciseSpec]:
+    """Function/Roman-pattern drills across all 12 keys, split by key-group."""
+    short, long = _mode_words(mode)
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    specs = []
+    for tokens, label in patterns:
+        chunks = _chunk_keys(keys, len(tokens))
+        for ci, chunk in enumerate(chunks, start=1):
+            keys_label = _keys_label(chunk, keys)
+            specs.append(HarmonyExerciseSpec(
+                exercise_id=f"function_{_label_slug(label)}_{mode}_{ci}",
+                title=f"{label} — {keys_label} ({long})",
+                drill="function", render="block", mode=mode,
+                pattern=list(tokens), keys=list(chunk),
+                description=(f"The {label} progression transposed across "
+                             f"{keys_label} ({long})."),
+            ))
+    return specs
+
+
+def default_exercise_groups() -> "OrderedDict[str, List[HarmonyExerciseSpec]]":
+    """The full default set, organised into the six launcher groups.
+
+    The groups partition the set (every spec appears in exactly one group):
+    block full-key and degree drills live in their family group, while every
+    arpeggio-rendered drill is collected under "Arpeggio drills".
+    """
+    return OrderedDict([
+        (GROUP_MAJOR_FULL_KEY, _full_key_specs("major", "block")),
+        (GROUP_MINOR_FULL_KEY, _full_key_specs("natural_minor", "block")),
+        (GROUP_DEGREE,
+            _degree_specs("major", "block")
+            + _degree_specs("natural_minor", "block")),
+        (GROUP_QUALITY, _quality_specs("major")),
+        (GROUP_FUNCTION,
+            _function_specs("major", _FUNCTION_PATTERNS_MAJOR)
+            + _function_specs("natural_minor", _FUNCTION_PATTERNS_MINOR)),
+        (GROUP_ARPEGGIO,
+            _full_key_specs("major", "arpeggio")
+            + _full_key_specs("natural_minor", "arpeggio")
+            + _degree_specs("major", "arpeggio")
+            + _degree_specs("natural_minor", "arpeggio")),
+    ])
+
+
+def all_default_specs() -> List[HarmonyExerciseSpec]:
+    """Flat list of every default spec, in group order (stable, de-duplicated)."""
+    out: List[HarmonyExerciseSpec] = []
+    for specs in default_exercise_groups().values():
+        out.extend(specs)
+    return out

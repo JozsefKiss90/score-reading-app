@@ -397,5 +397,8 @@
       return { idx: idx, completed: completed, finished: finished,
                arpIndex: arpIndex, total: targets().length };
     },
+    // The current target chord (consumed by the Harmony Atlas to sync its
+    // highlight to the live playback position). Null when nothing is loaded.
+    currentTarget: function () { return cur(); },
   };
 })();

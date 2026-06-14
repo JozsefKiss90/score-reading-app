@@ -113,6 +113,33 @@ Four drill families are supported:
 Each exercise is rendered as **block** triads or **arpeggiated** triads
 (`render: "block" | "arpeggio"`), root position only.
 
+### The comprehensive default set
+
+`default_exercise_groups()` builds the full practice set deterministically from
+specs (no hard-coded MusicXML) — **102 exercises** covering every major and
+natural-minor key. They are organised into six launcher groups (the "Group"
+filter in the demo narrows the exercise list to one of these):
+
+| Group | Contents | # |
+|---|---|---|
+| **Major full-key drills** | all 7 triads of each of the 12 major keys (block) | 12 |
+| **Minor full-key drills** | all 7 triads of each of the 12 natural-minor keys (block) | 12 |
+| **Degree transposition drills** | each scale degree across all 12 keys, both modes (block) | 14 |
+| **Quality recognition drills** | every major / minor / diminished triad across the major keys | 7 |
+| **Function drills** | I–IV–V–I, ii–V–I, vi–ii–V–I (major) and i–iv–v–i, i–VI–VII–i (minor) | 19 |
+| **Arpeggio drills** | full-key (both modes) and per-degree (both modes), arpeggiated | 38 |
+
+The groups **partition** the set — every exercise appears in exactly one group
+(block full-key/degree drills in their family group; every arpeggio-rendered
+drill under "Arpeggio drills"), so the same content is reachable once.
+
+**Readability.** Each generated spec is capped at `MAX_CHORDS_PER_SPEC` (12,
+matching the existing "V across the 12 keys" drill — the project's de-facto
+single-exercise length). `full_key` (7 chords) and per-degree drills (12) sit
+within the cap as-is; longer drills (function patterns, multi-degree quality
+drills) are **split by key-group** into several short specs rather than one long
+score. `all_default_specs()` returns the flat list in group order.
+
 ### Example spec
 
 ```json
@@ -195,16 +222,20 @@ list, so you can jump to any chord for free practice.
 ## 6. Running it
 
 ```bash
-# default demo set (5 exercises)
+# comprehensive default set (102 exercises, with the Group filter)
 .venv/Scripts/python.exe run_harmony_trainer_demo.py
 
-# or a custom spec file
+# or a custom spec file (loaded as a single group)
 .venv/Scripts/python.exe run_harmony_trainer_demo.py exercises/harmony_trainer/sequences.json
 ```
 
-The default demo includes all seven triads in C major, all seven in G major,
-ii–V–I in C/G/D major, every V triad across the 12 major keys, and an
-arpeggiated A natural-minor run.
+With no argument the demo loads `default_exercise_groups()` — all 12 major and
+12 natural-minor keys as full-key, per-degree, quality, function and arpeggio
+drills (see [the comprehensive default set](#the-comprehensive-default-set)) —
+and shows a **Group** dropdown to filter the exercise list. The committed
+[`exercises/harmony_trainer/sequences.json`](../exercises/harmony_trainer/sequences.json)
+holds the same set as a flat, ready-to-run file. (The smaller five-exercise
+`default_demo_specs()` remains in the code for tests and quick checks.)
 
 ### Tests
 

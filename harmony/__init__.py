@@ -15,6 +15,19 @@ from .exercise_spec import (  # noqa: F401
     CompiledExercise,
     compile_exercise,
     default_demo_specs,
+    default_exercise_groups,
+    all_default_specs,
     DEFAULT_MAJOR_KEYS,
     DEFAULT_MINOR_KEYS,
+    MAX_CHORDS_PER_SPEC,
+)
+
+from .atlas import (  # noqa: F401
+    Atlas,
+    AtlasNode,
+    AtlasEdge,
+    build_atlas,
+    ScoreAnalysis,
+    HarmonyAnnotation,
+    level_for_spec,
 )
