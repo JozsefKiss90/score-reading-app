@@ -31,3 +31,8 @@ from .atlas import (  # noqa: F401
     HarmonyAnnotation,
     level_for_spec,
 )
+
+from .circle_payload import (  # noqa: F401
+    build_circle_payload,
+    spec_from_circle_request,
+)

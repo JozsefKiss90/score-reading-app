@@ -38,16 +38,18 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from PyQt6.QtCore import Qt, QCoreApplication, QTimer
+from PyQt6.QtCore import Qt, QCoreApplication, QTimer, QUrl, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox,
-    QLabel,
+    QLabel, QSplitter,
 )
+from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 from harmony.exercise_spec import (
     HarmonyExerciseSpec, compile_exercise, default_exercise_groups, load_specs,
 )
 from harmony.musicxml_builder import build_exercise
+from harmony.circle_payload import build_circle_payload, spec_from_circle_request
 
 #: Pseudo-group shown first in the filter: every exercise, in group order.
 ALL_GROUPS = "All groups"
@@ -81,12 +83,98 @@ ScoreViewBeats = _import_score_view_beats()
 MidiService = _import_midi_service()
 
 _TRAINER_JS_PATH = Path(__file__).resolve().parent / "beat_selector" / "harmony_trainer.js"
+_CIRCLE_HTML_PATH = Path(__file__).resolve().parent / "beat_selector" / "harmony_circle.html"
+
+
+class CircleView(QWidget):
+    """Interactive Circle of Fifths panel (web UI) for the trainer window.
+
+    A self-contained QWebEngineView that loads ``harmony_circle.html``, injects
+    the circle payload, polls for click->exercise requests, and pushes the live
+    target chord for synchronised highlighting. Mirrors the app's existing
+    runJavaScript + polling bridge (no QWebChannel).
+    """
+
+    #: Emitted with a circle "click request" dict when a launch shortcut is used.
+    launchRequested = pyqtSignal(dict)
+
+    def __init__(self, payload: dict, parent=None):
+        super().__init__(parent)
+        self._payload = payload
+        self._html_ready = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.web = QWebEngineView(self)
+        self.web.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        layout.addWidget(self.web, 1)
+
+        self.web.loadFinished.connect(self._on_loaded)
+        self.web.load(QUrl.fromLocalFile(str(_CIRCLE_HTML_PATH)))
+
+        self._launch_timer = QTimer(self)
+        self._launch_timer.setInterval(200)
+        self._launch_timer.timeout.connect(self._poll_launch)
+
+    def _on_loaded(self, ok: bool):
+        if not ok:
+            return
+        self._run_js(
+            "window.CIRCLE_DATA = %s; "
+            "window.HarmonyCircle && window.HarmonyCircle.init(window.CIRCLE_DATA);"
+            % json.dumps(self._payload))
+        self._html_ready = True
+        self._launch_timer.start()
+
+    def _run_js(self, code: str, cb=None):
+        try:
+            if cb is None:
+                self.web.page().runJavaScript(code)
+            else:
+                self.web.page().runJavaScript(code, cb)
+        except Exception:
+            pass
+
+    def _poll_launch(self):
+        if not self._html_ready:
+            return
+
+        def on_spec(val):
+            if not val:
+                return
+            try:
+                spec = json.loads(val)
+            except Exception:
+                return
+            if isinstance(spec, dict) and spec.get("drill"):
+                self.launchRequested.emit(spec)
+
+        self._run_js(
+            "(window.HarmonyCircle && window.HarmonyCircle.takeLaunch) "
+            "? JSON.stringify(window.HarmonyCircle.takeLaunch() || null) : null",
+            on_spec)
+
+    def update_target(self, target: Optional[dict]):
+        if self._html_ready and target is not None:
+            self._run_js("window.HarmonyCircle && "
+                         "window.HarmonyCircle.updateFromTrainerState(%s);"
+                         % json.dumps(target))
+
+    def set_polling(self, on: bool):
+        """Pause/resume the click poll (no point polling a hidden panel)."""
+        if on:
+            if self._html_ready:
+                self._launch_timer.start()
+        else:
+            self._launch_timer.stop()
 
 
 class HarmonyTrainerWindow(QWidget):
     def __init__(self, groups: "OrderedDict[str, List[HarmonyExerciseSpec]]",
-                 midi_service=None):
+                 midi_service=None, with_circle: bool = True):
         super().__init__()
+        self._with_circle = with_circle
+        self.circle_view: Optional[CircleView] = None
         self._groups = groups
         # "All groups" first, then each named group, in insertion order.
         self._all_specs: List[HarmonyExerciseSpec] = []
@@ -126,13 +214,80 @@ class HarmonyTrainerWindow(QWidget):
         self.btnNext = QPushButton("Next ▶")
         self.btnNext.clicked.connect(lambda: self.load_index(self._current_idx + 1))
         top.addWidget(self.btnNext)
-        root.addLayout(top)
 
-        self._score_container = QVBoxLayout()
+        # Score host (left) + optional Circle-of-Fifths panel (right).
+        self._score_host = QWidget()
+        self._score_container = QVBoxLayout(self._score_host)
         self._score_container.setContentsMargins(0, 0, 0, 0)
-        root.addLayout(self._score_container, 1)
+
+        if with_circle:
+            self.btnCircle = QPushButton("Circle")
+            self.btnCircle.setCheckable(True)
+            self.btnCircle.setChecked(True)
+            self.btnCircle.toggled.connect(self._toggle_circle)
+            top.addWidget(self.btnCircle)
+
+            self.circle_view = CircleView(build_circle_payload())
+            self.circle_view.launchRequested.connect(self.load_spec_from_circle)
+
+            root.addLayout(top)
+            splitter = QSplitter(Qt.Orientation.Horizontal)
+            splitter.addWidget(self._score_host)
+            splitter.addWidget(self.circle_view)
+            splitter.setStretchFactor(0, 3)
+            splitter.setStretchFactor(1, 2)
+            root.addWidget(splitter, 1)
+
+            # Keep the circle synced to the live target chord.
+            self._circle_sync = QTimer(self)
+            self._circle_sync.setInterval(400)
+            self._circle_sync.timeout.connect(self._sync_circle)
+            self._circle_sync.start()
+        else:
+            root.addLayout(top)
+            root.addWidget(self._score_host, 1)
 
         self._populate_exercises(self._all_specs)  # initial: All groups
+
+    # ------------------------------------------------------------------
+    # Circle-of-Fifths panel integration
+    # ------------------------------------------------------------------
+    def _toggle_circle(self, checked: bool):
+        if self.circle_view is None:
+            return
+        self.circle_view.setVisible(checked)
+        # Stop polling/sync while hidden; resume when shown (no wasted cycles).
+        self.circle_view.set_polling(checked)
+        if hasattr(self, "_circle_sync"):
+            self._circle_sync.start() if checked else self._circle_sync.stop()
+
+    def load_spec_from_circle(self, req: dict):
+        """Bridge: turn a circle click request into a validated spec and load it.
+
+        The circle never builds MusicXML; it sends a spec-like request which is
+        converted through :func:`harmony.circle_payload.spec_from_circle_request`
+        (validated) and loaded via the normal trainer flow. Invalid requests are
+        logged and ignored rather than crashing the trainer.
+        """
+        try:
+            spec = spec_from_circle_request(req)
+        except Exception as exc:
+            print("[CIRCLE] ignoring invalid request:", exc)
+            return
+        self.load_external_spec(spec)
+
+    def _sync_circle(self):
+        if self.circle_view is None or not self.circle_view.isVisible():
+            return
+
+        def on_target(target):
+            if target is not None:
+                self.circle_view.update_target(target)
+
+        try:
+            self.query_current_target(on_target)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     def _on_group_changed(self, gidx: int):

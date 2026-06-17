@@ -132,6 +132,20 @@
     try { app.jsSetCursorAbs(absMeasure, 0, 1); } catch (e) { /* ignore */ }
   }
 
+  // Broadcast the current target so external views (e.g. the Circle of Fifths /
+  // Harmony Atlas) can sync their highlight. Guarded so it is a safe no-op in
+  // headless test contexts that stub window without CustomEvent.
+  function emitTargetChange(detail) {
+    try {
+      if (typeof window !== "undefined" &&
+          typeof window.dispatchEvent === "function" &&
+          typeof CustomEvent === "function") {
+        window.dispatchEvent(new CustomEvent("harmonytrainer:targetchange",
+          { detail: detail === undefined ? cur() : detail }));
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   // ---- navigation --------------------------------------------------------
   function goTo(i) {
     var N = targets().length;
@@ -146,6 +160,7 @@
     applySelection();
     placeHighlight(cur().absMeasure);
     renderPanel();
+    emitTargetChange();
   }
 
   function advance() {
@@ -383,6 +398,7 @@
     applySelection();
     if (cur()) placeHighlight(cur().absMeasure);
     renderPanel();
+    emitTargetChange();
 
     return { ok: true, targets: targets().length };
   }

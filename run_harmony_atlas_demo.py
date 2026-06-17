@@ -145,7 +145,10 @@ class HarmonyAtlasWindow(QWidget):
         # Trainer with the full default groups plus an (empty) Atlas group.
         groups = default_exercise_groups()
         groups[ATLAS_GROUP] = []
-        self.trainer = HarmonyTrainerWindow(groups, midi_service=midi_service)
+        # The Atlas IS the navigation panel here, so disable the trainer's own
+        # built-in Circle panel to avoid two side panels.
+        self.trainer = HarmonyTrainerWindow(
+            groups, midi_service=midi_service, with_circle=False)
 
         self.atlas_view = AtlasView(self._atlas.to_json())
 

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Circle of Fifths</title>
+</head>
+<body>
+  <div id="hcRoot"></div>
+
+  <script src="harmony_circle.js"></script>
+  <script>
+    // The Qt host (run_harmony_trainer_demo.py) injects window.CIRCLE_DATA after
+    // load and calls HarmonyCircle.init(). Without data (opened directly), show
+    // a hint rather than crash.
+    (function () {
+      if (window.CIRCLE_DATA && window.HarmonyCircle) {
+        window.HarmonyCircle.init(window.CIRCLE_DATA);
+      } else {
+        var r = document.getElementById("hcRoot");
+        if (r) r.textContent = "Waiting for circle data (launch via run_harmony_trainer_demo.py).";
+      }
+    })();
+  </script>
+</body>
+</html>
