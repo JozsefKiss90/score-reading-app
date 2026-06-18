@@ -371,20 +371,55 @@ class HarmonyTrainerWindow(QWidget):
                 pass
         self._tmp_paths.clear()
 
-    def _make_temp_score(self, spec: HarmonyExerciseSpec) -> Tuple[Path, dict]:
-        compiled = compile_exercise(spec)
-        musicxml, payload = build_exercise(compiled)
-
+    def _write_temp(self, musicxml: str) -> Path:
         # Only one score is shown at a time; drop the previous temp file.
         self._cleanup_temp()
-
         tmp = tempfile.NamedTemporaryFile(
             prefix="harmony_", suffix=".xml", delete=False)
         tmp_path = Path(tmp.name)
         tmp.close()
         tmp_path.write_text(musicxml, encoding="utf-8")
         self._tmp_paths.append(tmp_path)
-        return tmp_path, payload
+        return tmp_path
+
+    def _make_temp_score(self, spec: HarmonyExerciseSpec) -> Tuple[Path, dict]:
+        compiled = compile_exercise(spec)
+        musicxml, payload = build_exercise(compiled)
+        return self._write_temp(musicxml), payload
+
+    def _show_score(self, mxl_path: Path, payload: dict, title: str) -> None:
+        """Mount a ScoreViewBeats for ``mxl_path`` and (re)inject the controller.
+
+        Shared by the normal exercise path (:meth:`load_index`) and the prebuilt
+        path (:meth:`load_external_lab`).
+        """
+        self.setWindowTitle(title)
+        self._remove_current_score()
+        self._score_widget = ScoreViewBeats(
+            str(mxl_path), midi_service=self._midi_service)
+        self._score_container.addWidget(self._score_widget, 1)
+        # The trainer owns MIDI-highlight state and uses single-page scores, so
+        # hide the viewer's beat-selector toggle and page-nav buttons.
+        for attr in ("btnBeats", "btnPrev", "btnNext"):
+            btn = getattr(self._score_widget, attr, None)
+            if btn is not None:
+                btn.hide()
+        self._ensure_trainer(self._score_widget, payload)
+
+    def load_external_lab(self, musicxml: str, payload: dict) -> None:
+        """Load a *prebuilt* ``(musicxml, payload)`` pair (Music Theory Lab).
+
+        Unlike :meth:`load_external_spec` (which compiles a
+        ``HarmonyExerciseSpec``), the lab renders MusicXML the trainer's own
+        builder cannot produce -- a changing bass (inversions), four SATB voices,
+        a melodic motive, two implied-harmony voices -- so it injects the
+        prebuilt document directly.  The unchanged ``harmony_trainer.js``
+        controller then drives MIDI green/red validation from ``payload`` exactly
+        as for any exercise (its targets carry the same ``TARGET_CHORDS`` shape).
+        """
+        title = payload.get("title", "Lab experiment")
+        mxl_path = self._write_temp(musicxml)
+        self._show_score(mxl_path, payload, f"Music Theory Lab — {title}")
 
     def closeEvent(self, event):
         self._cleanup_temp()
@@ -401,24 +436,8 @@ class HarmonyTrainerWindow(QWidget):
         self.cmb.setCurrentIndex(idx)
         self.cmb.blockSignals(False)
 
-        self.setWindowTitle(f"Harmony Trainer — {spec.title}")
-
-        self._remove_current_score()
         mxl_path, payload = self._make_temp_score(spec)
-
-        self._score_widget = ScoreViewBeats(str(mxl_path), midi_service=self._midi_service)
-        self._score_container.addWidget(self._score_widget, 1)
-
-        # The trainer owns the MIDI-highlight state and uses single-page scores,
-        # so hide the viewer's beat-selector toggle (which would fight over
-        # selNotesByMidi) and the page-nav buttons (the trainer navigates by
-        # chord in its own panel).
-        for attr in ("btnBeats", "btnPrev", "btnNext"):
-            btn = getattr(self._score_widget, attr, None)
-            if btn is not None:
-                btn.hide()
-
-        self._ensure_trainer(self._score_widget, payload)
+        self._show_score(mxl_path, payload, f"Harmony Trainer — {spec.title}")
 
     def _ensure_trainer(self, widget, payload: dict):
         """(Re)inject the controller whenever it is missing.

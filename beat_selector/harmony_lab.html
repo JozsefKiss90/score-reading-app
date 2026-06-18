@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Music Theory Laboratory</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font: 13px/1.4 system-ui, sans-serif; color: #0f172a;
+           background: #f8fafc; display: flex; flex-direction: column; height: 100vh; }
+    #labHeader { padding: 8px 12px; background: #0b3a53; color: #fff; }
+    #labHeader h1 { margin: 0; font-size: 16px; }
+    #labHeader .sub { font-size: 12px; opacity: .85; }
+    #labBody { flex: 1; display: flex; min-height: 0; }
+    #labConcepts { width: 46%; overflow: auto; border-right: 1px solid #e2e8f0; padding: 8px; }
+    #labExplain { flex: 1; overflow: auto; padding: 10px 12px; background: #fff; }
+    .labConcept { margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 6px;
+                  background: #fff; overflow: hidden; }
+    .labConcept.active { border-color: #2563eb; }
+    .labConceptHead { padding: 7px 10px; font-weight: 600; cursor: pointer;
+                      background: #eef2ff; color: #1e3a8a; }
+    .labConceptHead:hover { background: #e0e7ff; }
+    .labConceptHead.reserved { color: #94a3b8; cursor: default; background: #f1f5f9; }
+    .labConceptDetail { padding: 2px 10px 6px; color: #64748b; font-size: 12px; }
+    .labExpList { padding: 4px 8px 8px; }
+    .labExp { padding: 6px 8px; margin: 4px 0; border: 1px solid #e5e7eb;
+              border-radius: 5px; cursor: pointer; }
+    .labExp:hover { background: #f1f5f9; border-color: #2563eb; }
+    .labExpTitle { font-weight: 600; }
+    .labExpMeta { color: #64748b; font-size: 11px; }
+    .labExpHeading { font-size: 15px; font-weight: 700; color: #0b3a53;
+                     margin-bottom: 8px; }
+    .labRow { margin: 3px 0; }
+    .labLbl { color: #64748b; display: inline-block; min-width: 110px; }
+    .labVal { color: #0f172a; }
+    .labNote { margin-top: 8px; padding: 8px; background: #eff6ff; border: 1px solid #bfdbfe;
+               border-radius: 6px; color: #334155; font-style: italic; }
+    .labPlaceholder { color: #94a3b8; padding: 16px 4px; }
+    #labAtlas { padding: 6px 12px; border-top: 1px solid #e2e8f0; background: #f1f5f9;
+                display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .labChip { padding: 2px 8px; border-radius: 999px; background: #dbeafe; color: #1e3a8a;
+               font-size: 11px; border: 1px solid #bfdbfe; }
+    #labLaunchHint { font-size: 11px; opacity: .8; }
+  </style>
+</head>
+<body>
+  <div id="labHeader">
+    <h1>Music Theory Laboratory</h1>
+    <div class="sub">Select a concept and an experiment — the score plays in the
+      trainer (middle); this panel explains the current chord.
+      <span id="labLaunchHint"></span></div>
+  </div>
+  <div id="labBody">
+    <div id="labConcepts"></div>
+    <div id="labExplain"></div>
+  </div>
+  <div id="labAtlas"></div>
+
+  <script src="harmony_lab.js"></script>
+  <script>
+    // The host (run_harmony_lab_demo.py) injects window.LAB_DATA after load and
+    // calls HarmonyLab.init(). Opened directly in a browser, show a hint.
+    (function () {
+      if (window.LAB_DATA && window.HarmonyLab) {
+        window.HarmonyLab.init(window.LAB_DATA);
+      } else {
+        var c = document.getElementById("labConcepts");
+        if (c) c.textContent = "Waiting for Lab data (launch via run_harmony_lab_demo.py).";
+      }
+    })();
+  </script>
+</body>
+</html>

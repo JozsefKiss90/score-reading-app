@@ -1,0 +1,56 @@
+
+The Music Theory Laboratory is complete. Here's the deliverable summary.
+
+1. Changed files (additive only)
+
+- harmony/atlas.py (+197 lines) — Phase 6 contracts appended: HarmonySlice, Cadendapters (slice_to_annotation, texture_to_slices, cadence_span_to_spec,
+
+The Music Theory Laboratory is complete. Here's the deliverable summary.
+
+1. Changed files (additive only)
+
+- harmony/atlas.py (+197 lines) — Phase 6 contracts appended: HarmonySlice, CadenceSpan, PolyphonicTexture + adapters (slice_to_annotation, texture_to_slices, cadence_span_to_spec, slices_from_lab_experiment) + reserved ScoreAnalysis.extract_textures/extract_cadence_spans. No ontology node added, no existing symbol changed (node counts/determinism verified unchanged).
+- run_harmony_trainer_demo.py (+65/−23) — additive load_external_lab(musicxml, paore extraction; existing exercise path behavior-preserved (diff reviewed +smoke-tested).
+
+2. New files
+
+- harmony/lab_spec.py — LabExperimentSpec (schema harmony-lab/v1) + validate() + ded bridge to the trainer).
+- harmony/lab.py — pure generation engine compile_lab() + per-concept generators + lab_demo_specs() (15 demos).
+- harmony/lab_musicxml.py — build_lab_musicxml / build_lab_payload / build_lab_exercise.
+- beat_selector/harmony_lab.html + harmony_lab.js — concept selector + explanation UI (no MIDI; defers to harmony_trainer.js).
+- run_harmony_lab_demo.py — PyQt launcher embedding the trainer via the polling bridge.
+- tests/test_harmony_lab.py (52 tests), tests/harmony_lab_node_test.js (21), test1).
+- docs/harmony_lab.md.
+
+3. How to run
+
+.venv/Scripts/python.exe run_harmony_lab_demo.py        # Lab + embedded trainer
+.venv/Scripts/python.exe -m unittest discover -s tests -p "test_*.py" -t .
+node tests/harmony_lab_node_test.js && node tests/harmony_lab_midi_test.js
+
+4. Implemented experiments
+
+- Inversions (P2): C, C/E, C/G — invariant tones + changing bass, figured bass 5/onal strict bass-first MIDI mode.
+- Voice-leading cadences (P3): major V–I, IV–I, V–vi, ii–V–I; minor v–i, iv–v–i, VII–i, i–VI–VII–i — SATB-like voicing + derived common tones / bass motion / tendency tones.
+- Motive transposition (P4): 1–3–5–3, 5–4–3–2–1 across all 12 keys.
+- Polyphonic harmony (P5): two-voice I–V–I, ii–V–I, i–VII–i with implied-harmony slices.
+- Phase 6 contracts + adapters (no automatic analysis, as required). Reduction re.
+
+5. Tests run — results
+
+- 181 Python tests pass (129 pre-existing + 52 new), 97 JS assertions across 5 suites pass. Verovio renders every render type; GUI smoke-launched offscreen across all paths. Zero regressions.
+
+6. Orchestration & review
+
+A design workflow (3 architects + a verified theory-reference agent → synthesis) produced the architecture; an 8-dimension adversarial review (24 agents, each finding independently verified)
+found 0 critical / 6 major / 8 minor. All major findings fixed and locked with te
+- strict-bass was not actually enforced (bass-first order lived only in a field the JS ignores) — now in pitchClasses, proven end-to-end against the real controller;
+- natural-minor subtonic was mislabeled a "leading tone", and deceptive V–vi resoe — both corrected;
+- polyphonic upper voice now matches the engine-verified register;
+- chromatic/secondary tokens (bII, V/V) are now rejected (non-goal), fixing a silent-coercion + id-collision bug.
+
+7. Known limitations
+
+- SATB is a deterministic nearest-soprano closed-position voicing, not a counterpoint engine (intentional; seam documented).
+- Strict bass-first enforces full bottom-up order (the only mode the unchanged controller supports), and is restricted to inversion + block.
+- Non-goals (Bach analysis, Schenkerian reduction, secondary dominants, 7th-chorddic minor) are unimplemented but each has a documented extension point.

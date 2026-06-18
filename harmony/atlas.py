@@ -43,6 +43,7 @@ from theory.diatonic_harmony import (
     generate_diatonic_triads,
     generate_scale,
     key_signature_fifths,
+    identify_triad_from_pitches,
     QUALITY_TO_INTERVAL_LAYER,
 )
 from harmony.exercise_spec import (
@@ -540,6 +541,19 @@ class ScoreAnalysis:
             "extract_cadences is reserved (Part VIII). "
             "Will return detected cadence spans (type + location).")
 
+    def extract_textures(self, score_path: str) -> "List[PolyphonicTexture]":
+        raise NotImplementedError(
+            "extract_textures is reserved (Part VIII). "
+            "Will return the score's per-measure PolyphonicTexture (voices + "
+            "vertical slices + implied harmonies); cf. the Music Theory Lab's "
+            "synthetic polyphony (harmony.lab), which already emits this shape.")
+
+    def extract_cadence_spans(self, score_path: str) -> "List[CadenceSpan]":
+        raise NotImplementedError(
+            "extract_cadence_spans is reserved (Part VIII). "
+            "Will return detected CadenceSpan objects, each convertible to a "
+            "launchable drill via cadence_span_to_spec().")
+
 
 # ---------------------------------------------------------------------------
 # The Atlas
@@ -877,3 +891,186 @@ def build_atlas() -> Atlas:
     if _ATLAS is None:
         _ATLAS = Atlas()
     return _ATLAS
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: real-score analysis data contracts (design only -- no analysis yet)
+# ---------------------------------------------------------------------------
+#
+# These structures extend the reserved :class:`ScoreAnalysis` interface so that
+# later automatic analysis (a Bach prelude, a Mozart sonata) and the Music Theory
+# Lab's *synthetic* polyphony (:mod:`harmony.lab`) share ONE shape: each analysed
+# vertical sonority becomes a :class:`HarmonySlice`, each detected progression a
+# :class:`CadenceSpan`, each contrapuntal passage a :class:`PolyphonicTexture`.
+# The module-level adapters convert these onto Atlas nodes / playable drills using
+# only the existing helpers (:func:`HarmonyAnnotation` -> :meth:`Atlas.node_for_annotation`,
+# :func:`function_spec`), so when real analysis is implemented it already lands on
+# the Atlas with zero further plumbing.  Nothing here performs analysis.
+
+@dataclass
+class HarmonySlice:
+    """One analysed vertical sonority of a score (or a synthetic lab slice).
+
+    Field names follow the reserved Part VIII contract (measure / beat / notes /
+    inferred_root / chord_symbol / roman / function / confidence / explanation)
+    and add the key/mode/quality/layer/inversion needed to resolve the slice onto
+    an Atlas triad node via :func:`slice_to_annotation` + :meth:`Atlas.node_for_annotation`.
+    """
+
+    measure: int
+    beat: float = 0.0
+    notes: List[str] = field(default_factory=list)   # spelled pitches, low -> high
+    key: Optional[str] = None
+    mode: Optional[str] = None
+    inferred_root: Optional[str] = None
+    chord_symbol: Optional[str] = None
+    roman: Optional[str] = None
+    quality: Optional[str] = None
+    chord_tones: List[str] = field(default_factory=list)
+    function: Optional[str] = None                    # broad T/S/D function label
+    interval_layer: Optional[str] = None
+    inversion: Optional[int] = None
+    confidence: float = 1.0
+    explanation: str = ""
+
+
+@dataclass
+class CadenceSpan:
+    """A detected (or declared) cadential progression over a measure range."""
+
+    start_measure: int
+    end_measure: int
+    key: str
+    mode: str
+    pattern: List[str]                                # tokens, e.g. ["ii","V","I"]
+    cadence_type: str = ""                            # authentic|plagal|half|deceptive|aeolian
+    chords: List[str] = field(default_factory=list)   # chord symbols, in order
+    functions: List[str] = field(default_factory=list)  # function labels, in order
+
+
+@dataclass
+class PolyphonicTexture:
+    """A contrapuntal passage: independent voices + their verticalised slices."""
+
+    voices: List[List[str]]                           # per-voice spelled pitch sequence
+    key: Optional[str] = None
+    mode: Optional[str] = None
+    measure_offset: int = 0                           # absolute measure of slice 0
+    vertical_slices: List[List[str]] = field(default_factory=list)  # per-onset pitches
+    implied_harmonies: List[str] = field(default_factory=list)      # per-onset roman/symbol
+
+
+def slice_to_annotation(sl: "HarmonySlice") -> HarmonyAnnotation:
+    """Convert a :class:`HarmonySlice` to a :class:`HarmonyAnnotation`.
+
+    The result feeds the existing :meth:`Atlas.node_for_annotation`, so a slice
+    with ``key``/``mode``/``roman`` resolves to the same ``triad`` node the
+    trainer/lab flow highlights.
+    """
+    return HarmonyAnnotation(
+        offset=sl.beat,
+        measure=sl.measure,
+        key=sl.key,
+        mode=sl.mode,
+        roman=sl.roman,
+        chord_symbol=sl.chord_symbol,
+        quality=sl.quality,
+        chord_tones=list(sl.chord_tones),
+        function_label=sl.function,
+        interval_layer=sl.interval_layer,
+    )
+
+
+def texture_to_slices(texture: "PolyphonicTexture") -> List["HarmonySlice"]:
+    """Verticalise a :class:`PolyphonicTexture` into ordered :class:`HarmonySlice`s.
+
+    Uses :func:`theory.diatonic_harmony.identify_triad_from_pitches` (the
+    documented analysis seed) to label a slice when it has three distinct pitch
+    classes and a key context; otherwise the harmonic fields are left ``None``
+    (no guessing).
+    """
+    slices_pitches = texture.vertical_slices
+    if not slices_pitches and texture.voices:
+        # Zip the voices into per-onset vertical slices (truncating to the
+        # shortest voice, the well-defined common prefix).
+        length = min(len(v) for v in texture.voices)
+        slices_pitches = [[v[i] for v in texture.voices] for i in range(length)]
+
+    out: List[HarmonySlice] = []
+    for i, pitches in enumerate(slices_pitches):
+        sl = HarmonySlice(
+            measure=texture.measure_offset + i,
+            notes=list(pitches),
+            key=texture.key,
+            mode=texture.mode,
+        )
+        if texture.key and len({_pc_of(p) for p in pitches}) >= 3:
+            analysis = identify_triad_from_pitches(list(pitches), key=texture.key)
+            sl.inferred_root = analysis.root
+            sl.chord_symbol = analysis.chord_symbol
+            sl.roman = analysis.roman
+            sl.quality = (analysis.chord_quality
+                          if analysis.chord_quality != "unknown" else None)
+            sl.function = analysis.function_label
+            sl.interval_layer = analysis.interval_layer or None
+            sl.chord_tones = list(pitches)
+            sl.explanation = analysis.explanation_text
+        if i < len(texture.implied_harmonies):
+            sl.roman = sl.roman or texture.implied_harmonies[i]
+        out.append(sl)
+    return out
+
+
+def cadence_span_to_spec(span: "CadenceSpan") -> HarmonyExerciseSpec:
+    """Convert a :class:`CadenceSpan` into a launchable, cap-guarded drill.
+
+    Reuses :func:`function_spec` (the Atlas factory) so the detected cadence
+    becomes the same kind of playable ``function`` exercise the cadence map
+    already produces; raises if it would exceed the readability cap.
+    """
+    label = "–".join(span.pattern)
+    spec = function_spec(span.pattern, label, span.mode, [_tonic_of(span.key)])
+    spec.validate()
+    n = len(compile_exercise(spec))
+    if n > MAX_CHORDS_PER_SPEC:
+        raise ValueError(
+            f"cadence span compiles to {n} chords (> {MAX_CHORDS_PER_SPEC})")
+    return spec
+
+
+def slices_from_lab_experiment(experiment) -> List["HarmonySlice"]:
+    """Turn a synthetic ``LabExperiment`` (e.g. polyphonic) into HarmonySlices.
+
+    Proves the Part VIII contract end-to-end *today*: the lab's per-measure
+    annotation (which carries the implied/underlying triad's Roman, quality,
+    function, and the precomputed ``atlas_triad_id``) is emitted in the same
+    :class:`HarmonySlice` shape future real analysis will produce, so
+    :func:`slice_to_annotation` + :meth:`Atlas.node_for_annotation` resolve each
+    slice to the very node the experiment recorded.  Duck-typed (no import of
+    :mod:`harmony.lab`, so the Atlas stays independent of the lab).
+    """
+    out: List[HarmonySlice] = []
+    for measure in getattr(experiment, "measures", []):
+        a = measure.annotation
+        roman = a.implied_roman or a.roman
+        out.append(HarmonySlice(
+            measure=measure.index,
+            notes=[n.step + ("#" * n.alter if n.alter > 0 else "b" * (-n.alter))
+                   for n in (measure.staff1 + measure.staff2) if not n.is_rest],
+            key=a.key,
+            mode=measure.mode,
+            inferred_root=a.root,
+            chord_symbol=a.implied_chord or a.chord_symbol,
+            roman=roman,
+            quality=a.quality,
+            chord_tones=list(a.chord_tones),
+            function=a.function_label,
+            interval_layer=a.interval_layer,
+        ))
+    return out
+
+
+def _pc_of(name: str) -> int:
+    """Pitch class of a spelled pitch name (octave ignored) -- analysis helper."""
+    from theory.diatonic_harmony import note_pc
+    return note_pc(name)
