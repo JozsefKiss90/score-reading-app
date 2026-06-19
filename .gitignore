@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 FluidR3_GM.sf2
 resources/FluidR3_GM.sf2
+
+# Music Theory Lab — runtime curriculum progress (per-user practice state)
+.curriculum_progress.json

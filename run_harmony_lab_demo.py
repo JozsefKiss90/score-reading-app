@@ -44,8 +44,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
+from datetime import datetime, timezone
+
 from harmony.atlas import build_atlas
-from harmony.circle_payload import build_circle_payload
+from harmony.circle_payload import build_circle_payload, spec_from_circle_request
 from harmony.lab_spec import LabExperimentSpec, spec_from_lab_request
 from harmony.lab import compile_lab, lab_demo_specs
 from harmony.lab_musicxml import build_lab_exercise
@@ -53,13 +55,23 @@ from harmony.lab_explanations import (
     get_concept_explanation, get_experiment_explanation, get_measure_explanation,
     mapping_from_target,
 )
+from harmony.exercise_spec import HarmonyExerciseSpec
+from harmony.curriculum import get_curriculum
+from harmony.curriculum_explanations import build_curriculum_payload
+from harmony.curriculum_progress import ProgressStore
 from run_harmony_trainer_demo import HarmonyTrainerWindow, MidiService, CircleView
 from run_harmony_atlas_demo import AtlasView
 
 _BEAT = Path(__file__).resolve().parent / "beat_selector"
-_LAB_HTML = _BEAT / "harmony_lab.html"
+_LAB_HTML = _BEAT / "harmony_lab.html"               # legacy flat catalogue (kept)
+_CURRICULUM_HTML = _BEAT / "curriculum.html"          # canonical curriculum browser
 _CHEAT_HTML = _BEAT / "lab_cheatsheet.html"
 _MAP_HTML = _BEAT / "lab_mapping.html"
+_PROGRESS_PATH = Path(__file__).resolve().parent / ".curriculum_progress.json"
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 #: The concept selector catalog (presentational; the experiments come from
 #: harmony.lab.lab_demo_specs()).  ``real_score_analysis`` is the reserved
@@ -179,6 +191,125 @@ class LabView(QWidget):
         if self._html_ready:
             self._run_js("window.HarmonyLab && window.HarmonyLab.setSync(%s);"
                          % json.dumps(active))
+
+
+# ---------------------------------------------------------------------------
+# Left panel (canonical): the curriculum tree browser
+# ---------------------------------------------------------------------------
+
+class CurriculumView(QWidget):
+    """The canonical curriculum browser (replaces the flat Concept Catalogue).
+
+    Renders ``beat_selector/curriculum.html`` + ``curriculum.js`` and bridges via
+    the same ``runJavaScript`` polling pattern as the Atlas / Circle panels:
+
+    * polls ``Curriculum.takeLaunch()`` -> ``launchRequested`` (a clicked
+      LabExperimentSpec, ready for the trainer);
+    * polls ``Curriculum.takeSelection()`` -> ``selectionRequested`` (a selected
+      node id, for curriculum -> Atlas / Circle highlighting);
+    * pushes the live guide, the Atlas sync strip, and the progress overlay.
+    """
+
+    launchRequested = pyqtSignal(dict)        # a clicked LabExperimentSpec dict
+    selectionRequested = pyqtSignal(str)      # a selected curriculum node id
+
+    def __init__(self, payload: dict, parent=None):
+        super().__init__(parent)
+        self._payload = payload
+        self._html_ready = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.web = QWebEngineView(self)
+        self.web.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        layout.addWidget(self.web, 1)
+
+        self.web.loadFinished.connect(self._on_loaded)
+        self.web.load(QUrl.fromLocalFile(str(_CURRICULUM_HTML)))
+
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(200)
+        self._poll_timer.timeout.connect(self._poll)
+
+    def _on_loaded(self, ok: bool):
+        if not ok:
+            return
+        self._run_js(
+            "window.CURRICULUM = %s; "
+            "window.Curriculum && window.Curriculum.init(window.CURRICULUM);"
+            % json.dumps(self._payload))
+        self._html_ready = True
+        self._poll_timer.start()
+
+    def _run_js(self, code: str, cb=None):
+        try:
+            if cb is None:
+                self.web.page().runJavaScript(code)
+            else:
+                self.web.page().runJavaScript(code, cb)
+        except Exception:
+            pass
+
+    def _poll(self):
+        if not self._html_ready:
+            return
+
+        def on_launch(val):
+            if not val:
+                return
+            try:
+                spec = json.loads(val)
+            except Exception:
+                return
+            if isinstance(spec, dict) and spec.get("concept"):
+                self.launchRequested.emit(spec)
+
+        def on_selection(val):
+            if not val:
+                return
+            try:
+                node_id = json.loads(val)
+            except Exception:
+                return
+            if isinstance(node_id, str) and node_id:
+                self.selectionRequested.emit(node_id)
+
+        self._run_js(
+            "(window.Curriculum && window.Curriculum.takeLaunch) "
+            "? JSON.stringify(window.Curriculum.takeLaunch() || null) : null",
+            on_launch)
+        self._run_js(
+            "(window.Curriculum && window.Curriculum.takeSelection) "
+            "? JSON.stringify(window.Curriculum.takeSelection() || null) : null",
+            on_selection)
+
+    # -- host -> UI pushes ----------------------------------------------
+    def update_explanation(self, target):
+        if self._html_ready and target is not None:
+            self._run_js("window.Curriculum && "
+                         "window.Curriculum.updateExplanation(%s);"
+                         % json.dumps(target))
+
+    def set_sync(self, active: dict):
+        if self._html_ready:
+            self._run_js("window.Curriculum && window.Curriculum.setSync(%s);"
+                         % json.dumps(active))
+
+    def set_progress(self, payload: dict):
+        if self._html_ready:
+            self._run_js("window.Curriculum && window.Curriculum.setProgress(%s);"
+                         % json.dumps(payload))
+
+    def select_by_exercise(self, exercise_id: str):
+        if self._html_ready:
+            self._run_js("window.Curriculum && "
+                         "window.Curriculum.selectByExerciseId(%s);"
+                         % json.dumps(exercise_id))
+
+    def select(self, node_id: str):
+        if self._html_ready:
+            self._run_js("window.Curriculum && window.Curriculum.select(%s);"
+                         % json.dumps(node_id))
 
 
 # ---------------------------------------------------------------------------
@@ -308,16 +439,28 @@ class HarmonyLabWindow(QWidget):
         self.setWindowTitle("Music Theory Laboratory")
 
         self._atlas = build_atlas()
+        self._curriculum = get_curriculum()
         self._experiment = None              # the compiled LabExperiment in play
         self._cadence_node_id: Optional[str] = None
+        self._current_node_id: Optional[str] = None   # the playing curriculum leaf
+        self._completed_nodes: set = set()            # leaves recorded this session
+
+        # Semantic index: a trainer drill's signature -> the owning curriculum
+        # leaf id, so an Atlas / Circle click filters the curriculum even though
+        # those panels synthesise their own exercise ids.
+        self._spec_index = self._build_spec_index()
+
+        # Progress store (persisted between sessions).
+        self._progress = ProgressStore(_PROGRESS_PATH)
+        self._progress.load()
 
         # The trainer is the score + MIDI host; the Lab/Atlas/Circle drive it, so
         # it needs no built-in exercise groups or its own Circle panel.
         self.trainer = HarmonyTrainerWindow(
             OrderedDict(), midi_service=midi_service, with_circle=False)
 
-        # LEFT: lab concept/theory/example UI.
-        self.lab_view = LabView(build_lab_catalog())
+        # LEFT: the canonical curriculum tree browser.
+        self.curriculum_view = CurriculumView(build_curriculum_payload())
 
         # RIGHT: tabbed analytical dashboard.
         circle_payload = build_circle_payload()
@@ -333,7 +476,7 @@ class HarmonyLabWindow(QWidget):
         self.right_tabs.addTab(self.mapping_view, "Current Mapping")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.lab_view)
+        splitter.addWidget(self.curriculum_view)
         splitter.addWidget(self.trainer)
         splitter.addWidget(self.right_tabs)
         splitter.setStretchFactor(0, 3)
@@ -344,31 +487,57 @@ class HarmonyLabWindow(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(splitter, 1)
 
-        # Wire the three launch sources into the middle trainer.
-        self.lab_view.launchRequested.connect(self._on_lab_launch)
-        self.circle_view.launchRequested.connect(self.trainer.load_spec_from_circle)
+        # Wire the launch sources into the middle trainer.
+        self.curriculum_view.launchRequested.connect(self._on_curriculum_launch)
+        self.curriculum_view.selectionRequested.connect(self._on_curriculum_selection)
+        self.circle_view.launchRequested.connect(self._on_circle_launch)
         self.circle_view.labLaunchRequested.connect(self._on_circle_lab_launch)
         self.atlas_view.launchRequested.connect(self._on_atlas_launch)
 
-        # Follow the trainer's current chord -> explanation + Atlas/Circle/Mapping.
+        # Follow the trainer's current chord -> explanation + Atlas/Circle/Mapping,
+        # and its play state -> progress completion.
         self._sync_timer = QTimer(self)
         self._sync_timer.setInterval(400)
         self._sync_timer.timeout.connect(self._poll_sync)
         self._sync_timer.start()
 
-        # Auto-load the first experiment so the workspace is not blank.
-        self._demo_specs = {s.experiment_id: s for s in lab_demo_specs()}
-        first = lab_demo_specs()[0]
-        QTimer.singleShot(700, lambda: self._launch_spec(first))
+        # Push the persisted progress + auto-load the first curriculum exercise.
+        QTimer.singleShot(600, self._push_progress)
+        first = self._curriculum.leaves()[0]
+        QTimer.singleShot(
+            800, lambda: self._launch_node(first.id, first.lab_spec))
 
     # -- launch handlers -------------------------------------------------
-    def _on_lab_launch(self, spec_dict: dict):
+    def _on_curriculum_launch(self, spec_dict: dict):
+        """A curriculum exercise click -> launch its owning LabExperimentSpec."""
         try:
             spec = LabExperimentSpec.from_dict(spec_dict)
         except Exception as exc:  # malformed payload -> ignore, keep running
-            print("[LAB] ignoring invalid experiment:", exc)
+            print("[LAB] ignoring invalid curriculum experiment:", exc)
             return
-        self._launch_spec(spec)
+        self._launch_node(f"ex:{spec.experiment_id}", spec)
+
+    def _on_curriculum_selection(self, node_id: str):
+        """A curriculum node selection -> highlight its Atlas / Circle nodes."""
+        node = self._curriculum.find(node_id)
+        if node is None:
+            return
+        active = self._active_from_atlas_nodes(node.atlas_nodes)
+        if active:
+            self.atlas_view.set_sync(active)
+            self.curriculum_view.set_sync(active)
+        target = self._circle_target_from_node(node)
+        if target:
+            self.circle_view.update_target(target)
+
+    def _on_circle_launch(self, req: dict):
+        """A circle drill click -> trainer drill + select the owning curriculum leaf."""
+        self.trainer.load_spec_from_circle(req)
+        try:
+            spec = spec_from_circle_request(req)
+        except Exception:
+            return
+        self._select_curriculum_for_spec(spec)
 
     def _on_circle_lab_launch(self, req: dict):
         try:
@@ -376,11 +545,10 @@ class HarmonyLabWindow(QWidget):
         except Exception as exc:
             print("[LAB] ignoring invalid circle->lab request:", exc)
             return
-        self._launch_spec(spec)
+        self._launch_node(f"ex:{spec.experiment_id}", spec)
 
     def _on_atlas_launch(self, spec_dict: dict):
-        """An Atlas element click -> a plain trainer drill (no lab experiment)."""
-        from harmony.exercise_spec import HarmonyExerciseSpec
+        """An Atlas element click -> a plain trainer drill + curriculum filter."""
         from harmony.atlas import level_for_spec
         try:
             spec = HarmonyExerciseSpec.from_dict(spec_dict)
@@ -389,10 +557,38 @@ class HarmonyLabWindow(QWidget):
             return
         self._experiment = None
         self._cadence_node_id = None
+        self._current_node_id = None
         self.trainer.load_external_spec(spec)
         self.atlas_view.set_current_level(level_for_spec(spec))
+        self._select_curriculum_for_spec(spec)
 
-    def _launch_spec(self, spec: LabExperimentSpec):
+    # -- the single launch entry point (drill vs synthetic concept) ------
+    def _launch_node(self, node_id: str, spec: LabExperimentSpec):
+        if spec.concept == "drill":
+            self._launch_drill(node_id, spec)
+        else:
+            self._launch_experiment(node_id, spec)
+        # Mark the exercise as started + refresh the progress overlay.
+        self._current_node_id = node_id
+        self._completed_nodes.discard(node_id)
+        self._progress.started(node_id, _now_iso())
+        self._push_progress()
+
+    def _launch_drill(self, node_id: str, spec: LabExperimentSpec):
+        """A native trainer drill (passthrough concept) -> load straight into the trainer."""
+        from harmony.atlas import level_for_spec
+        try:
+            inner = HarmonyExerciseSpec.from_dict(spec.parameters["exercise"])
+        except Exception as exc:
+            print("[LAB] invalid drill exercise:", exc)
+            return
+        self._experiment = None
+        self._cadence_node_id = None
+        self.trainer.load_external_spec(inner)
+        self.atlas_view.set_current_level(level_for_spec(inner))
+
+    def _launch_experiment(self, node_id: str, spec: LabExperimentSpec):
+        """A synthetic lab concept -> compile + render through the lab pipeline."""
         try:
             experiment = compile_lab(spec)
             musicxml, payload = build_lab_exercise(experiment)
@@ -410,11 +606,81 @@ class HarmonyLabWindow(QWidget):
             tokens = normalise_pattern(list(spec.parameters.get("pattern", [])))
             self._cadence_node_id = self._atlas.cadence_node_id(tokens, spec.mode)
         self.trainer.load_external_lab(musicxml, payload)
+
+    # -- semantic spec <-> curriculum-leaf index -------------------------
+    @staticmethod
+    def _signature(hs: HarmonyExerciseSpec):
+        """A drill's identity independent of its synthesised exercise_id."""
+        return (
+            hs.drill, hs.mode, hs.render, hs.key or "", hs.degree or "",
+            hs.quality or "", tuple(hs.pattern or ()), tuple(hs.keys or ()),
+        )
+
+    def _build_spec_index(self) -> dict:
+        index: dict = {}
+        for leaf in self._curriculum.leaves():
+            spec = leaf.lab_spec
+            if spec.concept != "drill":
+                continue
+            try:
+                inner = HarmonyExerciseSpec.from_dict(spec.parameters["exercise"])
+            except Exception:
+                continue
+            index.setdefault(self._signature(inner), leaf.id)
+        return index
+
+    def _select_curriculum_for_spec(self, spec: HarmonyExerciseSpec):
+        node_id = self._spec_index.get(self._signature(spec))
+        if node_id:
+            self.curriculum_view.select(node_id)
+
+    # -- progress --------------------------------------------------------
+    def _push_progress(self):
         try:
-            self.lab_view.set_experiment_explanation(
-                get_experiment_explanation(spec, experiment))
+            self.curriculum_view.set_progress(
+                self._progress.payload(self._curriculum))
+            self._progress.save()
         except Exception as exc:
-            print("[LAB] explanation failed:", exc)
+            print("[LAB] progress push failed:", exc)
+
+    def _record_completion(self):
+        node_id = self._current_node_id
+        if not node_id or node_id in self._completed_nodes:
+            return
+        self._completed_nodes.add(node_id)
+        # Finishing requires playing every chord correctly (green/red gating), so
+        # a finished exercise is recorded as a full-accuracy completion.
+        self._progress.record(node_id, accuracy=1.0, score=100.0,
+                              timestamp=_now_iso())
+        self._push_progress()
+
+    # -- Atlas / Circle highlight helpers --------------------------------
+    def _active_from_atlas_nodes(self, atlas_nodes) -> dict:
+        """First node id of each kind, for the Atlas highlight ``active`` dict."""
+        active: dict = {}
+        for nid in atlas_nodes or []:
+            kind = nid.split(":", 1)[0]
+            if kind in ("scale", "degree", "triad", "quality", "layer",
+                        "function", "cadence") and kind not in active:
+                active[kind] = nid
+        return active
+
+    def _circle_target_from_node(self, node) -> Optional[dict]:
+        scale_ids = [n for n in node.atlas_nodes if n.startswith("scale:")]
+        if not scale_ids:
+            return None
+        parts = scale_ids[0].split(":")
+        if len(parts) < 3:
+            return None
+        _, key, mode = parts[0], parts[1], parts[2]
+        word = "major" if mode == "major" else "minor"
+        target = {"key": f"{key} {word}", "mode": mode}
+        degs = [n for n in node.atlas_nodes if n.startswith("degree:")]
+        if degs:
+            d = degs[0].split(":")
+            if len(d) >= 3:
+                target["roman"] = d[2]
+        return target
 
     # -- live sync -------------------------------------------------------
     def _poll_sync(self):
@@ -422,7 +688,7 @@ class HarmonyLabWindow(QWidget):
             if not target:
                 return
             # Left: live "Now playing" guide.
-            self.lab_view.update_explanation(target)
+            self.curriculum_view.update_explanation(target)
 
             # Atlas highlight (+ cadence node when applicable).
             active = self._atlas.sync(target).get("active", {})
@@ -435,7 +701,7 @@ class HarmonyLabWindow(QWidget):
                 active["cadence"] = self._cadence_node_id
             active = {k: v for k, v in active.items() if v}
             self.atlas_view.set_sync(active)
-            self.lab_view.set_sync(active)
+            self.curriculum_view.set_sync(active)
 
             # Circle highlight.
             self.circle_view.update_target(target)
@@ -443,8 +709,13 @@ class HarmonyLabWindow(QWidget):
             # Current Mapping panel.
             self.mapping_view.update(self._mapping_for(target))
 
+        def on_state(state):
+            if state and state.get("finished"):
+                self._record_completion()
+
         try:
             self.trainer.query_current_target(on_target)
+            self.trainer.query_trainer_state(on_state)
         except Exception:
             pass
 

@@ -64,9 +64,23 @@ SCHEMA_VERSION = "harmony-lab/v1"
 #: ``voice_leading`` / ``motive`` / ``polyphonic_harmony`` are implemented;
 #: ``reduction`` is reserved (validates + down-compiles a supplied skeleton, but
 #: ``compile_lab`` raises until the Schenkerian reduction phase ships).
+#:
+#: ``drill`` is the **passthrough** concept (the Music Theory Laboratory's
+#: architectural consolidation): it wraps a *native* trainer
+#: :class:`~harmony.exercise_spec.HarmonyExerciseSpec` (a scale / full-key /
+#: degree / quality / function drill) inside a ``LabExperimentSpec`` so that
+#: **every** Harmony-Trainer exercise -- not only the synthetic lab concepts --
+#: is owned by exactly one LabExperimentSpec.  Its ``parameters['exercise']`` is
+#: the embedded HarmonyExerciseSpec dict; :meth:`to_exercise_specs` returns it
+#: verbatim (the round-position chord drill *is* the exercise), and the
+#: Laboratory launches it straight into the trainer (it is **not** routed through
+#: :func:`harmony.lab.compile_lab`, which only synthesises the non-trainer
+#: concepts).  This is how the curriculum (:mod:`harmony.curriculum`) makes the
+#: trainer the execution engine and the Lab the canonical source.
 CONCEPTS = {
     "inversion", "voice_leading", "cadence",
     "polyphonic_harmony", "motive", "reduction",
+    "drill",
 }
 
 #: Render styles.  ``block`` / ``arpeggio`` reuse the trainer's renderers;
@@ -84,6 +98,7 @@ _CONCEPT_RENDERS = {
     "polyphonic_harmony": {"polyphonic"},
     "motive":             {"melody"},
     "reduction":          {"block", "voice_leading"},   # reserved
+    "drill":              {"block", "arpeggio"},         # mirrors the trainer's renders
 }
 
 #: Concepts whose ``parameters`` may carry ``strict_bass`` (require render="block";
@@ -337,6 +352,21 @@ class LabExperimentSpec:
                 self._check_diatonic(rp.skeleton)
                 self._check_len(len(rp.skeleton))
 
+        elif self.concept == "drill":
+            raw = p.get("exercise")
+            if not isinstance(raw, dict):
+                raise ValueError(
+                    "drill concept requires parameters['exercise'] "
+                    "(an embedded HarmonyExerciseSpec dict)")
+            inner = HarmonyExerciseSpec.from_dict(raw)   # validates the embedded spec
+            # The wrapper's render/mode must agree with the embedded drill so the
+            # Lab never mislabels a native exercise.
+            if inner.render != self.render:
+                raise ValueError(
+                    f"drill render {self.render!r} != embedded exercise render "
+                    f"{inner.render!r}")
+            self._check_len(len(compile_exercise(inner)))   # one-page cap
+
     def _check_len(self, n: int) -> None:
         if n > MAX_CHORDS_PER_SPEC:
             raise ValueError(
@@ -423,6 +453,12 @@ class LabExperimentSpec:
                 pattern=normalise_pattern(list(rp.skeleton)), keys=[tonic],
                 description="The explicit reduced harmonic skeleton.",
             ))
+
+        elif self.concept == "drill":
+            # Passthrough: the embedded native HarmonyExerciseSpec *is* the
+            # playable drill.  Rebuilt (and re-validated) from the stored dict so
+            # the trainer receives exactly the original exercise.
+            specs.append(HarmonyExerciseSpec.from_dict(self.parameters["exercise"]))
 
         else:  # motive -> monophonic melody, no chord-drill representation
             return []

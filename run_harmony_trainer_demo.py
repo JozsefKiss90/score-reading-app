@@ -352,6 +352,35 @@ class HarmonyTrainerWindow(QWidget):
         except Exception:
             callback(None)
 
+    def query_trainer_state(self, callback):
+        """Async: invoke ``callback(state_dict | None)`` with the play state.
+
+        Reads ``window.HarmonyTrainer.state()`` -> ``{idx, completed, finished,
+        total, ...}`` so a host can detect when an exercise has been fully played
+        (``finished``).  Read-only sibling of :meth:`query_current_target`; the
+        trainer itself is unchanged.
+        """
+        w = self._score_widget
+        if w is None or not getattr(w, "_html_ready", False):
+            callback(None)
+            return
+        js = ("(window.HarmonyTrainer && window.HarmonyTrainer.state) "
+              "? JSON.stringify(window.HarmonyTrainer.state()) : null")
+
+        def on_result(val):
+            if not val:
+                callback(None)
+                return
+            try:
+                callback(json.loads(val))
+            except Exception:
+                callback(None)
+
+        try:
+            w.web.page().runJavaScript(js, on_result)
+        except Exception:
+            callback(None)
+
     # ------------------------------------------------------------------
     def _remove_current_score(self):
         if self._score_widget is None:
