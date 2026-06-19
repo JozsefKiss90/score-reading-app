@@ -33,6 +33,7 @@
   var hi = {};               // current sync highlight {key,mode,roman,chordSymbol,functionClass,degree}
   var cheatOn = false;
   var launchQueue = [];
+  var labQueue = [];         // "Open ... lab" requests (only when data.labLaunch)
   var clickCbs = [];
   var cells = [];            // [{kind,key,mode,roman,el}] for highlight re-apply
   var evtHandler = null;     // bound harmonytrainer:targetchange listener
@@ -298,6 +299,32 @@
           keys: [selKey] }));
     }
     d.appendChild(short);
+
+    // Optional "Open ... lab" affordances (Music Theory Laboratory only; the
+    // trainer's circle does not set data.labLaunch, so this block is inert there).
+    if (data && data.labLaunch) {
+      var tonicRoman = selMode === "major" ? "I" : "i";
+      var lab = el("div", { class: "hcShort hcLab" }, []);
+      lab.appendChild(el("span", { class: "lbl", text: "Open in Lab:" }));
+      lab.appendChild(labBtn("Motive lab",
+        { labConcept: "motive", key: keyStr, mode: selMode }));
+      lab.appendChild(labBtn(selMode === "major" ? "ii–V–I voice-leading lab"
+        : "iv–v–i voice-leading lab",
+        { labConcept: "voice_leading", key: keyStr, mode: selMode }));
+      if (sel) {
+        lab.appendChild(labBtn("Inversion lab (" + sel.degree + ")",
+          { labConcept: "inversion", key: keyStr, mode: selMode, degree: sel.degree }));
+        if (sel.functionClass === "D") {
+          lab.appendChild(labBtn("Cadence lab (" + sel.degree + "–" + tonicRoman + ")",
+            { labConcept: "cadence", key: keyStr, mode: selMode,
+              pattern: [sel.degree, tonicRoman] }));
+        }
+      }
+      d.appendChild(lab);
+    }
+  }
+  function labBtn(label, req) {
+    return el("button", { text: label, onClick: function () { requestLabLaunch(req); } });
   }
   function row(label, value) {
     return el("div", { class: "row" },
@@ -370,6 +397,12 @@
     fire({ type: "launch", spec: spec });
   }
   function takeLaunch() { return launchQueue.length ? launchQueue.shift() : null; }
+  function requestLabLaunch(req) {
+    if (!req) return;
+    labQueue.push(req);
+    fire({ type: "labLaunch", req: req });
+  }
+  function takeLabLaunch() { return labQueue.length ? labQueue.shift() : null; }
   function fire(detail) { clickCbs.forEach(function (cb) { try { cb(detail); } catch (e) {} }); }
 
   // -- public highlight API (Part 1) --------------------------------------
@@ -432,6 +465,7 @@
     hi = {};
     cheatOn = false;
     launchQueue = [];
+    labQueue = [];
 
     injectStyles();
     buildSkeleton();
@@ -459,6 +493,7 @@
     clearHighlight: clearHighlight,
     onCellClick: function (cb) { if (typeof cb === "function") clickCbs.push(cb); },
     takeLaunch: takeLaunch,
+    takeLabLaunch: takeLabLaunch,
     highlightState: highlightState,
     // test/host helpers
     selectKey: function (k, m) { selectKey(k, m, true); },

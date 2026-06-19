@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lab — Current Mapping</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font: 12px/1.45 system-ui, Segoe UI, Roboto, sans-serif; color: #0f172a;
+           background: #f8fafc; }
+    #mapRoot { padding: 10px; }
+    .mapTitle { font-size: 14px; font-weight: 700; color: #0b3a53; margin-bottom: 6px; }
+    .mapHint { color: #94a3b8; }
+    .mapSubTitle { font-size: 11px; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: .04em; color: #0b3a53; margin: 10px 0 4px; }
+    .mapRow { margin: 2px 0; }
+    .mapLbl { color: #64748b; display: inline-block; min-width: 120px; }
+    .mapVal { color: #0f172a; }
+    .mapNode { color: #1e3a8a; font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .mapEdges { max-height: 40vh; overflow: auto; }
+    .mapEdge { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px;
+               color: #475569; padding: 1px 0; }
+  </style>
+</head>
+<body>
+  <div id="mapRoot"></div>
+  <script src="lab_mapping.js"></script>
+  <script>
+    (function () {
+      if (window.LabMapping) {
+        window.LabMapping.update(window.MAPPING_DATA || null);
+      }
+    })();
+  </script>
+</body>
+</html>

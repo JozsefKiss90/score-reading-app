@@ -854,6 +854,38 @@ class Atlas:
                 return nid if nid in self.nodes else None
         return None
 
+    # -- related edges (Music Theory Lab "Current Mapping") --------------
+    def edges_for(self, node_ids) -> List[Dict]:
+        """Every typed edge incident to any id in ``node_ids`` (deduped, ordered).
+
+        Used by the lab's Current Mapping tab to show the relationships of the
+        currently-highlighted nodes.  Purely additive; reads ``self.edges`` and
+        does not change the ontology.
+        """
+        wanted = {nid for nid in (node_ids or []) if nid}
+        out: List[Dict] = []
+        seen = set()
+        for e in self.edges:
+            if e.source in wanted or e.target in wanted:
+                key = (e.source, e.target, e.relation)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(e.to_dict())
+        return out
+
+    def cadence_node_id(self, tokens, mode: str) -> Optional[str]:
+        """The cadence node id whose progression == ``tokens`` in ``mode`` (or None).
+
+        Matches by the realised token list + mode (not by label/slug), so a lab
+        cadence experiment can highlight its Atlas cadence node when one exists.
+        """
+        want = list(tokens or [])
+        for n in self.nodes_of_kind("cadence"):
+            if n.data.get("mode") == mode and list(n.data.get("tokens", [])) == want:
+                return n.id
+        return None
+
     # -- serialisation ---------------------------------------------------
     def to_json(self, completed_ids: Optional[set] = None) -> Dict:
         """The full JSON payload consumed by the web Atlas UI."""

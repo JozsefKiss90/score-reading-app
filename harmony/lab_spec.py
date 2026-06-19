@@ -212,6 +212,21 @@ def reduction_params(p: Dict) -> ReductionParams:
 # Spec dataclass
 # ---------------------------------------------------------------------------
 
+#: Lab concepts a Circle/Atlas "Open ... lab" click can generate (a subset; the
+#: reserved reduction concept is not launchable from a click).
+_LAB_REQUEST_CONCEPTS = {"inversion", "cadence", "voice_leading",
+                         "polyphonic_harmony", "motive"}
+
+#: Default render per requestable concept (matches _CONCEPT_RENDERS).
+_LAB_REQUEST_RENDER = {
+    "inversion": "block",
+    "cadence": "voice_leading",
+    "voice_leading": "voice_leading",
+    "polyphonic_harmony": "polyphonic",
+    "motive": "melody",
+}
+
+
 @dataclass
 class LabExperimentSpec:
     """A JSON-compatible description of one laboratory experiment."""
@@ -422,3 +437,96 @@ class LabExperimentSpec:
                     f"{s.exercise_id} compiles to {n} chords (> "
                     f"{MAX_CHORDS_PER_SPEC})")
         return specs
+
+
+# ---------------------------------------------------------------------------
+# Click -> lab-experiment bridge (Circle/Atlas "Open ... lab")
+# ---------------------------------------------------------------------------
+
+def _key_display(req: Dict) -> str:
+    """Resolve a request's key into a ``"<tonic> <mode word>"`` display string."""
+    raw = str(req.get("key", "C")).strip()
+    tonic = raw.split()[0] if raw else "C"
+    mode = _canon_mode(req.get("mode", "major"))
+    return f"{tonic} {_mode_word(mode)}"
+
+
+def spec_from_lab_request(req: Dict) -> LabExperimentSpec:
+    """Convert a circle/atlas "Open ... lab" click into a :class:`LabExperimentSpec`.
+
+    The visual layers never build MusicXML or compile experiments; they send a
+    small request dict such as::
+
+        {"labConcept": "inversion", "key": "C major", "mode": "major", "degree": "I"}
+        {"labConcept": "cadence", "key": "C major", "mode": "major", "pattern": ["V", "I"]}
+        {"labConcept": "motive", "key": "G major", "mode": "major", "degrees": [1, 3, 5, 3]}
+
+    This synthesises a stable ``experiment_id`` / ``title`` and a concept-specific
+    ``parameters`` dict, builds a ``LabExperimentSpec``, and validates it (which
+    enforces the diatonic-only and one-page caps).  Invalid requests raise
+    :class:`ValueError` (never silently produce a bad spec) -- mirroring
+    :func:`harmony.circle_payload.spec_from_circle_request`.
+    """
+    if not isinstance(req, dict):
+        raise ValueError("lab request must be a dict")
+    concept = req.get("labConcept") or req.get("concept")
+    if concept not in _LAB_REQUEST_CONCEPTS:
+        raise ValueError(f"unsupported lab concept: {concept!r}")
+
+    key = _key_display(req)
+    mode = _canon_mode(req.get("mode", "major"))
+    tonic = tonic_of(key)
+    render = req.get("render") or _LAB_REQUEST_RENDER[concept]
+
+    if concept == "inversion":
+        degree = str(req.get("degree", "I"))
+        params = {"degree": degree,
+                  "inversions": list(req.get("inversions", [0, 1, 2]))}
+        ident = f"{_ident(tonic)}_{_ident(degree)}"
+
+    elif concept in ("cadence", "voice_leading"):
+        pattern = list(req.get("pattern") or ([] if concept == "cadence" else []))
+        if not pattern:
+            # Sensible defaults: a two-chord cadence, or a ii-V-I voice-leading lab.
+            pattern = (["ii", "V", "I"] if mode == "major" else ["iv", "v", "i"]) \
+                if concept == "voice_leading" else \
+                (["V", "I"] if mode == "major" else ["v", "i"])
+        params = {"pattern": pattern}
+        if req.get("cadence_type"):
+            params["cadence_type"] = str(req["cadence_type"])
+        ident = f"{_ident(tonic)}_{_ident('_'.join(pattern))}"
+
+    elif concept == "polyphonic_harmony":
+        progression = list(req.get("progression") or
+                           (["I", "V", "I"] if mode == "major" else ["i", "VII", "i"]))
+        upper = list(req.get("upper_degrees") or [3] * len(progression))
+        params = {"progression": progression, "upper_degrees": upper}
+        ident = f"{_ident(tonic)}_{_ident('_'.join(progression))}"
+
+    else:  # motive
+        degrees = list(req.get("degrees") or [1, 3, 5, 3])
+        params = {"degrees": degrees}
+        if req.get("keys"):
+            params["keys"] = list(req["keys"])
+        ident = f"{_ident('_'.join(str(d) for d in degrees))}_{_ident(tonic)}"
+
+    title = req.get("title") or _lab_request_title(concept, key, params)
+    spec = LabExperimentSpec(
+        experiment_id=f"lab_click_{concept}_{mode}_{ident}",
+        title=title, concept=concept, mode=mode, key=key,
+        render=render, parameters=params,
+        description=req.get("description", ""))
+    spec.validate()
+    return spec
+
+
+def _lab_request_title(concept: str, key: str, params: Dict) -> str:
+    if concept == "inversion":
+        return f"Inversions of {params['degree']} in {key}"
+    if concept in ("cadence", "voice_leading"):
+        word = "voice leading" if concept == "voice_leading" else "cadence"
+        return f"{'–'.join(params['pattern'])} {word} in {key}"
+    if concept == "polyphonic_harmony":
+        return f"Two-voice {'–'.join(params['progression'])} in {key}"
+    return (f"Motive {'–'.join(str(d) for d in params['degrees'])} across the "
+            f"{_mode_word(_canon_mode(key.split()[-1]))} keys")
