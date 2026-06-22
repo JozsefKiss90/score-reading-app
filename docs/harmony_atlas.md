@@ -67,7 +67,7 @@ as tabs. All are derived from the theory engine.
 
 | Part | View | Method | What it shows |
 |---|---|---|---|
-| I | Global diatonic map | `global_map(mode)` | the invariant degree → quality → layer → function table |
+| I | Global diatonic map | `global_map(mode)` | the invariant degree → quality → layer → function table, plus a per-degree **keyboard view**: the selected degree's root-position triad on a piano (C major / A natural minor), with its interval layer deconstructed into whole/half scale steps that reveal the m3–M3 (minor/major) structure |
 | II | Transposition matrix | `transposition_matrix(mode)` | rows = degrees, columns = keys; each cell a concrete triad |
 | III | Quality matrix | `quality_matrix(mode)` | every major / minor / diminished triad across keys |
 | IV | Function map | `function_map(mode)` | function invariant, chord names change (T / PD / S / D rows) |

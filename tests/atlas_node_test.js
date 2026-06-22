@@ -86,6 +86,34 @@ function makeHarness(data) {
 // --- fixture (matches harmony.atlas.to_json() shape) -----------------------
 function spec(id) { return { exercise_id: id, drill: "full_key", title: id }; }
 
+// Mirror harmony.atlas._keyboard_keys() so highlighted midis land on real keys.
+function kbKeys(lo, hi) {
+  const BLACK = { 1: 1, 3: 1, 6: 1, 8: 1, 10: 1 };
+  const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const whites = [];
+  for (let m = lo; m <= hi; m++) if (!BLACK[m % 12]) whites.push(m);
+  const ww = 100 / whites.length, bw = ww * 0.62, wi = {};
+  whites.forEach((m, i) => { wi[m] = i; });
+  const keys = [];
+  for (let m = lo; m <= hi; m++) {
+    const pc = m % 12, isB = !!BLACK[pc];
+    const k = { midi: m, pc: pc, name: NAMES[pc], octave: Math.floor(m / 12) - 1, isBlack: isB };
+    if (isB) { k.leftPct = (wi[m - 1] + 1) * ww - bw / 2; k.widthPct = bw; }
+    keys.push(k);
+  }
+  return keys;
+}
+function kbNote(midi, name, pc) { return { midi: midi, name: name, pc: pc }; }
+function kbThird(position, name, quality, from, fromMidi, to, toMidi, step, stepMidi, path, steps) {
+  return {
+    position: position, name: name, semitones: quality === "major" ? 4 : 3, quality: quality,
+    fromName: from, fromMidi: fromMidi, toName: to, toMidi: toMidi,
+    stepName: step, stepMidi: stepMidi, scalePath: path, steps: steps,
+    flashMidis: [fromMidi, stepMidi, toMidi],
+  };
+}
+const W = { size: 2, name: "W" }, H = { size: 1, name: "H" };
+
 const DATA = {
   schema: "harmony-atlas/v1",
   modes: ["major", "natural_minor"],
@@ -96,13 +124,32 @@ const DATA = {
   },
   globalMap: {
     major: [
-      { nodeId: "degree:major:I", roman: "I", quality: "major", intervalLayer: "M3+m3", functionLabel: "tonic", scaleDegreeName: "tonic", spec: spec("deg_I") },
-      { nodeId: "degree:major:ii", roman: "ii", quality: "minor", intervalLayer: "m3+M3", functionLabel: "predominant", scaleDegreeName: "supertonic", spec: spec("deg_ii") },
+      { nodeId: "degree:major:I", roman: "I", quality: "major", intervalLayer: "M3+m3", functionLabel: "tonic", scaleDegreeName: "tonic", spec: spec("deg_I"),
+        keyboard: { referenceKey: "C", referenceLabel: "C major", quality: "major", intervalLayer: "M3+m3",
+          chord: { root: kbNote(60, "C", 0), third: kbNote(64, "E", 4), fifth: kbNote(67, "G", 7) },
+          thirds: [
+            kbThird("lower", "M3", "major", "C", 60, "E", 64, "D", 62, ["C", "D", "E"], [W, W]),
+            kbThird("upper", "m3", "minor", "E", 64, "G", 67, "F", 65, ["E", "F", "G"], [W, H]),
+          ], structure: "Major triad — major third (M3) below, minor third (m3) above." } },
+      { nodeId: "degree:major:ii", roman: "ii", quality: "minor", intervalLayer: "m3+M3", functionLabel: "predominant", scaleDegreeName: "supertonic", spec: spec("deg_ii"),
+        keyboard: { referenceKey: "C", referenceLabel: "C major", quality: "minor", intervalLayer: "m3+M3",
+          chord: { root: kbNote(62, "D", 2), third: kbNote(65, "F", 5), fifth: kbNote(69, "A", 9) },
+          thirds: [
+            kbThird("lower", "m3", "minor", "D", 62, "F", 65, "E", 64, ["D", "E", "F"], [W, H]),
+            kbThird("upper", "M3", "major", "F", 65, "A", 69, "G", 67, ["F", "G", "A"], [W, W]),
+          ], structure: "Minor triad — minor third (m3) below, major third (M3) above." } },
     ],
     natural_minor: [
-      { nodeId: "degree:natural_minor:i", roman: "i", quality: "minor", intervalLayer: "m3+M3", functionLabel: "tonic", scaleDegreeName: "tonic", spec: spec("deg_i") },
+      { nodeId: "degree:natural_minor:i", roman: "i", quality: "minor", intervalLayer: "m3+M3", functionLabel: "tonic", scaleDegreeName: "tonic", spec: spec("deg_i"),
+        keyboard: { referenceKey: "A", referenceLabel: "A minor", quality: "minor", intervalLayer: "m3+M3",
+          chord: { root: kbNote(69, "A", 9), third: kbNote(72, "C", 0), fifth: kbNote(76, "E", 4) },
+          thirds: [
+            kbThird("lower", "m3", "minor", "A", 69, "C", 72, "B", 71, ["A", "B", "C"], [W, H]),
+            kbThird("upper", "M3", "major", "C", 72, "E", 76, "D", 74, ["C", "D", "E"], [W, W]),
+          ], structure: "Minor triad — minor third (m3) below, major third (M3) above." } },
     ],
   },
+  keyboardKeys: kbKeys(60, 77),
   transpositionMatrix: {
     major: {
       mode: "major", keys: ["C", "G"], rows: [
@@ -240,6 +287,52 @@ function assert(cond, msg) {
   card.fire("click");
   assert(h.ui.takeLaunch().exercise_id === "cad_iiVI", "cadence card launches its spec");
   console.log("Test G (cadence launch): PASS");
+})();
+
+(function testKeyboardRenders() {
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);                       // global tab is default -> keyboard built
+  const card = ALL.filter((n) => n.className &&
+    n.className.split(" ").indexOf("kbCard") !== -1)[0];
+  assert(card, "keyboard card rendered under the global map");
+  assert(h.ui.keyboardKeyCount() === DATA.keyboardKeys.length,
+    "every keyboard key node is built (" + DATA.keyboardKeys.length + ")");
+  console.log("Test H (keyboard renders): PASS");
+})();
+
+(function testKeyboardDefaultIsTonic() {
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);
+  // First row I = C-E-G with D/F passing tones.
+  assert(h.ui.keyboardRoleOf(60).indexOf("root") !== -1, "default root C(60)");
+  assert(h.ui.keyboardRoleOf(64).indexOf("third") !== -1, "default third E(64)");
+  assert(h.ui.keyboardRoleOf(67).indexOf("fifth") !== -1, "default fifth G(67)");
+  assert(h.ui.keyboardRoleOf(62).indexOf("stepTone") !== -1, "lower passing D(62)");
+  assert(h.ui.keyboardRoleOf(65).indexOf("stepTone") !== -1, "upper passing F(65)");
+  console.log("Test I (keyboard default = tonic triad): PASS");
+})();
+
+(function testKeyboardRetargetsOnHover() {
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);
+  const iiRow = findByData("node", "degree:major:ii")[0];
+  assert(iiRow, "ii row present");
+  iiRow.fire("mouseenter");              // hover retargets the shared keyboard
+  assert(h.ui.keyboardRoleOf(62).indexOf("root") !== -1, "retarget: D(62) now root");
+  assert(h.ui.keyboardRoleOf(60).indexOf("root") === -1, "retarget: old root C(60) cleared");
+  assert(h.ui.keyboardRoleOf(69).indexOf("fifth") !== -1, "retarget: A(69) now fifth");
+  const kb = h.ui.currentKeyboard();
+  assert(kb && kb.intervalLayer === "m3+M3", "retarget: payload updated to ii (m3+M3)");
+  console.log("Test J (keyboard retargets on hover): PASS");
+})();
+
+(function testRowClickStillLaunchesWithKeyboard() {
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);
+  const row = findByData("node", "degree:major:ii")[0];
+  row.fire("click");                     // click contract unchanged by keyboard
+  assert(h.ui.takeLaunch().exercise_id === "deg_ii", "row click still launches its spec");
+  console.log("Test K (row click unaffected by keyboard): PASS");
 })();
 
 console.log("\nAll atlas.js behavioural checks passed (" + passed + " assertions).");

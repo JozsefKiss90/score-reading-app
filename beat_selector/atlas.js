@@ -30,6 +30,13 @@
   var hoverIds = new Set();           // current hover highlight (Part I)
   var relatables = [];                // [{el, facets}] registered each render
 
+  // Global-map keyboard view (Part I): one shared panel that retargets on hover.
+  var keyboardCard = null;            // the panel root element
+  var keyboardStepsEl = null;         // the interval-deconstruction strip (rebuilt)
+  var keyboardCapEl = null;           // the caption line
+  var keyboardKeyByMidi = {};         // midi(string) -> key DOM node
+  var currentKeyboard = null;         // the kb payload currently shown
+
   var TABS = [
     { id: "global", label: "Global map", render: renderGlobal },
     { id: "matrix", label: "Transposition", render: renderMatrix },
@@ -225,7 +232,9 @@
       var tr = relate(el("tr", {
         class: "click",
         onClick: function () { launch(r.spec); },
-        onHover: function () { hoverRelated(facets); },
+        // Hover retargets the keyboard (preview) in addition to facet highlight;
+        // it sticks until the next hover. Click still only launches.
+        onHover: function () { hoverRelated(facets); updateKeyboard(r.keyboard); },
         dataset: { node: r.nodeId },
       }, [
         el("td", { class: "rn", text: r.roman }),
@@ -237,6 +246,128 @@
       table.appendChild(tr);
     });
     root.appendChild(table);
+    buildKeyboard(root, rows);
+  }
+
+  // -- Part I: keyboard + interval deconstruction --------------------------
+  // A single panel under the global map. The static key geometry comes from
+  // data.keyboardKeys (Python-computed leftPct/widthPct -> no JS measurement);
+  // each degree's row carries which midis to highlight + the two stacked thirds
+  // broken into whole/half steps. Pure classList/text, so it renders under the
+  // headless DOM stub (no getBoundingClientRect / createElementNS).
+  var KB_ROLES = ["root", "third", "fifth", "stepTone", "kbFlash"];
+
+  function buildKeyboard(root, rows) {
+    var keys = (data && data.keyboardKeys) || [];
+    if (!keys.length) return;
+    keyboardKeyByMidi = {};
+
+    var card = el("div", { class: "kbCard" });
+    keyboardCapEl = el("div", { class: "cap" });
+    card.appendChild(keyboardCapEl);
+
+    var board = el("div", { class: "kbBoard" });
+    keys.forEach(function (k) {
+      var node = el("div", {
+        class: "kbKey " + (k.isBlack ? "black" : "white"),
+        dataset: { midi: String(k.midi) },
+      }, k.isBlack ? [] : [el("span", { class: "kbLbl", text: k.name })]);
+      if (k.isBlack && node.style) {
+        node.style.left = k.leftPct + "%";
+        node.style.width = k.widthPct + "%";
+      }
+      board.appendChild(node);
+      keyboardKeyByMidi[String(k.midi)] = node;
+    });
+    card.appendChild(board);
+
+    card.appendChild(el("div", { class: "kbKeyLegend" }, [
+      el("span", { class: "kbDot root" }), el("span", { class: "lab", text: "root" }),
+      el("span", { class: "kbDot third" }), el("span", { class: "lab", text: "3rd" }),
+      el("span", { class: "kbDot fifth" }), el("span", { class: "lab", text: "5th" }),
+      el("span", { class: "kbDot stepTone" }), el("span", { class: "lab", text: "passing tone" }),
+    ]));
+
+    keyboardStepsEl = el("div", { class: "kbSteps" });
+    card.appendChild(keyboardStepsEl);
+
+    card.appendChild(el("div", { class: "kbLegend", text:
+      "W = whole step (2 semitones) · H = half step (1 semitone). " +
+      "A triad is two stacked thirds — which one sits on the bottom (m3 vs M3) is the chord's quality." }));
+
+    keyboardCard = card;
+    root.appendChild(card);
+
+    // Show the first degree by default so a fresh view is never blank.
+    if (rows && rows.length) updateKeyboard(rows[0].keyboard);
+  }
+
+  function setKbRole(midi, cls) {
+    var n = keyboardKeyByMidi[String(midi)];
+    if (n && n.classList) n.classList.add(cls);
+  }
+
+  function updateKeyboard(kb) {
+    if (!kb || !keyboardCard) return;
+    currentKeyboard = kb;
+    if (keyboardCapEl) {
+      keyboardCapEl.textContent =
+        "Degree pattern in " + kb.referenceLabel + " — " + kb.intervalLayer +
+        " (" + kb.quality + "), root-position (root in octave 4)";
+    }
+    // Reset every key, then light up this degree's chord tones + passing tones.
+    Object.keys(keyboardKeyByMidi).forEach(function (m) {
+      var n = keyboardKeyByMidi[m];
+      if (n && n.classList) KB_ROLES.forEach(function (c) { n.classList.remove(c); });
+    });
+    setKbRole(kb.chord.root.midi, "root");
+    setKbRole(kb.chord.third.midi, "third");
+    setKbRole(kb.chord.fifth.midi, "fifth");
+    (kb.thirds || []).forEach(function (th) { setKbRole(th.stepMidi, "stepTone"); });
+
+    // Rebuild the interval-deconstruction strip.
+    if (keyboardStepsEl) {
+      clearChildren(keyboardStepsEl);
+      (kb.thirds || []).forEach(function (th) {
+        keyboardStepsEl.appendChild(buildStepBlock(th));
+      });
+      if (kb.structure) {
+        keyboardStepsEl.appendChild(el("div", { class: "kbStructure", text: kb.structure }));
+      }
+    }
+  }
+
+  function buildStepBlock(th) {
+    var qc = th.quality === "major" ? "kb-major"
+           : th.quality === "minor" ? "kb-minor" : "kb-other";
+    var stepRow = el("div", { class: "kbStepRow" });
+    (th.steps || []).forEach(function (s) {
+      stepRow.appendChild(el("div", { class: "kbStep kbStep--" + s.name, text: s.name }));
+    });
+    var block = el("div", { class: "kbBlock " + qc + " " + th.position }, [
+      el("div", { class: "lbl" }, [
+        el("span", { class: "name", text: th.name }),
+        el("span", { class: "st", text: " · " + th.semitones + " st" }),
+      ]),
+      stepRow,
+      el("div", { class: "kbPath", text: (th.scalePath || []).join(" → ") }),
+    ]);
+    // Pulse this third's keys on hover. Wire mouseenter/mouseleave directly --
+    // el()'s onHover binds mouseleave->clearHover, which would wrongly clear the
+    // table's hover highlight.
+    if (block.addEventListener) {
+      block.addEventListener("mouseenter", function () { flashKeys(th.flashMidis, true); });
+      block.addEventListener("mouseleave", function () { flashKeys(th.flashMidis, false); });
+    }
+    return block;
+  }
+
+  function flashKeys(midis, on) {
+    (midis || []).forEach(function (m) {
+      var n = keyboardKeyByMidi[String(m)];
+      if (!n || !n.classList) return;
+      if (on) n.classList.add("kbFlash"); else n.classList.remove("kbFlash");
+    });
   }
 
   // -- Part II: transposition matrix ---------------------------------------
@@ -554,6 +685,15 @@
     setCurrentLevel: function (lvl) { this._currentLevel = lvl; },
     _currentLevel: null,
     tabs: function () { return TABS.map(function (t) { return t.id; }); },
+    // -- Part I keyboard (exposed for the headless test) --
+    updateKeyboard: updateKeyboard,
+    keyboardKeyCount: function () { return Object.keys(keyboardKeyByMidi).length; },
+    keyboardRoleOf: function (midi) {
+      var n = keyboardKeyByMidi[String(midi)];
+      if (!n || !n.classList) return [];
+      return KB_ROLES.filter(function (c) { return n.classList.contains(c); });
+    },
+    currentKeyboard: function () { return currentKeyboard; },
   };
   window.AtlasUI = AtlasUI;
 })();

@@ -36,10 +36,10 @@ GRID_MAJOR_COLOR = QColor(0, 0, 0, 140)
 
 # Resource names (relative to project / resources dir)
 DEFAULT_SF2 = "FluidR3_GM.sf2"
-#DEFAULT_MXL = "Gymnopdie_No._1__Satie.mxl"
-#DEFAULT_XML = "Gymnopdie\score.xml"
-DEFAULT_MXL = "organ-sonata-no-4-bwv-528-2-andante-adagio-vikingur-olafsson-interpretation.mxl"
-DEFAULT_XML = "organ-sonata-no-4-bwv-528-2-andante-adagio-vikingur-olafsson-interpretation\score.xml"
+DEFAULT_MXL = "Prelude_No._15_in_D_flat_major_Op._28_The_Raindrop_Prelude.mxl"
+DEFAULT_XML = "Prelude_No._15_in_D_flat_major_Op._28_The_Raindrop_Prelude\score.xml"
+#DEFAULT_MXL = "organ-sonata-no-4-bwv-528-2-andante-adagio-vikingur-olafsson-interpretation.mxl"
+#DEFAULT_XML = "organ-sonata-no-4-bwv-528-2-andante-adagio-vikingur-olafsson-interpretation\score.xml"
 #DEFAULT_MXL = "chopin-prelude-no-6-in-b-minor-op-28.mxl"
 #DEFAULT_MXL = "chopin-prelude-in-e-minor-opus-28-no-4.mxl"
 #DEFAULT_XML = "bach-prelude-bwv-926/score.xml"

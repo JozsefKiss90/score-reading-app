@@ -44,6 +44,7 @@ from theory.diatonic_harmony import (
     generate_scale,
     key_signature_fifths,
     identify_triad_from_pitches,
+    note_pc,
     QUALITY_TO_INTERVAL_LAYER,
 )
 from harmony.exercise_spec import (
@@ -68,6 +69,26 @@ MODES = ["major", "natural_minor"]
 #: the global diatonic map). The pattern is identical in every key -- that is the
 #: whole point -- so any key works; C major / A natural minor are the clearest.
 _REFERENCE_TONIC = {"major": "C", "natural_minor": "A"}
+
+#: Fixed MIDI span for the Global-map mini-keyboard (Part I keyboard view).
+#: C4..F5 (60..77) is the *measured* union of both reference keys' root-position
+#: triads: A natural minor's III/VI/VII voice down to C4 (60) while ii° reaches
+#: F5 (77), and C major spans the same 60..77 -- so one keyboard fits every
+#: degree of both modes without transposing. (Verified by tests.)
+KEYBOARD_RANGE_MIDI = (60, 77)
+_BLACK_PCS = frozenset({1, 3, 6, 8, 10})
+_SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+#: Black key width as a fraction of a white key (matches keyboard_view.js 0.62).
+_BLACK_KEY_WIDTH_RATIO = 0.62
+
+#: Chord-structure one-liners, keyed by triad quality (the m3/M3 stacking order
+#: *is* the quality -- the pedagogical point of the deconstruction view).
+_STRUCTURE_CAPTION = {
+    "major": "Major triad — major third (M3) below, minor third (m3) above.",
+    "minor": "Minor triad — minor third (m3) below, major third (M3) above.",
+    "diminished": "Diminished triad — two stacked minor thirds (m3 + m3).",
+    "augmented": "Augmented triad — two stacked major thirds (M3 + M3).",
+}
 
 #: Canonical cadences (Part VI). The major/minor progression patterns are shared
 #: with the trainer (single definition); the Atlas adds the pop I-V-vi-IV.
@@ -265,6 +286,106 @@ def _reference_triads(mode: str) -> List[DiatonicTriad]:
 def _degree_romans(mode: str) -> List[str]:
     """Quality-cased Roman numerals per degree, derived from the theory engine."""
     return [t.roman for t in _reference_triads(mode)]
+
+
+# ---------------------------------------------------------------------------
+# Part I keyboard view: per-degree keyboard + interval deconstruction payload.
+#
+# The Global diatonic map is *key-invariant*, so the keyboard grounds it in the
+# reference key (C major / A natural minor) and shows each degree's root-position
+# triad. The two stacked thirds are deconstructed into their actual whole/half
+# scale steps via the single intervening diatonic tone -- all derived from the
+# theory engine (DiatonicTriad + note_pc); no chord theory is re-encoded here.
+# ---------------------------------------------------------------------------
+
+def _keyboard_keys() -> List[Dict]:
+    """The invariant key geometry of the Global-map keyboard (built once).
+
+    White keys are equal-width flex siblings in the UI; black keys carry a
+    Python-computed ``leftPct``/``widthPct`` so the JS does *zero* positioning
+    math (and the headless DOM test needs no measurement).
+    """
+    lo, hi = KEYBOARD_RANGE_MIDI
+    white_midis = [m for m in range(lo, hi + 1) if m % 12 not in _BLACK_PCS]
+    white_index = {m: i for i, m in enumerate(white_midis)}
+    white_w = 100.0 / len(white_midis)
+    black_w = white_w * _BLACK_KEY_WIDTH_RATIO
+    keys: List[Dict] = []
+    for m in range(lo, hi + 1):
+        pc = m % 12
+        is_black = pc in _BLACK_PCS
+        key: Dict = {
+            "midi": m, "pc": pc, "name": _SHARP_NAMES[pc],
+            "octave": m // 12 - 1, "isBlack": is_black,
+        }
+        if is_black:
+            # Centre the black key on the boundary above its white neighbour.
+            center = (white_index[m - 1] + 1) * white_w
+            key["leftPct"] = round(center - black_w / 2.0, 4)
+            key["widthPct"] = round(black_w, 4)
+        keys.append(key)
+    return keys
+
+
+def _third_payload(position: str, layer_name: str, from_name: str,
+                   from_midi: int, to_name: str, to_midi: int,
+                   step_name: str) -> Dict:
+    """One stacked third, deconstructed into its two ordered whole/half steps.
+
+    Step sizes come from the *actual* semitone deltas across the intervening
+    diatonic tone (not from the interval name), so the whole/half ORDER is
+    correct per degree (e.g. C major's V splits its m3 B-D as H+W, while ii
+    splits its m3 D-F as W+H).
+    """
+    total = (note_pc(to_name) - note_pc(from_name)) % 12      # 3 (m3) or 4 (M3)
+    s1 = (note_pc(step_name) - note_pc(from_name)) % 12       # 1 (H) or 2 (W)
+    s2 = total - s1
+    quality = {3: "minor", 4: "major"}.get(total, "other")
+
+    def _step(size: int) -> Dict:
+        return {"size": size, "name": "W" if size == 2 else "H"}
+
+    return {
+        "position": position,
+        "name": layer_name,                # "M3" / "m3" -- straight from the engine
+        "semitones": total,
+        "quality": quality,
+        "fromName": from_name, "fromMidi": from_midi,
+        "toName": to_name, "toMidi": to_midi,
+        "stepName": step_name, "stepMidi": from_midi + s1,
+        "scalePath": [from_name, step_name, to_name],
+        "steps": [_step(s1), _step(s2)],
+        # endpoints + passing tone -- the keys to pulse when the block is hovered.
+        "flashMidis": [from_midi, from_midi + s1, to_midi],
+    }
+
+
+def _keyboard_payload(t: DiatonicTriad) -> Dict:
+    """Keyboard + interval-deconstruction payload for one diatonic degree."""
+    names = list(t.pitches)               # [root, third, fifth] spelled
+    midis = list(t.midi_pitches)          # root-position MIDI (root in octave 4)
+    scale = t.scale_pitches               # parent scale's 7 spelled pitch classes
+    i = t.degree_index
+    lower_name, upper_name = t.interval_layer.split("+")   # e.g. "M3", "m3"
+    # A diatonic third spans exactly two scale steps; the single passing tone is
+    # the scale degree between the chord tones.
+    lower = _third_payload("lower", lower_name, names[0], midis[0],
+                           names[1], midis[1], scale[(i + 1) % 7])
+    upper = _third_payload("upper", upper_name, names[1], midis[1],
+                           names[2], midis[2], scale[(i + 3) % 7])
+    return {
+        "referenceKey": _REFERENCE_TONIC[t.mode],
+        "referenceLabel": t.key,          # "C major" / "A natural minor"
+        "quality": t.chord_quality,
+        "intervalLayer": t.interval_layer,
+        "chord": {
+            "root":  {"midi": midis[0], "name": names[0], "pc": note_pc(names[0])},
+            "third": {"midi": midis[1], "name": names[1], "pc": note_pc(names[1])},
+            "fifth": {"midi": midis[2], "name": names[2], "pc": note_pc(names[2])},
+        },
+        "thirds": [lower, upper],
+        "structure": _STRUCTURE_CAPTION.get(t.chord_quality, ""),
+    }
 
 
 def _build_nodes_and_edges() -> Tuple["OrderedDict[str, AtlasNode]", List[AtlasEdge]]:
@@ -586,6 +707,7 @@ class Atlas:
                 "functionLabel": t.function_label,
                 "scaleDegreeName": t.scale_degree_name,
                 "spec": n.spec.to_dict() if n.spec else None,
+                "keyboard": _keyboard_payload(t),
             })
         return rows
 
@@ -897,6 +1019,9 @@ class Atlas:
             "keySpecs": {m: {k: full_key_spec(k, m).to_dict() for k in _keys_for(m)}
                          for m in MODES},
             "globalMap": {m: self.global_map(m) for m in MODES},
+            # Invariant key geometry for the Global-map keyboard (shared by all
+            # rows; each row's "keyboard" only says which midis to highlight).
+            "keyboardKeys": _keyboard_keys(),
             "transpositionMatrix": {m: self.transposition_matrix(m) for m in MODES},
             "qualityMatrix": {m: self.quality_matrix(m) for m in MODES},
             "functionMap": {m: self.function_map(m) for m in MODES},

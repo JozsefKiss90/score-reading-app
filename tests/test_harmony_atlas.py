@@ -43,6 +43,8 @@ from harmony.atlas import (  # noqa: E402
     ScoreAnalysis,
     HarmonyAnnotation,
     RELATIONS,
+    KEYBOARD_RANGE_MIDI,
+    _keyboard_keys,
     scale_id,
     degree_id,
     triad_id,
@@ -321,6 +323,101 @@ class TestSerialisationAndReservedApi(unittest.TestCase):
                                 roman="V")
         self.assertEqual(self.atlas.node_for_annotation(ann),
                          triad_id("G", "major", 4))
+
+
+class TestGlobalKeyboard(unittest.TestCase):
+    """Part I keyboard view: per-degree keyboard + interval deconstruction.
+
+    The whole/half-step deconstruction is the pedagogical payload, so these tests
+    pin it hard -- and prove the W/H ordering comes from real scale deltas, not a
+    naive interval-name mapping.
+    """
+
+    def setUp(self):
+        self.atlas = build_atlas()
+
+    def test_keyboard_keys_geometry(self):
+        keys = _keyboard_keys()
+        lo, hi = KEYBOARD_RANGE_MIDI
+        self.assertEqual([k["midi"] for k in keys], list(range(lo, hi + 1)))
+        whites = [k for k in keys if not k["isBlack"]]
+        blacks = [k for k in keys if k["isBlack"]]
+        self.assertEqual((len(keys), len(whites), len(blacks)), (18, 11, 7))
+        # Only black keys carry positioning; each black key sits between its
+        # white neighbours' left% (monotonic geometry, no JS math needed).
+        white_pct = []
+        acc = 0.0
+        step = 100.0 / len(whites)
+        for _ in whites:
+            white_pct.append(acc)
+            acc += step
+        for b in blacks:
+            self.assertIn("leftPct", b)
+            self.assertIn("widthPct", b)
+            self.assertTrue(0 <= b["leftPct"] <= 100)
+        for w in whites:
+            self.assertNotIn("leftPct", w)   # white keys flex; no positioning
+
+    def test_global_map_rows_carry_keyboard(self):
+        for mode in ("major", "natural_minor"):
+            for row in self.atlas.global_map(mode):
+                kb = row["keyboard"]
+                self.assertEqual(kb["intervalLayer"], row["intervalLayer"])
+                self.assertEqual(len(kb["thirds"]), 2)
+                # interval-layer reconstructs from the two third names (no drift).
+                self.assertEqual("+".join(t["name"] for t in kb["thirds"]),
+                                 row["intervalLayer"])
+
+    def test_major_tonic_keyboard(self):
+        kb = self.atlas.global_map("major")[0]["keyboard"]   # I = C-E-G
+        self.assertEqual(kb["referenceLabel"], "C major")
+        self.assertEqual([kb["chord"][p]["midi"] for p in ("root", "third", "fifth")],
+                         [60, 64, 67])
+        self.assertEqual([kb["chord"][p]["name"] for p in ("root", "third", "fifth")],
+                         ["C", "E", "G"])
+        lower, upper = kb["thirds"]
+        self.assertEqual((lower["name"], lower["quality"]), ("M3", "major"))
+        self.assertEqual([s["name"] for s in lower["steps"]], ["W", "W"])
+        self.assertEqual(lower["scalePath"], ["C", "D", "E"])
+        self.assertEqual(lower["stepMidi"], 62)
+        self.assertEqual((upper["name"], upper["quality"]), ("m3", "minor"))
+        self.assertEqual([s["name"] for s in upper["steps"]], ["H", "W"])
+        self.assertEqual(upper["scalePath"], ["E", "F", "G"])
+
+    def test_step_order_is_scale_accurate_not_name_based(self):
+        # The load-bearing assertion: an m3 is W+H in one degree and H+W in
+        # another -- proving steps come from the actual scale, not "m3 == W+H".
+        gm = self.atlas.global_map("major")
+        # ii (D-F-A): lower m3 D->E->F is W+H.
+        ii_lower = gm[1]["keyboard"]["thirds"][0]
+        self.assertEqual((ii_lower["name"], [s["name"] for s in ii_lower["steps"]]),
+                         ("m3", ["W", "H"]))
+        # V (G-B-D): upper m3 B->C->D is H+W.
+        v_upper = gm[4]["keyboard"]["thirds"][1]
+        self.assertEqual((v_upper["name"], [s["name"] for s in v_upper["steps"]]),
+                         ("m3", ["H", "W"]))
+
+    def test_every_highlighted_pitch_is_on_the_keyboard(self):
+        lo, hi = KEYBOARD_RANGE_MIDI
+        seen_lo, seen_hi = 999, -1
+        for mode in ("major", "natural_minor"):
+            for row in self.atlas.global_map(mode):
+                kb = row["keyboard"]
+                midis = [kb["chord"][p]["midi"] for p in ("root", "third", "fifth")]
+                for t in kb["thirds"]:
+                    midis += [t["fromMidi"], t["toMidi"], t["stepMidi"]] + t["flashMidis"]
+                    # each third's two steps sum to its interval size.
+                    self.assertEqual(sum(s["size"] for s in t["steps"]), t["semitones"])
+                for m in midis:
+                    self.assertTrue(lo <= m <= hi, f"{mode} {row['roman']} midi {m}")
+                seen_lo, seen_hi = min(seen_lo, *midis), max(seen_hi, *midis)
+        # locks in the measured span fact the single fixed keyboard relies on.
+        self.assertEqual((seen_lo, seen_hi), (lo, hi))
+
+    def test_to_json_includes_keyboard_keys(self):
+        payload = self.atlas.to_json()
+        self.assertIn("keyboardKeys", payload)
+        self.assertEqual(len(payload["keyboardKeys"]), 18)
 
 
 if __name__ == "__main__":
