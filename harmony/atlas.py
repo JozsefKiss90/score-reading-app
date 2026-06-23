@@ -71,11 +71,15 @@ MODES = ["major", "natural_minor"]
 _REFERENCE_TONIC = {"major": "C", "natural_minor": "A"}
 
 #: Fixed MIDI span for the Global-map mini-keyboard (Part I keyboard view).
-#: C4..F5 (60..77) is the *measured* union of both reference keys' root-position
-#: triads: A natural minor's III/VI/VII voice down to C4 (60) while ii° reaches
-#: F5 (77), and C major spans the same 60..77 -- so one keyboard fits every
-#: degree of both modes without transposing. (Verified by tests.)
-KEYBOARD_RANGE_MIDI = (60, 77)
+#: B3..G5 (59..79) is the *measured* union of **every** diatonic root-position
+#: triad in all 24 keys (not only the two reference keys): Gb major IV = Cb-Eb-Gb
+#: voices down to Cb4 (59) while D major vi = B-D-F# reaches F#5 (78); the board
+#: extends one white key to G5 (79) so no black key hangs off the right edge.
+#: The reference keys (C major / A natural minor) sit inside this span at 60..77,
+#: and -- crucially -- so does the concrete triad of *any* synced trainer target,
+#: so the single fixed keyboard retargets to the current concrete chord without
+#: transposing it out of register (Bug 1 sync parity). (Verified by tests.)
+KEYBOARD_RANGE_MIDI = (59, 79)
 _BLACK_PCS = frozenset({1, 3, 6, 8, 10})
 _SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 #: Black key width as a fraction of a white key (matches keyboard_view.js 0.62).
@@ -91,19 +95,28 @@ _STRUCTURE_CAPTION = {
 }
 
 #: Canonical cadences (Part VI). The major/minor progression patterns are shared
-#: with the trainer (single definition); the Atlas adds the pop I-V-vi-IV.
+#: with the trainer (single definition); the Atlas adds the pop I-V-vi-IV and the
+#: natural-minor iv-v-i (the canonical minor authentic progression, which is not
+#: one of the shared trainer function patterns).
 #: Each entry: (tokens, label, mode, cadence_type).
 _EXTRA_CADENCES = [
     (["I", "V", "vi", "IV"], "I–V–vi–IV", "major", "deceptive"),
+    (["iv", "v", "i"], "iv–v–i", "natural_minor", "authentic"),
 ]
 
 #: Two-chord cadence *types* (Part IX progress dashboard tracks these).
-#: Derived as function-drill patterns, not hard-coded chords.
+#: Derived as function-drill patterns, not hard-coded chords.  The natural-minor
+#: types (v-i, VII-i) join the four major types so every required cadence has an
+#: Atlas node the curriculum can map to (Bug 2).
 _CADENCE_TYPES = [
     (["V", "I"], "Authentic", "major", "authentic"),
     (["IV", "I"], "Plagal", "major", "plagal"),
     (["I", "V"], "Half", "major", "half"),
     (["V", "vi"], "Deceptive", "major", "deceptive"),
+    # Roman labels (like the progression cadences) -- avoids the b->f flat
+    # substitution _slug() applies to pitch-y words (e.g. "Subtonic" -> "Suftonic").
+    (["v", "i"], "v–i", "natural_minor", "authentic"),
+    (["VII", "i"], "VII–i", "natural_minor", "subtonic"),
 ]
 
 #: Heuristic cadence-type tag for the shared trainer progressions, by label.
@@ -375,7 +388,9 @@ def _keyboard_payload(t: DiatonicTriad) -> Dict:
                            names[2], midis[2], scale[(i + 3) % 7])
     return {
         "referenceKey": _REFERENCE_TONIC[t.mode],
-        "referenceLabel": t.key,          # "C major" / "A natural minor"
+        "referenceLabel": t.key,          # "C major" / "A natural minor" / "B natural minor"
+        "roman": t.roman,                 # so a synced concrete chord captions its degree
+        "chordSymbol": t.chord_symbol,    # "C" / "Bm" / "Gb" (concrete-triad caption)
         "quality": t.chord_quality,
         "intervalLayer": t.interval_layer,
         "chord": {
@@ -713,9 +728,19 @@ class Atlas:
 
     # -- Part II: horizontal transposition matrix -----------------------
     def transposition_matrix(self, mode: str) -> Dict:
-        """Rows = degrees, columns = keys; each cell is a concrete triad node."""
+        """Rows = degrees, columns = keys; each cell is a concrete triad node.
+
+        Each cell also carries the per-degree ``keyboard`` payload for its
+        *concrete* triad (same shape as the Global map's reference keyboard), so
+        the Global Diatonic Map can retarget its keyboard / interval
+        deconstruction to the currently-synced concrete chord rather than staying
+        frozen on the reference key (Bug 1 sync parity).
+        """
         keys = _keys_for(mode)
         romans = _degree_romans(mode)
+        # Build each key's seven triads once (pure/deterministic) so every cell
+        # gets a real DiatonicTriad for its keyboard payload without re-generating.
+        triads_by_key = {k: generate_diatonic_triads(k, mode) for k in keys}
         rows = []
         for di, roman in enumerate(romans):
             d_node = self.nodes[degree_id(mode, roman)]
@@ -730,6 +755,7 @@ class Atlas:
                     "chordTones": t.data["chordTones"],
                     "intervalLayer": t.data["intervalLayer"],
                     "spec": t.spec.to_dict() if t.spec else None,
+                    "keyboard": _keyboard_payload(triads_by_key[key][di]),
                 })
             rows.append({
                 "degreeNodeId": d_node.id,

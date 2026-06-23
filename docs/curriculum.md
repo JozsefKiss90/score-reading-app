@@ -53,7 +53,7 @@ reshaping the node schema or duplicating an exercise definition.
         │                  harmony.curriculum  (NEW)                    │
         │  CurriculumNode tree · build_curriculum() · search · to_json  │
         │  - wraps the 102 native drills in LabExperimentSpec(drill)    │
-        │  - adds the 15 lab concepts + 5 Atlas cadence drills          │
+        │  - adds the lab concepts + cadence/inversion curriculum grids │
         │  - derives Atlas + Circle refs per node                       │
         └─────────────────────────────────────────────────────────────┘
              │                          │                         │
@@ -113,12 +113,20 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 
 | Source | Count | Category |
 |---|---:|---|
-| `lab.lab_demo_specs` inversion | 2 | Inversions |
-| `lab.lab_demo_specs` cadence / voice-leading | 8 | Voice Leading |
+| inversion grid (I/ii/IV/V × 12 major + i/iv/v/VII × 12 minor) + 1 worked example | 97 | Inversions |
+| voice-leading cadences (one SATB per cadence: 8 demos + 5 generated) | 13 | Voice Leading |
 | `lab.lab_demo_specs` motive | 2 | Motives |
 | `lab.lab_demo_specs` polyphonic | 3 | Polyphonic Harmony |
-| `atlas._CADENCE_TYPES` + `_EXTRA_CADENCES` | 5 | Cadences |
-| **grand total** | **122 exercise leaves** | (178 nodes total) |
+| block cadences from `_CADENCE_CATALOG` (6 two-chord types + 7 progressions) | 13 | Cadences |
+| **grand total** | **230 exercise leaves** | (300 nodes total) |
+
+The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
+(13 cadences) so the block versions (Cadences) and SATB versions (Voice Leading)
+never drift; every cadence maps to an Atlas cadence node and cross-links to its
+counterpart. The inversion grid uses `LabExperimentSpec(concept="inversion")`
+(3 measures: root / first / second) and reuses `inv_C_I` as its C-major-I cell.
+Coverage is verified by `harmony.curriculum_audit` (see
+`docs/harmony_curriculum_coverage_audit.md`).
 
 Theory-only / bridge / reserved categories (own **no** exercises, so nothing is
 duplicated): **Intervals & Interval Layers** (cross-links to the quality drills),

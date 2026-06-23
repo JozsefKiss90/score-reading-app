@@ -342,7 +342,8 @@ class TestGlobalKeyboard(unittest.TestCase):
         self.assertEqual([k["midi"] for k in keys], list(range(lo, hi + 1)))
         whites = [k for k in keys if not k["isBlack"]]
         blacks = [k for k in keys if k["isBlack"]]
-        self.assertEqual((len(keys), len(whites), len(blacks)), (18, 11, 7))
+        # B3..G5 (59..79): wide enough for every concrete root-position triad.
+        self.assertEqual((len(keys), len(whites), len(blacks)), (21, 13, 8))
         # Only black keys carry positioning; each black key sits between its
         # white neighbours' left% (monotonic geometry, no JS math needed).
         white_pct = []
@@ -398,26 +399,38 @@ class TestGlobalKeyboard(unittest.TestCase):
                          ("m3", ["H", "W"]))
 
     def test_every_highlighted_pitch_is_on_the_keyboard(self):
+        # Every keyboard a row OR a transposition-matrix cell can show must fit
+        # the single fixed board -- this is what lets the Global map retarget to
+        # any concrete synced chord (Bug 1) without transposing it out of range.
         lo, hi = KEYBOARD_RANGE_MIDI
         seen_lo, seen_hi = 999, -1
+
+        def check(kb, label):
+            nonlocal seen_lo, seen_hi
+            midis = [kb["chord"][p]["midi"] for p in ("root", "third", "fifth")]
+            for t in kb["thirds"]:
+                midis += [t["fromMidi"], t["toMidi"], t["stepMidi"]] + t["flashMidis"]
+                # each third's two steps sum to its interval size.
+                self.assertEqual(sum(s["size"] for s in t["steps"]), t["semitones"])
+            for m in midis:
+                self.assertTrue(lo <= m <= hi, f"{label} midi {m} out of {lo}..{hi}")
+            seen_lo, seen_hi = min(seen_lo, *midis), max(seen_hi, *midis)
+
         for mode in ("major", "natural_minor"):
             for row in self.atlas.global_map(mode):
-                kb = row["keyboard"]
-                midis = [kb["chord"][p]["midi"] for p in ("root", "third", "fifth")]
-                for t in kb["thirds"]:
-                    midis += [t["fromMidi"], t["toMidi"], t["stepMidi"]] + t["flashMidis"]
-                    # each third's two steps sum to its interval size.
-                    self.assertEqual(sum(s["size"] for s in t["steps"]), t["semitones"])
-                for m in midis:
-                    self.assertTrue(lo <= m <= hi, f"{mode} {row['roman']} midi {m}")
-                seen_lo, seen_hi = min(seen_lo, *midis), max(seen_hi, *midis)
-        # locks in the measured span fact the single fixed keyboard relies on.
-        self.assertEqual((seen_lo, seen_hi), (lo, hi))
+                check(row["keyboard"], f"{mode} {row['roman']}")
+            for row in self.atlas.transposition_matrix(mode)["rows"]:
+                for c in row["cells"]:
+                    check(c["keyboard"], f"{mode} {c['key']} {c['roman']}")
+        # The measured union of EVERY concrete triad is 59..78; the board adds one
+        # white key (G5=79) so no black key (F#5=78) hangs off the right edge.
+        self.assertEqual((seen_lo, seen_hi), (59, 78))
+        self.assertEqual((lo, hi), (59, 79))
 
     def test_to_json_includes_keyboard_keys(self):
         payload = self.atlas.to_json()
         self.assertIn("keyboardKeys", payload)
-        self.assertEqual(len(payload["keyboardKeys"]), 18)
+        self.assertEqual(len(payload["keyboardKeys"]), 21)
 
 
 if __name__ == "__main__":

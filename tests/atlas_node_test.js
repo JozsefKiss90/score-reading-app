@@ -104,6 +104,22 @@ function kbKeys(lo, hi) {
   return keys;
 }
 function kbNote(midi, name, pc) { return { midi: midi, name: name, pc: pc }; }
+// A minimal concrete-triad keyboard payload for a transposition-matrix cell.
+function cellKb(label, roman, sym, quality, layer, rootM, thirdM, fifthM, names) {
+  return {
+    referenceKey: label.split(" ")[0], referenceLabel: label, roman: roman,
+    chordSymbol: sym, quality: quality, intervalLayer: layer,
+    chord: { root: kbNote(rootM, names[0], rootM % 12),
+      third: kbNote(thirdM, names[1], thirdM % 12),
+      fifth: kbNote(fifthM, names[2], fifthM % 12) },
+    thirds: [
+      kbThird("lower", layer.split("+")[0], layer[0] === "M" ? "major" : "minor",
+        names[0], rootM, names[1], thirdM, names[0], rootM + 1, [], [W, H]),
+      kbThird("upper", layer.split("+")[1], layer.slice(-2)[0] === "M" ? "major" : "minor",
+        names[1], thirdM, names[2], fifthM, names[1], thirdM + 1, [], [W, H]),
+    ], structure: quality + " triad",
+  };
+}
 function kbThird(position, name, quality, from, fromMidi, to, toMidi, step, stepMidi, path, steps) {
   return {
     position: position, name: name, semitones: quality === "major" ? 4 : 3, quality: quality,
@@ -154,14 +170,19 @@ const DATA = {
     major: {
       mode: "major", keys: ["C", "G"], rows: [
         { degreeNodeId: "degree:major:I", roman: "I", rowSpec: spec("row_I"), cells: [
-          { nodeId: "triad:C:major:0", key: "C", roman: "I", chordSymbol: "C", chordTones: ["C", "E", "G"], intervalLayer: "M3+m3", spec: spec("cell_C_I") },
-          { nodeId: "triad:G:major:0", key: "G", roman: "I", chordSymbol: "G", chordTones: ["G", "B", "D"], intervalLayer: "M3+m3", spec: spec("cell_G_I") },
+          { nodeId: "triad:C:major:0", key: "C", roman: "I", chordSymbol: "C", chordTones: ["C", "E", "G"], intervalLayer: "M3+m3", spec: spec("cell_C_I"),
+            keyboard: cellKb("C major", "I", "C", "major", "M3+m3", 60, 64, 67, ["C", "E", "G"]) },
+          { nodeId: "triad:G:major:0", key: "G", roman: "I", chordSymbol: "G", chordTones: ["G", "B", "D"], intervalLayer: "M3+m3", spec: spec("cell_G_I"),
+            keyboard: cellKb("G major", "I", "G", "major", "M3+m3", 67, 71, 74, ["G", "B", "D"]) },
         ] },
       ],
     },
     natural_minor: { mode: "natural_minor", keys: ["A", "E"], rows: [
       { degreeNodeId: "degree:natural_minor:i", roman: "i", rowSpec: spec("row_i"), cells: [
-        { nodeId: "triad:A:natural_minor:0", key: "A", roman: "i", chordSymbol: "Am", chordTones: ["A", "C", "E"], intervalLayer: "m3+M3", spec: spec("cell_A_i") },
+        { nodeId: "triad:A:natural_minor:0", key: "A", roman: "i", chordSymbol: "Am", chordTones: ["A", "C", "E"], intervalLayer: "m3+M3", spec: spec("cell_A_i"),
+          keyboard: cellKb("A minor", "i", "Am", "minor", "m3+M3", 69, 72, 76, ["A", "C", "E"]) },
+        { nodeId: "triad:E:natural_minor:0", key: "E", roman: "i", chordSymbol: "Em", chordTones: ["E", "G", "B"], intervalLayer: "m3+M3", spec: spec("cell_E_i"),
+          keyboard: cellKb("E minor", "i", "Em", "minor", "m3+M3", 64, 67, 71, ["E", "G", "B"]) },
       ] },
     ] },
   },
@@ -333,6 +354,74 @@ function assert(cond, msg) {
   row.fire("click");                     // click contract unchanged by keyboard
   assert(h.ui.takeLaunch().exercise_id === "deg_ii", "row click still launches its spec");
   console.log("Test K (row click unaffected by keyboard): PASS");
+})();
+
+(function testGlobalSyncRetargetsKeyboardToConcreteChord() {
+  // Bug 1: a sync to a concrete chord retargets the Global-map keyboard to THAT
+  // chord (not the reference key), exactly like the Transposition Matrix.
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);                       // global tab, default keyboard = C-E-G
+  assert(h.ui.keyboardRoleOf(60).indexOf("root") !== -1, "precondition: default root C(60)");
+  // Sync to G major I (concrete, same mode) -> keyboard follows to G-B-D.
+  h.ui.setSync({ scale: "scale:G:major", degree: "degree:major:I", triad: "triad:G:major:0" });
+  assert(h.ui.keyboardRoleOf(67).indexOf("root") !== -1, "retarget: G(67) is now root");
+  assert(h.ui.keyboardRoleOf(60).indexOf("root") === -1, "retarget: old C(60) root cleared");
+  const kb = h.ui.currentKeyboard();
+  assert(kb && kb.referenceLabel === "G major" && kb.chordSymbol === "G",
+    "caption payload follows the concrete chord (G major / G)");
+  console.log("Test L (global sync retargets keyboard to concrete chord): PASS");
+})();
+
+(function testGlobalSyncSwitchesModeToTarget() {
+  // Bug 1: syncing to a target in the OTHER mode flips the Global map's mode and
+  // retargets the keyboard to the concrete minor chord (e.g. E natural minor i).
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);                       // starts in major
+  h.ui.setSync({ scale: "scale:E:natural_minor", degree: "degree:natural_minor:i",
+    triad: "triad:E:natural_minor:0" });
+  const kb = h.ui.currentKeyboard();
+  assert(kb && kb.referenceLabel === "E minor", "global map flipped to minor + E minor i chord");
+  assert(h.ui.keyboardRoleOf(64).indexOf("root") !== -1, "retarget: E(64) is now root");
+  assert(h.ui.keyboardRoleOf(67).indexOf("third") !== -1, "retarget: G(67) is now third");
+  assert(h.ui.keyboardRoleOf(71).indexOf("fifth") !== -1, "retarget: B(71) is now fifth");
+  assert(h.ui.syncState().indexOf("degree:natural_minor:i") !== -1, "minor i row highlighted");
+  console.log("Test M (global sync switches mode to target): PASS");
+})();
+
+(function testSwitchingToGlobalReflectsCurrentChord() {
+  // Bug 1: switch away, sync a chord, switch back -> the Global map shows the
+  // synced chord (the host pushes sync continuously, so it must not reset).
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);
+  h.ui.showTab("matrix");
+  h.ui.setSync({ scale: "scale:G:major", degree: "degree:major:I", triad: "triad:G:major:0" });
+  h.ui.showTab("global");                // re-render the Global map
+  assert(h.ui.keyboardRoleOf(67).indexOf("root") !== -1,
+    "Global map reflects the synced G chord on (re)entry");
+  console.log("Test N (switching to global reflects current chord): PASS");
+})();
+
+(function testCrossModeSyncOffGlobalTabKeepsModesInAgreement() {
+  // Bug 1 regression: a cross-mode sync that arrives while ANOTHER tab is showing
+  // must still flip the Global map's mode, so switching to it later never shows
+  // the degree table (major) and keyboard (minor chord) in disagreeing modes.
+  const h = makeHarness(DATA);
+  h.ui.init(DATA);                       // starts on the global tab, major
+  h.ui.showTab("matrix");                // leave the global tab
+  h.ui.setSync({ scale: "scale:E:natural_minor", degree: "degree:natural_minor:i",
+    triad: "triad:E:natural_minor:0" }); // cross-mode sync while off-tab
+  ALL.length = 0;                        // only inspect nodes from the next render
+  h.ui.showTab("global");                // now visit the Global map
+  // The degree table is in natural minor (its i row exists, no major I row).
+  assert(findByData("node", "degree:natural_minor:i").length >= 1,
+    "global degree table flipped to natural minor");
+  assert(findByData("node", "degree:major:I").length === 0,
+    "global degree table is NOT still in major");
+  // ...and the keyboard agrees: the concrete E minor i chord.
+  const kb = h.ui.currentKeyboard();
+  assert(kb && kb.referenceLabel === "E minor", "keyboard shows the E minor i chord");
+  assert(h.ui.keyboardRoleOf(64).indexOf("root") !== -1, "E(64) root on the keyboard");
+  console.log("Test O (cross-mode sync off-tab keeps modes in agreement): PASS");
 })();
 
 console.log("\nAll atlas.js behavioural checks passed (" + passed + " assertions).");

@@ -55,6 +55,9 @@ from harmony.exercise_spec import (
     normalise_pattern,
     default_exercise_groups,
     MAX_CHORDS_PER_SPEC,
+    DEFAULT_MAJOR_KEYS,
+    DEFAULT_MINOR_KEYS,
+    _key_slug,
     GROUP_MAJOR_FULL_KEY,
     GROUP_MINOR_FULL_KEY,
     GROUP_DEGREE,
@@ -65,9 +68,9 @@ from harmony.exercise_spec import (
 from harmony.lab_spec import LabExperimentSpec
 from harmony.lab import lab_demo_specs
 from harmony.atlas import (
-    scale_id, degree_id, triad_id, quality_id, function_id, layer_id, cadence_id,
-    function_spec,
-    _CADENCE_TYPES, _EXTRA_CADENCES, _REFERENCE_TONIC,
+    scale_id, degree_id, triad_id, quality_id, function_id, layer_id,
+    function_spec, build_atlas,
+    _REFERENCE_TONIC,
 )
 
 
@@ -441,55 +444,173 @@ def _lab_keywords(spec: LabExperimentSpec) -> List[str]:
 
 
 # ---------------------------------------------------------------------------
-# Cadence-type exercises (Atlas factories -- ids distinct from the native set)
+# Cadence catalogue (the single source for the Cadences + Voice-leading layers)
 # ---------------------------------------------------------------------------
+#
+# Each entry: ``(tokens, label, mode, cadence_type, family)`` where ``family`` is
+# ``"type"`` (a two-chord cadence closure) or ``"progression"`` (a longer
+# functional cadence).  Every entry has a matching Atlas cadence node (looked up
+# by tokens, so the mapping always resolves) and -- where one exists -- reuses the
+# lab cadence/voice-leading demo for its SATB version, so nothing is duplicated.
+_CADENCE_CATALOG = [
+    # -- major two-chord cadence types --
+    (["V", "I"],  "V–I",  "major", "authentic", "type"),
+    (["IV", "I"], "IV–I", "major", "plagal",    "type"),
+    (["I", "V"],  "I–V",  "major", "half",      "type"),
+    (["V", "vi"], "V–vi", "major", "deceptive", "type"),
+    # -- natural-minor two-chord cadence types --
+    (["v", "i"],   "v–i",   "natural_minor", "authentic", "type"),
+    (["VII", "i"], "VII–i", "natural_minor", "subtonic",  "type"),
+    # -- major functional cadence progressions --
+    (["I", "IV", "V", "I"],  "I–IV–V–I",  "major", "authentic", "progression"),
+    (["ii", "V", "I"],       "ii–V–I",    "major", "authentic", "progression"),
+    (["vi", "ii", "V", "I"], "vi–ii–V–I", "major", "authentic", "progression"),
+    (["I", "V", "vi", "IV"], "I–V–vi–IV", "major", "deceptive", "progression"),
+    # -- natural-minor functional cadence progressions --
+    (["iv", "v", "i"],        "iv–v–i",     "natural_minor", "authentic", "progression"),
+    (["i", "iv", "v", "i"],   "i–iv–v–i",   "natural_minor", "authentic", "progression"),
+    (["i", "VI", "VII", "i"], "i–VI–VII–i", "natural_minor", "aeolian",   "progression"),
+]
 
-def _cadence_type_specs() -> "List[tuple]":
-    """``(label, mode, cadence_type, HarmonyExerciseSpec)`` for the cadence drills.
+#: One-line description of each cadence type's sense of closure (function-path /
+#: bass-motion prose is generated per cadence from the compiled chords).
+_CADENCE_TYPE_BLURB = {
+    "authentic": "a strong arrival driven by the dominant resolving to the tonic",
+    "plagal": "the gentle 'amen' of the subdominant falling to the tonic",
+    "half": "an unfinished pause that comes to rest on the dominant",
+    "deceptive": "the surprise of the dominant side-stepping to vi instead of I",
+    "subtonic": "the modal ♭VII → i close (a whole-step subtonic, not a leading tone)",
+    "aeolian": "the characteristic natural-minor i–VI–VII–i loop",
+}
 
-    Reuses the Atlas ``_CADENCE_TYPES`` / ``_EXTRA_CADENCES`` (authentic / plagal
-    / half / deceptive / pop), realised in the reference key.  These ids
-    (``atlas_function_*``) are disjoint from the native function-drill ids, so no
+
+def _cadence_block_spec(tokens, label, mode) -> HarmonyExerciseSpec:
+    """The block (root-position) drill for a cadence, in the reference key.
+
+    Reuses the Atlas :func:`function_spec` factory (single definition); the id
+    (``atlas_function_*``) is disjoint from the native function-drill ids, so no
     exercise is duplicated.
     """
-    out = []
-    for toks, label, mode, ctype in list(_CADENCE_TYPES) + list(_EXTRA_CADENCES):
-        ref_key = _REFERENCE_TONIC[mode]
-        spec = function_spec(toks, label, mode, [ref_key])
-        out.append((label, mode, ctype, spec))
+    return function_spec(tokens, label, mode, [_REFERENCE_TONIC[mode]])
+
+
+def _cadence_block_leaf_id(tokens, label, mode) -> str:
+    """The curriculum leaf id of a cadence's block drill (for cross-linking)."""
+    return f"ex:{_wrap_native(_cadence_block_spec(tokens, label, mode)).experiment_id}"
+
+
+def _exercise_node_from_cadence(entry, atlas, vl_leaf_id, parent: str,
+                                order: int) -> CurriculumNode:
+    """Build a block-cadence exercise leaf (Atlas-mapped, with derived prose)."""
+    tokens, label, mode, ctype, family = entry
+    hs = _cadence_block_spec(tokens, label, mode)
+    lab = _wrap_native(hs)
+    triads = [c.triad for c in compile_exercise(hs).chords]
+    ref_key = triads[0].key                                    # e.g. "C major"
+    chord_syms = "–".join(t.chord_symbol for t in triads)
+    func_path = " → ".join(t.function_label for t in triads)
+    bass_path = " → ".join(t.root for t in triads)
+    kind_word = "cadence" if family == "type" else "progression"
+    cad_nid = atlas.cadence_node_id(list(tokens), mode)        # always resolves
+    return CurriculumNode(
+        id=f"ex:{lab.experiment_id}", parent=parent, kind="exercise",
+        title=f"{label} {ctype} {kind_word} in {ref_key}", order=order,
+        subtitle=f"{label} = {chord_syms}  ({func_path})",
+        description=(f"The {ctype} {kind_word} {label} in {ref_key}: "
+                     f"{chord_syms}."),
+        learning_objective=(f"Hear the {ctype} {kind_word} {label} — "
+                            f"{_CADENCE_TYPE_BLURB.get(ctype, 'its functional motion')}."),
+        theory=(f"{label} in {ref_key} is {chord_syms}. "
+                f"Function path: {func_path}. Bass motion: {bass_path}. "
+                f"This is {_CADENCE_TYPE_BLURB.get(ctype, 'a cadential motion')}."),
+        difficulty=3, estimated_minutes=4,
+        atlas_nodes=_dedup(_atlas_refs_for_native(hs)
+                           + ([cad_nid] if cad_nid else [])),
+        circle_nodes=_circle_refs_for_native(hs),
+        keywords=[ctype, "cadence", kind_word, label] + list(tokens),
+        related=[vl_leaf_id] if vl_leaf_id else [],
+        exercise_count=1, lab_spec=lab,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Voice-leading (SATB) version of each cadence — reuses the lab demos, generates
+# the rest, so every cadence has a voice-leading lab counterpart.
+# ---------------------------------------------------------------------------
+
+def _make_vl_spec(tokens, label, mode, ctype) -> LabExperimentSpec:
+    """A four-part (SATB) voice-leading LabExperimentSpec for a cadence."""
+    tonic = _REFERENCE_TONIC[mode]
+    concept = "cadence" if len(tokens) == 2 else "voice_leading"
+    params: Dict = {"pattern": list(tokens)}
+    if ctype:
+        params["cadence_type"] = ctype
+    spec = LabExperimentSpec(
+        experiment_id=f"cad_{'_'.join(tokens)}_{_key_slug(tonic)}",
+        title=f"{label} in {tonic} {_mode_word(mode)} (voice leading)",
+        concept=concept, mode=mode, key=f"{tonic} {_mode_word(mode)}",
+        render="voice_leading", parameters=params,
+        description=f"The {label} cadence as four-part (SATB) voice leading.",
+    )
+    spec.validate()
+    return spec
+
+
+def _vl_specs_by_cadence() -> "Dict[tuple, LabExperimentSpec]":
+    """``(mode, tokens) -> VL spec``: reuse the matching lab demo, else generate."""
+    demos = {(s.mode, tuple(s.parameters.get("pattern", ()))): s
+             for s in lab_demo_specs() if s.concept in ("cadence", "voice_leading")}
+    out: "Dict[tuple, LabExperimentSpec]" = {}
+    for tokens, label, mode, ctype, _family in _CADENCE_CATALOG:
+        key = (mode, tuple(tokens))
+        out[key] = demos.get(key) or _make_vl_spec(tokens, label, mode, ctype)
     return out
 
 
-def _exercise_node_from_cadence(label, mode, ctype, hs: HarmonyExerciseSpec,
-                                parent: str, order: int) -> CurriculumNode:
-    lab = _wrap_native(hs)
-    node = CurriculumNode(
-        id=f"ex:{lab.experiment_id}",
-        parent=parent, kind="exercise",
-        title=f"{label} cadence ({ctype})", order=order,
-        subtitle=f"{'-'.join(hs.pattern or [])} in {hs.keys[0]} {_mode_word(mode)}",
-        description=(f"The {ctype} cadence {'-'.join(hs.pattern or [])} in "
-                     f"{hs.keys[0]} {_mode_word(mode)}."),
-        learning_objective=(f"Recognise the {ctype} cadence by its bass motion and "
-                            f"sense of arrival (or denied arrival)."),
-        theory=(f"The {ctype} cadence ({'-'.join(hs.pattern or [])}) is defined by "
-                f"its final bass motion and degree of closure: authentic = strong "
-                f"arrival (V→I), plagal = the gentle 'amen' (IV→I), half = an "
-                f"unfinished pause on V, deceptive = the surprise of V→vi."),
-        difficulty=3, estimated_minutes=4,
-        atlas_nodes=_dedup(_atlas_refs_for_native(hs)
-                           + [cadence_id(f"{_cad_slug(label)}_{mode}")]),
-        circle_nodes=_circle_refs_for_native(hs),
-        keywords=[ctype, "cadence", label] + list(hs.pattern or []),
-        exercise_count=1, lab_spec=lab,
+# ---------------------------------------------------------------------------
+# Inversion curriculum grid (Bug 3: I/ii/IV/V x 12 major + i/iv/v/VII x 12 minor)
+# ---------------------------------------------------------------------------
+
+#: The diatonic degrees the inversion curriculum systematically covers per mode.
+_MAJOR_INV_DEGREES = ["I", "ii", "IV", "V"]
+_MINOR_INV_DEGREES = ["i", "iv", "v", "VII"]
+
+
+def _demo_spec(experiment_id: str) -> LabExperimentSpec:
+    """The lab demo with this id (kept reachable from the curriculum)."""
+    return next(s for s in lab_demo_specs() if s.experiment_id == experiment_id)
+
+
+def _inversion_spec(mode: str, tonic: str, degree: str) -> LabExperimentSpec:
+    """One block inversion experiment: root / first / second inversion of a degree."""
+    key = f"{tonic} {_mode_word(mode)}"
+    spec = LabExperimentSpec(
+        experiment_id=f"inv_{mode}_{_key_slug(tonic)}_{degree}",
+        title=f"Inversions of {degree} in {key}",
+        concept="inversion", mode=mode, key=key, render="block",
+        parameters={"degree": degree, "inversions": [0, 1, 2]},
+        description=(f"{degree} in {key}: root position (5/3), first (6) and "
+                     f"second (6/4) inversion — invariant chord tones, a changing "
+                     f"bass."),
     )
-    return node
+    spec.validate()
+    return spec
 
 
-def _cad_slug(label: str) -> str:
-    out = (label.replace("#", "s").replace("b", "f")
-                .replace("°", "dim").replace("–", "_"))
-    return "".join(ch if (ch.isalnum() or ch == "_") else "_" for ch in out)
+def _inversion_curriculum_specs(mode: str, degree: str) -> List[LabExperimentSpec]:
+    """The 12-key inversion grid for one degree.
+
+    The C-major I cell reuses the canonical ``inv_C_I`` demo (so it stays
+    reachable and is never duplicated); every other cell is generated.
+    """
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    out: List[LabExperimentSpec] = []
+    for tonic in keys:
+        if mode == "major" and tonic == "C" and degree == "I":
+            out.append(_demo_spec("inv_C_I"))
+        else:
+            out.append(_inversion_spec(mode, tonic, degree))
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -544,12 +665,49 @@ def build_curriculum() -> CurriculumNode:
     arp_deg_minor = _by(arpeggios, drill="horizontal_degree", mode="natural_minor")
 
     lab_specs = lab_demo_specs()
-    lab_inv = [s for s in lab_specs if s.concept == "inversion"]
-    lab_vl = [s for s in lab_specs if s.concept in ("cadence", "voice_leading")]
-    lab_vl_major = [s for s in lab_vl if s.mode == "major"]
-    lab_vl_minor = [s for s in lab_vl if s.mode == "natural_minor"]
     lab_motive = [s for s in lab_specs if s.concept == "motive"]
     lab_poly = [s for s in lab_specs if s.concept == "polyphonic_harmony"]
+
+    # Cadence + voice-leading layers are driven by ONE canonical catalogue
+    # (_CADENCE_CATALOG): the same 13 cadences appear as block drills in the
+    # Cadences category and as SATB voice-leading in the Voice Leading category,
+    # cross-linked.  The Atlas supplies every cadence node + the spec factories.
+    atlas = build_atlas()
+    vl_map = _vl_specs_by_cadence()
+    vl_leaf_of = {(m, tuple(t)): f"ex:{vl_map[(m, tuple(t))].experiment_id}"
+                  for t, _l, m, _c, _f in _CADENCE_CATALOG}
+    block_leaf_of = {(m, tuple(t)): _cadence_block_leaf_id(t, _l, m)
+                     for t, _l, m, _c, _f in _CADENCE_CATALOG}
+
+    def fill_cadences(grp, entries):
+        nodes = [
+            _exercise_node_from_cadence(
+                e, atlas, vl_leaf_of[(e[2], tuple(e[0]))], grp.id, i)
+            for i, e in enumerate(entries)]
+        _chain_siblings(nodes)
+        grp.children.extend(nodes)
+
+    def fill_vl(grp, specs):
+        """Fill a voice-leading group + cross-link each leaf to its block cadence."""
+        nodes = [_exercise_node_from_lab(s, grp.id, i, 3)
+                 for i, s in enumerate(specs)]
+        for n in nodes:
+            key = (n.lab_spec.mode, tuple(n.lab_spec.parameters.get("pattern", ())))
+            if key in block_leaf_of:
+                n.related = _dedup(n.related + [block_leaf_of[key]])
+        _chain_siblings(nodes)
+        grp.children.extend(nodes)
+
+    cat_major = [e for e in _CADENCE_CATALOG if e[2] == "major"]
+    cat_minor = [e for e in _CADENCE_CATALOG if e[2] == "natural_minor"]
+    types_major = [e for e in cat_major if e[4] == "type"]
+    types_minor = [e for e in cat_minor if e[4] == "type"]
+    prog_major = [e for e in cat_major if e[4] == "progression"]
+    prog_minor = [e for e in cat_minor if e[4] == "progression"]
+    vl_major = [vl_map[(m, tuple(t))] for t, _l, m, _c, _f in _CADENCE_CATALOG
+                if m == "major"]
+    vl_minor = [vl_map[(m, tuple(t))] for t, _l, m, _c, _f in _CADENCE_CATALOG
+                if m == "natural_minor"]
 
     root = CurriculumNode(
         id="cur", parent=None, kind="curriculum",
@@ -745,26 +903,46 @@ def build_curriculum() -> CurriculumNode:
                 _by(function_specs, mode="natural_minor"), 3)
 
     # ===================================================================
-    # 5. CADENCES  (Atlas cadence-type drills: authentic/plagal/half/deceptive/pop)
+    # 5. CADENCES  (two-chord types + functional progressions, major + minor)
     # ===================================================================
     cadences = cat("cadences", "Cadences",
                    "The punctuation of harmony: how phrases arrive (or don't).",
-                   "Recognise authentic, plagal, half and deceptive cadences.", 3,
-                   keywords=["cadence", "authentic", "plagal", "deceptive", "half"])
+                   "Recognise the cadence types and the functional progressions "
+                   "that close a phrase.", 3,
+                   keywords=["cadence", "authentic", "plagal", "deceptive", "half",
+                             "subtonic", "progression"])
     l_cad = lesson(cadences, "cadence_types", "Two-chord cadences",
-                   "Authentic (V–I), plagal (IV–I), half (I–V), deceptive (V–vi).",
-                   "Tell the four core cadence types apart by sound.", 3,
-                   theory="A cadence is defined by its final bass motion and its "
-                          "sense of closure: authentic = strong arrival, plagal = "
-                          "gentle 'amen', half = unfinished, deceptive = surprise.")
-    cad_nodes = []
-    for i, (label, mode, ctype, hs) in enumerate(_cadence_type_specs()):
-        cad_nodes.append(_exercise_node_from_cadence(
-            label, mode, ctype, hs, l_cad.id, i))
-    _chain_siblings(cad_nodes)
-    l_cad.children.extend(cad_nodes)
-    # Cross-link the lab voice-leading cadences (same harmony, deeper view).
-    l_cad.related = [f"lesson:voice_leading_cadences"]
+                   "Major: V–I, IV–I, I–V, V–vi.  Minor: v–i, VII–i.",
+                   "Tell the core cadence types apart by their final bass motion "
+                   "and sense of closure.", 3,
+                   theory="A cadence type is defined by its final two-chord motion "
+                          "and degree of closure: authentic = strong arrival (V→I), "
+                          "plagal = the gentle 'amen' (IV→I), half = an unfinished "
+                          "pause on V, deceptive = the surprise V→vi, subtonic = the "
+                          "modal ♭VII→i (a whole-step subtonic, not a leading tone).",
+                   related=["lesson:voice_leading_cadences"])
+    fill_cadences(group(l_cad, "cadence_types_major", "Major cadence types",
+                        "V–I, IV–I, I–V, V–vi (block, in C major).", 3),
+                  types_major)
+    fill_cadences(group(l_cad, "cadence_types_minor", "Minor cadence types",
+                        "v–i and VII–i (block, in A natural minor).", 3),
+                  types_minor)
+    l_prog = lesson(cadences, "cadence_progressions", "Cadential progressions",
+                    "Major: I–IV–V–I, ii–V–I, vi–ii–V–I, I–V–vi–IV.  "
+                    "Minor: iv–v–i, i–iv–v–i, i–VI–VII–i.",
+                    "Hear a complete functional progression (T–S–D–T) drive a "
+                    "phrase to its cadence.", 3,
+                    theory="A cadential progression extends a two-chord cadence into "
+                           "a full functional path: predominant prepares the "
+                           "dominant, which resolves (or is deceptively denied) at "
+                           "the tonic. The bass line carries the motion.",
+                    related=["lesson:voice_leading_cadences"])
+    fill_cadences(group(l_prog, "cadence_prog_major", "Major progressions",
+                        "I–IV–V–I, ii–V–I, vi–ii–V–I, I–V–vi–IV (block, in C major).",
+                        3), prog_major)
+    fill_cadences(group(l_prog, "cadence_prog_minor", "Minor progressions",
+                        "iv–v–i, i–iv–v–i, i–VI–VII–i (block, in A natural minor).",
+                        3), prog_minor)
 
     # ===================================================================
     # 6. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
@@ -789,7 +967,7 @@ def build_curriculum() -> CurriculumNode:
     l_int.reserved = False
 
     # ===================================================================
-    # 7. INVERSIONS  (lab: 2)
+    # 7. INVERSIONS  (worked examples + systematic 12-key grid: Bug 3)
     # ===================================================================
     inversions = cat("inversions", "Inversions",
                      "The same chord with a different note in the bass.",
@@ -802,10 +980,52 @@ def build_curriculum() -> CurriculumNode:
                    theory="An inversion re-stacks the same chord tones so a "
                           "different one is in the bass: root position (5/3), first "
                           "inversion (6), second inversion (6/4). The chord and its "
-                          "function are unchanged.")
-    fill_lab(group(l_inv, "inversion_experiments", "Inversion experiments",
-                   "Invariant chord tones, a changing bass.", 2),
-             lab_inv, 2)
+                          "function are unchanged. C major I therefore reads C, "
+                          "C/E, C/G as the bass climbs root → third → fifth.")
+    fill_lab(group(l_inv, "inversion_intro", "Worked examples",
+                   "An arpeggiated walk-through of one chord's three bass positions.",
+                   2),
+             [_demo_spec("inv_C_V_arp")], 2)
+    l_inv_maj = lesson(inversions, "inversions_major", "Major inversions",
+                       "Tonic I, predominant ii/IV and dominant V inverted across "
+                       "every major key.",
+                       "Invert the core major-key triads (I, ii, IV, V) in all 12 "
+                       "keys.", 2,
+                       theory="The bass climbs root → third → fifth for each degree; "
+                              "the figured bass (5/3, 6, 6/4) and slash chord (e.g. "
+                              "G, G/B, G/D for V in C) name the bass position while "
+                              "the chord identity and function stay fixed.")
+    fill_lab(group(l_inv_maj, "inv_major_tonic", "Tonic I",
+                   "I inverted in all 12 major keys.", 2),
+             _inversion_curriculum_specs("major", "I"), 2)
+    fill_lab(group(l_inv_maj, "inv_major_predominant", "Predominant ii / IV",
+                   "ii and IV inverted in all 12 major keys.", 2),
+             _inversion_curriculum_specs("major", "ii")
+             + _inversion_curriculum_specs("major", "IV"), 2)
+    fill_lab(group(l_inv_maj, "inv_major_dominant", "Dominant V",
+                   "V inverted in all 12 major keys.", 2),
+             _inversion_curriculum_specs("major", "V"), 2)
+    l_inv_min = lesson(inversions, "inversions_minor", "Natural minor inversions",
+                       "Tonic i, subdominant iv, dominant v and subtonic VII "
+                       "inverted across every natural-minor key.",
+                       "Invert the core minor-key triads (i, iv, v, VII) in all 12 "
+                       "keys.", 2,
+                       theory="The same three bass positions (5/3, 6, 6/4) apply in "
+                              "minor; the natural-minor dominant v is itself minor "
+                              "and VII is the major subtonic, so their inversions "
+                              "colour the modal cadence sound.")
+    fill_lab(group(l_inv_min, "inv_minor_tonic", "Tonic i",
+                   "i inverted in all 12 natural-minor keys.", 2),
+             _inversion_curriculum_specs("natural_minor", "i"), 2)
+    fill_lab(group(l_inv_min, "inv_minor_subdominant", "Subdominant iv",
+                   "iv inverted in all 12 natural-minor keys.", 2),
+             _inversion_curriculum_specs("natural_minor", "iv"), 2)
+    fill_lab(group(l_inv_min, "inv_minor_dominant", "Dominant / minor-dominant v",
+                   "v inverted in all 12 natural-minor keys.", 2),
+             _inversion_curriculum_specs("natural_minor", "v"), 2)
+    fill_lab(group(l_inv_min, "inv_minor_subtonic", "Subtonic VII",
+                   "VII inverted in all 12 natural-minor keys.", 2),
+             _inversion_curriculum_specs("natural_minor", "VII"), 2)
 
     # ===================================================================
     # 8. VOICE LEADING  (lab: 8)
@@ -816,18 +1036,22 @@ def build_curriculum() -> CurriculumNode:
                 "resolved.", 3,
                 keywords=["voice leading", "satb", "leading tone", "common tone"])
     l_vl = lesson(voice, "voice_leading_cadences", "Voice-leading cadences",
-                  "Cadences as four-part (SATB) voice motion.",
+                  "Every cadence (two-chord type + progression) as four-part "
+                  "(SATB) voice motion.",
                   "Voice each cadence and resolve its tendency tones.", 3,
                   theory="Beyond naming chords, a cadence is voice motion: the "
                          "leading tone rises to the tonic, common tones are held, "
-                         "and the bass leaps or steps characteristically.",
-                  related=["lesson:cadence_types"])
-    fill_lab(group(l_vl, "voice_leading_major", "Major cadences",
-                   "V–I, IV–I, V–vi, ii–V–I as SATB voice leading.", 3),
-             lab_vl_major, 3)
-    fill_lab(group(l_vl, "voice_leading_minor", "Minor cadences",
-                   "v–i, iv–v–i, VII–i, i–VI–VII–i in natural minor.", 3),
-             lab_vl_minor, 3)
+                         "and the bass leaps or steps characteristically. Each "
+                         "voice-leading cadence pairs with its block version in the "
+                         "Cadences category.",
+                  related=["lesson:cadence_types", "lesson:cadence_progressions"])
+    fill_vl(group(l_vl, "voice_leading_major", "Major cadences",
+                  "V–I, IV–I, I–V, V–vi, ii–V–I, I–IV–V–I, vi–ii–V–I, I–V–vi–IV "
+                  "as SATB voice leading.", 3),
+            vl_major)
+    fill_vl(group(l_vl, "voice_leading_minor", "Minor cadences",
+                  "v–i, VII–i, iv–v–i, i–iv–v–i, i–VI–VII–i in natural minor.", 3),
+            vl_minor)
 
     # ===================================================================
     # 9. MOTIVES  (lab: 2)

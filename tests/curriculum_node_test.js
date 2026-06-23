@@ -108,7 +108,10 @@ const PAYLOAD = loadPayload();
   const h = makeHarness(PAYLOAD);
   const r = h.ui.init(PAYLOAD);
   assert(r.ok, "init ok");
-  assert(r.exercises === 122, "reports 122 exercise leaves, got " + r.exercises);
+  // 230 leaves = 102 native drills + 13 block cadences + 97 inversions
+  // (96-key grid + 1 arpeggio worked example) + 13 SATB voice-leading cadences
+  // + 2 motives + 3 polyphonic examples.
+  assert(r.exercises === 230, "reports 230 exercise leaves, got " + r.exercises);
   // first category auto-expanded -> its lesson rows are visible
   const rows = h.ui._visibleRows();
   assert(rows.length > PAYLOAD.tree.children.length, "first category expanded");
@@ -241,8 +244,8 @@ const PAYLOAD = loadPayload();
   const rootId = PAYLOAD.tree.id;
   h.ui.setProgress({
     stats: {
-      [rootId]: { id: rootId, kind: "curriculum", total: 122, completed: 12,
-                  mastered: 3, percent: 9.8, state: "started" },
+      [rootId]: { id: rootId, kind: "curriculum", total: 230, completed: 12,
+                  mastered: 3, percent: 5.2, state: "started" },
     },
   });
   const html = h.document.getElementById("curProgress")._html

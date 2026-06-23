@@ -36,6 +36,8 @@
   var keyboardCapEl = null;           // the caption line
   var keyboardKeyByMidi = {};         // midi(string) -> key DOM node
   var currentKeyboard = null;         // the kb payload currently shown
+  var keyboardByTriad = {};           // triad node id -> its concrete keyboard payload
+  var lastSyncActive = null;          // last setSync(active) — for Global-map parity
 
   var TABS = [
     { id: "global", label: "Global map", render: renderGlobal },
@@ -126,13 +128,83 @@
   // active: {scale, degree, triad, quality, layer, function} of node ids
   function setSync(active) {
     active = active || {};
+    lastSyncActive = active;
     var ids = Object.keys(active).map(function (k) { return active[k]; })
       .filter(Boolean);
     var want = { nodeIds: ids };
     // Derive facets from the structured ids so we also light up matrix cells,
     // quality chips, etc. that share the current quality/layer/function/key.
     parseIds(ids, want);
+    // Bug 1 — Global Diatonic Map parity with the Transposition Matrix: keep the
+    // Global map's mode in lockstep with the synced target's mode even while
+    // another tab is showing, so switching to the Global map later never shows
+    // its degree table and keyboard in disagreeing modes. Re-render immediately
+    // only when the Global map is the visible tab.
+    var mode = _modeFromIds(ids);
+    if (mode && mode !== modeOf("global")) {
+      modeByTab["global"] = mode;
+      if (tabId === "global") {
+        showTab("global");   // re-renders; renderGlobal re-applies via applyGlobalSync
+        return;
+      }
+    }
     _applyHighlight("sync-on", want, activeIds);
+    // Retarget the Global-map keyboard / deconstruction to the concrete chord.
+    if (tabId === "global") applyGlobalKeyboard(ids);
+  }
+
+  // The mode ("major"/"natural_minor") implied by a set of structured node ids.
+  function _modeFromIds(ids) {
+    for (var i = 0; i < ids.length; i++) {
+      var p = String(ids[i]).split(":");
+      if (p[0] === "triad") return p[2];
+      if (p[0] === "scale") return p[2];
+      if (p[0] === "degree") return p[1];
+      if (p[0] === "function") return p[1];
+    }
+    return null;
+  }
+
+  function _triadIdFrom(ids) {
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i]).indexOf("triad:") === 0) return ids[i];
+    }
+    return null;
+  }
+
+  // Point the shared Global-map keyboard at the concrete synced triad (if its
+  // payload is known and the keyboard panel is currently rendered).
+  function applyGlobalKeyboard(ids) {
+    if (!keyboardCard) return;
+    var tid = _triadIdFrom(ids);
+    var kb = tid ? keyboardByTriad[tid] : null;
+    if (kb) updateKeyboard(kb);
+  }
+
+  // Re-apply the last sync (highlight + keyboard) to a freshly rendered Global
+  // map, so switching to / re-rendering the tab reflects the current chord.
+  function applyGlobalSync() {
+    if (!lastSyncActive) return;
+    var ids = Object.keys(lastSyncActive).map(function (k) { return lastSyncActive[k]; })
+      .filter(Boolean);
+    var want = { nodeIds: ids };
+    parseIds(ids, want);
+    _applyHighlight("sync-on", want, activeIds);
+    applyGlobalKeyboard(ids);
+  }
+
+  // Build the triad-id -> concrete-keyboard lookup from the transposition matrix
+  // (each cell ships its degree's keyboard payload in the concrete key).
+  function buildKeyboardLookup() {
+    keyboardByTriad = {};
+    var tm = (data && data.transpositionMatrix) || {};
+    Object.keys(tm).forEach(function (mode) {
+      ((tm[mode] && tm[mode].rows) || []).forEach(function (row) {
+        (row.cells || []).forEach(function (c) {
+          if (c && c.nodeId && c.keyboard) keyboardByTriad[c.nodeId] = c.keyboard;
+        });
+      });
+    });
   }
 
   function parseIds(ids, want) {
@@ -247,6 +319,9 @@
     });
     root.appendChild(table);
     buildKeyboard(root, rows);
+    // If a chord is already synced (the host pushes sync continuously), make the
+    // freshly-rendered Global map reflect it instead of the reference default.
+    applyGlobalSync();
   }
 
   // -- Part I: keyboard + interval deconstruction --------------------------
@@ -311,9 +386,14 @@
     if (!kb || !keyboardCard) return;
     currentKeyboard = kb;
     if (keyboardCapEl) {
+      // Caption reflects the concrete chord on display: key · degree · symbol ·
+      // layer (so a synced B natural minor i reads "B minor · i · Bm · m3+M3").
+      var bits = [kb.referenceLabel];
+      if (kb.roman) bits.push(kb.roman);
+      if (kb.chordSymbol) bits.push(kb.chordSymbol);
+      bits.push(kb.intervalLayer + " (" + kb.quality + ")");
       keyboardCapEl.textContent =
-        "Degree pattern in " + kb.referenceLabel + " — " + kb.intervalLayer +
-        " (" + kb.quality + "), root-position (root in octave 4)";
+        bits.join(" · ") + " — root position (root in octave 4)";
     }
     // Reset every key, then light up this degree's chord tones + passing tones.
     Object.keys(keyboardKeyByMidi).forEach(function (m) {
@@ -665,6 +745,8 @@
     launchQueue = [];
     activeIds = new Set();
     hoverIds = new Set();
+    lastSyncActive = null;
+    buildKeyboardLookup();
     buildTabs();
     showTab(TABS[0].id);
     return { ok: true, tabs: TABS.map(function (t) { return t.id; }) };

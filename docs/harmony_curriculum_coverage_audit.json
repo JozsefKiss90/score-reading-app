@@ -1,0 +1,306 @@
+{
+  "schema": "harmony-curriculum-audit/v1",
+  "summary": {
+    "totalLeaves": 230,
+    "categories": 12,
+    "duplicateLeafIds": [],
+    "duplicateExperimentIds": [],
+    "missingRequiredCount": 0,
+    "incompleteCategories": [],
+    "clean": true
+  },
+  "required": {
+    "cadences": {
+      "expected": 13,
+      "present": 13,
+      "twoChordTypes": 6,
+      "progressions": 7,
+      "missing": []
+    },
+    "inversions": {
+      "expected": 96,
+      "present": 96,
+      "missing": []
+    }
+  },
+  "categories": [
+    {
+      "key": "scales",
+      "title": "Scales",
+      "categoryIds": [
+        "cat:scales"
+      ],
+      "expected": "48 full-key drills (12 major + 12 minor, block + arpeggio).",
+      "actualLeaves": 48,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_diatonic_harmony.py",
+        "tests/test_harmony_musicxml.py"
+      ]
+    },
+    {
+      "key": "chords",
+      "title": "Chords / Triad quality",
+      "categoryIds": [
+        "cat:chords"
+      ],
+      "expected": "Major / minor / diminished quality drills (augmented reserved).",
+      "actualLeaves": 7,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_harmony_atlas.py"
+      ]
+    },
+    {
+      "key": "degrees",
+      "title": "Degrees & Transposition",
+      "categoryIds": [
+        "cat:degrees"
+      ],
+      "expected": "Each degree across all 12 keys, both modes, block + arpeggio (28).",
+      "actualLeaves": 28,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_harmony_exercise.py"
+      ]
+    },
+    {
+      "key": "functions",
+      "title": "Functions",
+      "categoryIds": [
+        "cat:functions"
+      ],
+      "expected": "Major + minor functional progressions (19).",
+      "actualLeaves": 19,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_harmony_exercise.py"
+      ]
+    },
+    {
+      "key": "cadences",
+      "title": "Cadences",
+      "categoryIds": [
+        "cat:cadences"
+      ],
+      "expected": "13 cadences: 6 two-chord types + 7 functional progressions (block).",
+      "actualLeaves": 13,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_curriculum_cadences.py",
+        "tests/test_harmony_atlas.py"
+      ]
+    },
+    {
+      "key": "intervals",
+      "title": "Intervals & Interval Layers",
+      "categoryIds": [
+        "cat:intervals"
+      ],
+      "expected": "Theory + cross-links to quality groups (owns no exercise by design).",
+      "actualLeaves": 0,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_harmony_atlas.py"
+      ]
+    },
+    {
+      "key": "inversions",
+      "title": "Inversions",
+      "categoryIds": [
+        "cat:inversions"
+      ],
+      "expected": "96-key grid (I/ii/IV/V x 12 major + i/iv/v/VII x 12 minor) + worked example.",
+      "actualLeaves": 97,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_curriculum_inversions.py",
+        "tests/test_harmony_lab.py"
+      ]
+    },
+    {
+      "key": "voice_leading",
+      "title": "Voice Leading",
+      "categoryIds": [
+        "cat:voice_leading"
+      ],
+      "expected": "13 SATB voice-leading cadences (one per cadence).",
+      "actualLeaves": 13,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py",
+        "tests/test_harmony_lab.py"
+      ]
+    },
+    {
+      "key": "motives",
+      "title": "Motives",
+      "categoryIds": [
+        "cat:motives"
+      ],
+      "expected": "Scale-degree motive cells transposed across keys.",
+      "actualLeaves": 2,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_harmony_lab.py"
+      ]
+    },
+    {
+      "key": "polyphony",
+      "title": "Polyphonic Harmony",
+      "categoryIds": [
+        "cat:polyphony"
+      ],
+      "expected": "Two-voice implied-harmony examples.",
+      "actualLeaves": 3,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_harmony_lab.py"
+      ]
+    },
+    {
+      "key": "integration",
+      "title": "Atlas / Circle integration",
+      "categoryIds": [
+        "cat:atlas",
+        "cat:circle"
+      ],
+      "expected": "Bridge categories opening the Atlas / Circle (reserved leaves).",
+      "actualLeaves": 0,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/atlas_node_test.js",
+        "tests/circle_node_test.js",
+        "tests/test_circle_payload.py"
+      ]
+    },
+    {
+      "key": "reserved",
+      "title": "Reserved topics",
+      "categoryIds": [
+        "cat:advanced",
+        "cat:reserved"
+      ],
+      "expected": "7th chords, harmonic/melodic minor, modal, jazz, secondary dominants, real-score analysis, reduction (all reserved).",
+      "actualLeaves": 0,
+      "reserved": true,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_curriculum.py"
+      ]
+    }
+  ]
+}

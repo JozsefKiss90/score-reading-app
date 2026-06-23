@@ -55,6 +55,7 @@ from harmony.exercise_spec import (
     MAX_CHORDS_PER_SPEC,
     DEFAULT_MAJOR_KEYS,
     DEFAULT_MINOR_KEYS,
+    _key_slug,
 )
 
 
@@ -408,10 +409,15 @@ class LabExperimentSpec:
 
         if self.concept == "inversion":
             ip = inversion_params(p)
+            # The tonic uses the accidental-preserving pitch slug (_key_slug:
+            # C#->Cs, Bb->Bf) -- NOT _ident, which strips '#' and would collide
+            # C# minor with C minor -- and the render is part of the id so a
+            # block and an arpeggio inversion of the same chord stay distinct.
             specs.append(HarmonyExerciseSpec(
-                exercise_id=f"lab_inv_{self.mode}_{_ident(tonic)}_{_ident(ip.degree)}",
+                exercise_id=(f"lab_inv_{self.mode}_{_key_slug(tonic)}_"
+                             f"{_ident(ip.degree)}_{self.render}"),
                 title=f"{ip.degree} in {tonic} {_mode_word(self.mode)} (root position)",
-                drill="function", render="block", mode=self.mode,
+                drill="function", render=self.render, mode=self.mode,
                 pattern=[ip.degree], keys=[tonic],
                 description=(f"The root-position {ip.degree} triad underlying the "
                              f"inversion experiment."),
@@ -422,7 +428,7 @@ class LabExperimentSpec:
             roman = normalise_pattern(list(cp.pattern))   # validate() ensured diatonic
             label = "–".join(cp.pattern)
             specs.append(HarmonyExerciseSpec(
-                exercise_id=f"lab_{self.concept}_{self.mode}_{_ident(tonic)}_{_ident('_'.join(roman))}",
+                exercise_id=f"lab_{self.concept}_{self.mode}_{_key_slug(tonic)}_{_ident('_'.join(roman))}",
                 title=f"{label} in {tonic} {_mode_word(self.mode)}",
                 drill="function", render="block", mode=self.mode,
                 pattern=roman, keys=[tonic],
@@ -434,7 +440,7 @@ class LabExperimentSpec:
             roman = normalise_pattern(list(pp.progression))   # validate() ensured diatonic
             label = "–".join(pp.progression)
             specs.append(HarmonyExerciseSpec(
-                exercise_id=f"lab_poly_{self.mode}_{_ident(tonic)}_{_ident('_'.join(roman))}",
+                exercise_id=f"lab_poly_{self.mode}_{_key_slug(tonic)}_{_ident('_'.join(roman))}",
                 title=f"{label} implied harmony in {tonic} {_mode_word(self.mode)}",
                 drill="function", render="block", mode=self.mode,
                 pattern=roman, keys=[tonic],
@@ -447,7 +453,7 @@ class LabExperimentSpec:
             if not rp.skeleton:
                 return []
             specs.append(HarmonyExerciseSpec(
-                exercise_id=f"lab_reduction_{self.mode}_{_ident(tonic)}",
+                exercise_id=f"lab_reduction_{self.mode}_{_key_slug(tonic)}",
                 title=f"Reduced skeleton in {tonic} {_mode_word(self.mode)}",
                 drill="function", render="block", mode=self.mode,
                 pattern=normalise_pattern(list(rp.skeleton)), keys=[tonic],
@@ -518,7 +524,7 @@ def spec_from_lab_request(req: Dict) -> LabExperimentSpec:
         degree = str(req.get("degree", "I"))
         params = {"degree": degree,
                   "inversions": list(req.get("inversions", [0, 1, 2]))}
-        ident = f"{_ident(tonic)}_{_ident(degree)}"
+        ident = f"{_key_slug(tonic)}_{_ident(degree)}"
 
     elif concept in ("cadence", "voice_leading"):
         pattern = list(req.get("pattern") or ([] if concept == "cadence" else []))
@@ -530,21 +536,21 @@ def spec_from_lab_request(req: Dict) -> LabExperimentSpec:
         params = {"pattern": pattern}
         if req.get("cadence_type"):
             params["cadence_type"] = str(req["cadence_type"])
-        ident = f"{_ident(tonic)}_{_ident('_'.join(pattern))}"
+        ident = f"{_key_slug(tonic)}_{_ident('_'.join(pattern))}"
 
     elif concept == "polyphonic_harmony":
         progression = list(req.get("progression") or
                            (["I", "V", "I"] if mode == "major" else ["i", "VII", "i"]))
         upper = list(req.get("upper_degrees") or [3] * len(progression))
         params = {"progression": progression, "upper_degrees": upper}
-        ident = f"{_ident(tonic)}_{_ident('_'.join(progression))}"
+        ident = f"{_key_slug(tonic)}_{_ident('_'.join(progression))}"
 
     else:  # motive
         degrees = list(req.get("degrees") or [1, 3, 5, 3])
         params = {"degrees": degrees}
         if req.get("keys"):
             params["keys"] = list(req["keys"])
-        ident = f"{_ident('_'.join(str(d) for d in degrees))}_{_ident(tonic)}"
+        ident = f"{_ident('_'.join(str(d) for d in degrees))}_{_key_slug(tonic)}"
 
     title = req.get("title") or _lab_request_title(concept, key, params)
     spec = LabExperimentSpec(

@@ -49,7 +49,7 @@ implementation rules:
 | `quality` | 4 | `quality:diminished` | `quality` recognition drill |
 | `layer` | 4 | `layer:M3+m3` | `quality` recognition drill |
 | `function` | 9 | `function:major:dominant` | — (grouping node) |
-| `cadence` | 10 | `cadence:ii_v_i_major` | `function` (cadence) drill |
+| `cadence` | 13 | `cadence:ii_v_i_major` | `function` (cadence) drill |
 
 Edge relations: `belongs_to`, `transposes_to`, `same_quality`, `same_function`,
 `same_interval_layer`, `precedes`, `dominant_of`, `subdominant_of`, `tonic_of`.
@@ -67,7 +67,7 @@ as tabs. All are derived from the theory engine.
 
 | Part | View | Method | What it shows |
 |---|---|---|---|
-| I | Global diatonic map | `global_map(mode)` | the invariant degree → quality → layer → function table, plus a per-degree **keyboard view**: the selected degree's root-position triad on a piano (C major / A natural minor), with its interval layer deconstructed into whole/half scale steps that reveal the m3–M3 (minor/major) structure |
+| I | Global diatonic map | `global_map(mode)` | the invariant degree → quality → layer → function table, plus a per-degree **keyboard view**: the selected degree's root-position triad on a piano, with its interval layer deconstructed into whole/half scale steps that reveal the m3–M3 (minor/major) structure. The keyboard defaults to the reference key (C major / A natural minor) but **retargets to the currently-synced concrete chord** (and flips the map's mode to match) so it tracks live playback in parity with the Transposition matrix — e.g. B natural minor i shows B–D–F#. The fixed keyboard spans B3–G5 (MIDI 59–79), the measured union of every concrete diatonic root-position triad. |
 | II | Transposition matrix | `transposition_matrix(mode)` | rows = degrees, columns = keys; each cell a concrete triad |
 | III | Quality matrix | `quality_matrix(mode)` | every major / minor / diminished triad across keys |
 | IV | Function map | `function_map(mode)` | function invariant, chord names change (T / PD / S / D rows) |
@@ -83,7 +83,13 @@ as tabs. All are derived from the theory engine.
 and returns the node ids to highlight (current scale, degree, triad, quality,
 interval layer, function) plus the learning-path level. The combined launcher
 polls the trainer's current chord and pushes this to the UI, so the Atlas
-**follows live playback**.
+**follows live playback**. In `beat_selector/atlas.js`, `setSync(active)` applies
+the highlight on every tab **and** brings the Global diatonic map to full parity
+with the Transposition matrix: it switches the Global map's mode to the target's
+mode and retargets the keyboard / interval-deconstruction / caption to the
+*concrete* synced triad (looked up by triad node id from the per-cell `keyboard`
+payloads the transposition matrix now ships). Switching to the Global map mid-play
+re-applies the current sync via `applyGlobalSync()`.
 
 ### Part VIII — real-score mode (reserved)
 
