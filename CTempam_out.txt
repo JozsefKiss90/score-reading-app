@@ -1,0 +1,2 @@
+Am minor node explanation:
+  A minor is the relative minor of C major: it shares the same key signature and pitch content (no sharps or flats). Its dominant is G7 (with a raised leading tone) and its leading-tone diminished is B°.

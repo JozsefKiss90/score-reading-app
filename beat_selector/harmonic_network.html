@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harmonic Network / Tonal Graph</title>
+  <link rel="stylesheet" href="harmonic_network.css" />
+</head>
+<body>
+  <div id="hnHeader">
+    <h1>Harmonic Network / Tonal Graph</h1>
+    <div class="sub">A topological map of keys, relative minors, dominant sevenths and leading-tone diminished triads — click a node to explain it and launch a related drill.</div>
+  </div>
+  <div id="hnMain">
+    <div id="hnLeft"></div>
+    <div id="hnCenter"></div>
+    <div id="hnRight"></div>
+  </div>
+
+  <script src="harmonic_network.js"></script>
+  <script>
+    // The host (run_harmonic_network_demo.py) injects window.HARMONIC_NETWORK_DATA
+    // after load and calls HarmonicNetwork.init(). Opened directly in a browser
+    // without data, show a hint instead of crashing.
+    (function () {
+      if (window.HARMONIC_NETWORK_DATA && window.HarmonicNetwork) {
+        window.HarmonicNetwork.init(window.HARMONIC_NETWORK_DATA);
+      } else {
+        var c = document.getElementById("hnCenter");
+        if (c) c.innerHTML =
+          '<div class="hnFallback">Waiting for network data ' +
+          '(launch via run_harmonic_network_demo.py).</div>';
+      }
+    })();
+  </script>
+</body>
+</html>

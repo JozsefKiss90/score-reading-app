@@ -1,0 +1,119 @@
+/* Harmonic Network / Tonal Graph layer -- web UI styling.
+   Rendered inside a QWebEngineView; consumes the JSON payload from
+   harmony.harmonic_network.HarmonicNetwork.to_payload().
+
+   Light control/explanation panels (consistent with atlas.css) flanking a dark
+   "starfield" graph canvas that echoes the reference image. */
+
+:root{
+  --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0;
+  --card:#ffffff; --accent:#2563eb; --accent-soft:#dbeafe;
+
+  /* node visual classes (the reference image's palette) */
+  --pink:#ec4899; --blue:#38bdf8; --yellow:#facc15; --purple:#a855f7;
+
+  /* graph canvas */
+  --canvas:#0b1020; --canvas-line:#1e293b; --canvas-fg:#e5e7eb;
+
+  --select:#f59e0b; --select-bg:#fef3c7;
+  --launchable:#16a34a; --reserved:#b45309;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--bg); color:var(--fg);
+  font:13px/1.45 system-ui,Segoe UI,Roboto,sans-serif;
+}
+
+/* --- header --- */
+#hnHeader{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--card);}
+#hnHeader h1{margin:0 0 4px;font-size:16px;color:#0b3a53;}
+#hnHeader .sub{color:var(--muted);font-size:12px;}
+
+/* --- 3-column layout --- */
+#hnMain{display:flex;align-items:stretch;height:calc(100% - 52px);}
+#hnLeft{flex:0 0 230px;border-right:1px solid var(--line);background:var(--card);
+  overflow:auto;padding:10px;}
+#hnCenter{flex:1 1 auto;min-width:0;background:var(--canvas);position:relative;}
+#hnRight{flex:0 0 320px;border-left:1px solid var(--line);background:var(--card);
+  overflow:auto;padding:10px;}
+
+/* --- left: controls --- */
+.ctlGroup{margin-bottom:14px;}
+.ctlGroup h2{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
+  color:#334155;}
+.toggleRow{display:flex;align-items:center;gap:7px;padding:3px 2px;cursor:pointer;
+  border-radius:5px;font-size:12px;}
+.toggleRow:hover{background:#f1f5f9;}
+.toggleRow input{cursor:pointer;}
+.swatch{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 auto;
+  border:1px solid rgba(0,0,0,.15);}
+.swatch.line{width:16px;height:0;border:none;border-top:3px solid;border-radius:0;}
+.swatch.line.dashed{border-top-style:dashed;}
+.relLabel{flex:1 1 auto;}
+.relLabel small{color:var(--muted);display:block;font-size:10px;}
+.reservedTag{color:var(--reserved);font-size:10px;font-weight:600;}
+
+#hnSearch{width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px;
+  font:12px system-ui;}
+.searchHits{color:var(--muted);font-size:11px;margin-top:4px;}
+
+.ctlButtons{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.ctlBtn{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;
+  padding:4px 8px;font:11px system-ui;color:#334155;}
+.ctlBtn:hover{background:#f1f5f9;}
+
+/* --- center: graph --- */
+#hnSvg{width:100%;height:100%;display:block;}
+.hnEdge{fill:none;stroke-width:1.4;opacity:.55;}
+.hnEdge.dim{opacity:.08;}
+.hnEdge.sel{opacity:1;stroke-width:2.6;}
+.hnNode{cursor:pointer;}
+.hnNode circle{stroke:#0b1020;stroke-width:1.5;}
+.hnNode text{font:11px/1 system-ui;font-weight:700;fill:#0b1020;
+  text-anchor:middle;dominant-baseline:central;pointer-events:none;}
+.hnNode.dim{opacity:.18;}
+.hnNode.sel circle{stroke:var(--select);stroke-width:3.5;}
+.hnNode.neighbor circle{stroke:#fff;stroke-width:2.5;}
+.hnNode.searchHit circle{stroke:#22d3ee;stroke-width:3;}
+.hnCenterMark{stroke:#475569;stroke-width:1.4;}
+.hnFallback{color:var(--canvas-fg);padding:16px;font-size:12px;}
+
+/* --- right: selection / explanation --- */
+#hnRight h2{margin:0 0 2px;font-size:15px;}
+#hnRight .kind{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.04em;padding:2px 7px;border-radius:999px;color:#0b1020;margin-bottom:6px;}
+#hnRight .placeholder{color:var(--muted);font-size:12px;margin-top:20px;}
+.expl{font-size:12px;line-height:1.5;margin:6px 0 10px;}
+.sect{margin:10px 0;}
+.sect h3{margin:0 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:#475569;border-bottom:1px solid var(--line);padding-bottom:3px;}
+.refList{list-style:none;margin:0;padding:0;}
+.refList li{font-size:11px;padding:2px 0;color:#334155;}
+.refList li code{background:#f1f5f9;border-radius:3px;padding:0 4px;font-size:10px;}
+.ctxPill{display:inline-block;background:#f1f5f9;border-radius:999px;padding:2px 8px;
+  font-size:11px;margin:2px 4px 2px 0;}
+
+.launchItem{border:1px solid var(--line);border-radius:7px;padding:7px 8px;margin:6px 0;}
+.launchItem .lbl{font-size:12px;margin-bottom:5px;}
+.launchBtn{cursor:pointer;border:none;border-radius:6px;padding:5px 11px;font:12px system-ui;
+  font-weight:600;background:var(--launchable);color:#fff;}
+.launchBtn:hover{filter:brightness(1.07);}
+.launchItem.reserved{background:#fffbeb;border-color:#fde68a;}
+.reservedBadge{display:inline-block;background:var(--reserved);color:#fff;border-radius:5px;
+  padding:3px 9px;font-size:11px;font-weight:600;}
+.reservedWhy{color:var(--muted);font-size:11px;margin-top:4px;}
+
+.edgeCard .rel{font-weight:700;font-size:13px;}
+.edgeCard .ends{color:var(--muted);font-size:11px;margin:3px 0;}
+
+/* node-kind colour helpers */
+.k-major_key{background:var(--pink);} .k-minor_key{background:var(--blue);}
+.k-dominant_seventh{background:var(--yellow);} .k-diminished_triad{background:var(--purple);}
+
+/* dark mode (panels) */
+body.dark{--bg:#0b1220;--fg:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--card:#0f172a;
+  --accent-soft:#1e3a8a;}
+body.dark .toggleRow:hover{background:#111827;}
+body.dark .refList li code,body.dark .ctxPill{background:#111827;color:#cbd5e1;}
+body.dark .launchItem.reserved{background:#27201a;border-color:#92400e;}
