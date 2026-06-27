@@ -29,6 +29,7 @@ topology of the Brian-Callipari-style reference image as a formal theory graph.
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -62,6 +63,18 @@ from harmony.network_template import (
 
 
 SCHEMA_VERSION = "harmony-network/v1"
+
+#: Network-relevant trainer groups: graph node kind -> trainer-dropdown group
+#: name.  Used by :meth:`HarmonicNetwork.trainer_groups` (and the standalone
+#: ``run_harmonic_network_demo`` launcher) to scope the embedded Harmony Trainer
+#: to ONLY the drills the graph actually visualises.  Reserved seventh-chord
+#: drills are excluded because they are not launchable.
+NETWORK_GROUP_BY_KIND = OrderedDict([
+    ("major_key", "Network — Major keys"),
+    ("minor_key", "Network — Relative minors"),
+    ("diminished_triad", "Network — Leading-tone diminished"),
+    ("dominant_seventh", "Network — Dominant resolutions"),
+])
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +324,48 @@ class HarmonicNetwork:
                 item["kind"] = n.kind
                 out.append(item)
         return out
+
+    def trainer_groups(self) -> "OrderedDict[str, List[HarmonyExerciseSpec]]":
+        """Graph-relevant trainer groups: only drills the graph visualises.
+
+        Returns an ordered ``group name -> [HarmonyExerciseSpec]`` map built
+        purely from this network's launchable entries, grouped by the kind of
+        graph node they belong to (see :data:`NETWORK_GROUP_BY_KIND`).  An entry
+        is included only when it is
+
+          * ``status == "launchable"`` (reserved seventh-chord drills are
+            excluded -- they carry no spec), and
+          * backed by a non-null spec that round-trips through
+            :meth:`HarmonyExerciseSpec.from_dict` (i.e. compiles/validates).
+
+        Every spec therefore traces back to at least one graph node.  This is the
+        scoped replacement for ``default_exercise_groups()`` inside the Harmonic
+        Network window; the standalone Harmony Trainer is untouched.
+        """
+        groups: "OrderedDict[str, List[HarmonyExerciseSpec]]" = OrderedDict(
+            (name, []) for name in NETWORK_GROUP_BY_KIND.values())
+        seen: set = set()
+        for n in self.nodes:
+            group_name = NETWORK_GROUP_BY_KIND.get(n.kind)
+            if not group_name:
+                continue
+            for entry in n.trainer_specs:
+                if entry.get("status") != "launchable":
+                    continue                 # reserved seventh-chord drills dropped
+                spec_dict = entry.get("spec")
+                if not spec_dict:
+                    continue
+                ex_id = spec_dict.get("exercise_id")
+                if ex_id in seen:
+                    continue
+                try:
+                    spec = HarmonyExerciseSpec.from_dict(spec_dict)
+                except Exception:
+                    continue                 # never surface a broken spec
+                seen.add(ex_id)
+                groups[group_name].append(spec)
+        # Drop any group that ended up empty (keeps the dropdown honest).
+        return OrderedDict((k, v) for k, v in groups.items() if v)
 
     def counts(self) -> Dict:
         kinds: Dict[str, int] = {}

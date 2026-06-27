@@ -38,7 +38,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 from harmony.harmonic_network import build_network
 from harmony.network_template import get_template
-from harmony.exercise_spec import HarmonyExerciseSpec, default_exercise_groups
+from harmony.exercise_spec import HarmonyExerciseSpec
 from run_harmony_trainer_demo import (
     HarmonyTrainerWindow, MidiService, ATLAS_GROUP,
 )
@@ -136,8 +136,11 @@ class HarmonicNetworkWindow(QWidget):
         template = get_template(template_id)
         self._network = build_network(template)
 
-        # A trainer with the full default groups plus an (empty) launch group.
-        groups = default_exercise_groups()
+        # Scope the embedded trainer to ONLY the drills the graph visualises
+        # (built from this network's launchables), plus an (empty) launch-target
+        # group the launch button feeds.  The standalone Harmony Trainer keeps
+        # its full default groups -- this scoping is local to the network window.
+        groups = self._network.trainer_groups()
         groups[ATLAS_GROUP] = []
         self.trainer = HarmonyTrainerWindow(
             groups, midi_service=midi_service, with_circle=False)
@@ -162,7 +165,18 @@ class HarmonicNetworkWindow(QWidget):
         self._sync_timer.timeout.connect(self._poll_sync)
         self._sync_timer.start()
 
+    #: Drills the network never makes launchable (the engine is triad-based).
+    _RESERVED_DRILLS = {"seventh_chord"}
+
     def _on_launch(self, spec_dict: dict):
+        # Defense-in-depth: the JS already refuses to queue a reserved drill, and
+        # from_dict() (below) rejects any unknown drill, but guard explicitly so a
+        # reserved seventh-chord drill can never reach the trainer.
+        if not isinstance(spec_dict, dict) or \
+                spec_dict.get("drill") in self._RESERVED_DRILLS:
+            print("[NETWORK] refusing reserved/invalid drill:",
+                  (spec_dict or {}).get("drill"))
+            return
         try:
             spec = HarmonyExerciseSpec.from_dict(spec_dict)
         except Exception as exc:  # malformed payload -> ignore, keep running

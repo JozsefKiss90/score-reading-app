@@ -46,6 +46,9 @@
   var selectedNodeId = null;
   var selectedEdgeId = null;
   var launchQueue = [];          // clicked specs the host will pick up
+  var lastLaunch = null;         // debug: {exerciseId, drill, queued, reason}
+  var syncNodeIds = [];          // trainer-target sync highlight (separate from selection)
+  var syncPrimaryId = null;      // the closest/primary sync node (returned to host)
   var searchHits = new Set();
 
   // -- tiny DOM helpers (tolerant of the Node test's stubbed document) -------
@@ -172,9 +175,28 @@
   }
 
   // -- launch queue (host integration) --------------------------------------
+  // The host (run_harmonic_network_demo.py) polls takeLaunch() and feeds the
+  // dequeued dict straight into HarmonyExerciseSpec.from_dict(), so what we queue
+  // MUST be a raw HarmonyExerciseSpec dict (carrying a real `drill`), never a
+  // wrapper/entry object and never a reserved placeholder.
+  var RESERVED_DRILLS = { seventh_chord: true };
+
   function launch(spec) {
-    if (!spec || !spec.drill) return false;
+    // Only a raw, launchable spec dict may enqueue.
+    if (!spec || typeof spec !== "object" || !spec.drill) {
+      lastLaunch = { exerciseId: (spec && spec.exercise_id) || null,
+        drill: (spec && spec.drill) || null, queued: false,
+        reason: "missing-or-malformed-spec" };
+      return false;
+    }
+    if (RESERVED_DRILLS[spec.drill]) {     // reserved drills can never launch
+      lastLaunch = { exerciseId: spec.exercise_id || null, drill: spec.drill,
+        queued: false, reason: "reserved-drill" };
+      return false;
+    }
     launchQueue.push(spec);
+    lastLaunch = { exerciseId: spec.exercise_id || null, drill: spec.drill,
+      queued: true, reason: "ok" };
     return true;
   }
   function takeLaunch() { return launchQueue.length ? launchQueue.shift() : null; }
@@ -213,7 +235,9 @@
       if (!ec.implemented) return;
       var cb = el("input", { type: "checkbox" });
       cb.checked = !!filters.relations[ec.relation];
-      var sw = el("span", { class: "swatch line" + (ec.directed ? "" : " dashed"),
+      var style = edgeStyleOf(ec.visualClass);     // "solid" | "dashed" | "dotted"
+      var sw = el("span", { class: "swatch line" +
+          (style === "dashed" ? " dashed" : style === "dotted" ? " dotted" : ""),
         style: "border-top-color:" + edgeColor(ec.visualClass) });
       var lab = el("span", { class: "relLabel" }, [
         el("span", { text: ec.label }),
@@ -335,8 +359,13 @@
     var sel = selectionHighlight();
     visibleEdges().forEach(function (e) {
       var a = nodesById[e.source], b = nodesById[e.target];
+      // class carries BOTH the visual class (drives the dash style in CSS) and
+      // the relation (so relation-specific tweaks / tests can target it). The
+      // dash pattern lives in CSS keyed on .edge--<visualClass>, so it survives
+      // relation toggles and is visible on the dark canvas.
       var path = svg("path", {
-        class: "hnEdge" + edgeStateClass(e, sel),
+        class: "hnEdge edge edge--" + e.visualClass + " relation--" + e.relation +
+               edgeStateClass(e, sel),
         d: edgePath(a, b),
         stroke: edgeColor(e.visualClass),
       });
@@ -348,6 +377,7 @@
     // nodes
     visibleNodes().forEach(function (n) {
       var g = svg("g", { class: "hnNode" + nodeStateClass(n, sel),
+        "data-id": n.id,
         transform: "translate(" + n.x + "," + n.y + ")" });
       g.appendChild(svg("circle", { r: n.radius, fill: nodeColor(n) }));
       var tx = svg("text", {}); tx.textContent = n.label;
@@ -398,11 +428,23 @@
       else c += " dim";
     }
     if (filters.search && searchHits.has(n.id)) c += " searchHit";
+    // sync highlight is independent of (and visually wins over) selection dimming
+    if (syncNodeIds.indexOf(n.id) !== -1) {
+      c += " node--sync";
+      if (n.id === syncPrimaryId) c += " node--flash";
+    }
     return c;
   }
   function edgeStateClass(e, sel) {
-    if (!sel.active) return "";
-    return sel.edges.has(e.id) ? " sel" : " dim";
+    var c = "";
+    if (sel.active) c += sel.edges.has(e.id) ? " sel" : " dim";
+    // light up edges that connect two currently-synced nodes
+    if (syncNodeIds.length > 1 &&
+        syncNodeIds.indexOf(e.source) !== -1 &&
+        syncNodeIds.indexOf(e.target) !== -1) {
+      c += " edge--sync";
+    }
+    return c;
   }
 
   // ======================================================================
@@ -445,12 +487,12 @@
     // related Trainer drills
     var drills = el("div", { class: "sect" }, [el("h3", { text: "Trainer drills" })]);
     (n.trainerSpecs || []).forEach(function (t) {
-      if (t.status === "launchable" && t.spec) {
+      if (t.status === "launchable" && t.spec && !RESERVED_DRILLS[t.spec.drill]) {
         var item = el("div", { class: "launchItem" }, [
           el("div", { class: "lbl", text: t.label }),
           el("button", { class: "launchBtn", text: "Launch ▶",
             onClick: (function (spec) {
-              return function () { launch(spec); flashLaunched(); };
+              return function () { flashLaunched(launch(spec)); };
             })(t.spec) }),
         ]);
         drills.appendChild(item);
@@ -532,9 +574,13 @@
       onClick: function () { selectNode(b.id); } }, ["Open " + b.label]));
   }
 
-  function flashLaunched() {
+  function flashLaunched(ok) {
     var hits = byId("hnSearchHits");        // reuse the small status line if present
-    if (hits) hits.textContent = "Queued exercise for the trainer.";
+    if (hits) {
+      hits.textContent = ok
+        ? "Queued exercise for the trainer."
+        : "That drill is reserved — nothing launched.";
+    }
   }
 
   // ======================================================================
@@ -572,37 +618,80 @@
     return exportState();
   }
 
-  // map a trainer target (its current chord) onto network node(s) and select.
-  // The target carries the exercise *key* + the chord's roman degree; the
-  // V chord of C is G7 (root a fifth ABOVE the tonic) and the vii° is B° (a
-  // semitone below), so we offset from the tonic pitch class accordingly.
+  // -- trainer-target SYNC highlight (separate from selection) ---------------
+  // A sync highlight follows the trainer's current chord. It is deliberately
+  // NOT a selection: the user's clicked/selected node persists underneath, and
+  // the two highlights coexist (see node--sync / node--flash / edge--sync). The
+  // host polls this every ~400ms via run_harmonic_network_demo.py.
+  function setSyncHighlight(ids) {
+    var seen = {};
+    syncNodeIds = (ids || []).filter(function (id) {
+      if (!id || !nodesById[id] || seen[id]) return false;
+      seen[id] = true; return true;
+    });
+    syncPrimaryId = syncNodeIds.length ? syncNodeIds[0] : null;
+    renderGraph();                         // re-draw the graph only; do NOT touch
+    return syncPrimaryId;                  // the selection or the info panel.
+  }
+  function clearSync() { return setSyncHighlight([]); }
+
+  // Map a trainer target (its current chord) onto network node id(s).
+  // Real trainer targets carry {key, mode, roman, root, quality}; synthetic
+  // ones (tests / Atlas) may carry only {key, mode, roman}. We prefer the
+  // explicit chord root + quality, falling back to key-relative arithmetic
+  // (V is a fifth above the tonic; the leading-tone vii° is a semitone below).
   function highlightFromTrainerTarget(target) {
-    if (!target) return null;
-    var pc = parsePc(tonicOf(target.key));
-    if (pc == null) return null;
+    if (!target) return clearSync();
+    var keyPc = parsePc(tonicOf(target.key));
+    if (keyPc == null) return null;
     var mode = (target.mode || "major").indexOf("minor") !== -1 ? "minor" : "major";
     var roman = (target.roman || "").toLowerCase();
-    var id = null;
-    if (roman.indexOf("vii") === 0) {                 // leading-tone diminished
-      var ds = pcIndex[(pc + 11) % 12];
-      if (ds && ds.diminished_triad) id = ds.diminished_triad[0];
-    } else if (roman.indexOf("v") === 0) {            // dominant -> V7
-      var d7 = pcIndex[(pc + 7) % 12];
-      if (d7 && d7.dominant_seventh) id = d7.dominant_seventh[0];
+    var quality = (target.quality || "").toLowerCase();
+    var rootPc = parsePc(tonicOf(target.root || ""));   // null on synthetic targets
+
+    // the tonic/key context node (mode-aware) -- always part of the highlight
+    var keySlot = pcIndex[keyPc] || {};
+    var keyNode = (mode === "minor" && keySlot.minor_key) ? keySlot.minor_key[0]
+      : (keySlot.major_key ? keySlot.major_key[0] : null);
+
+    var primary = null;
+    // A diminished chord acting as the leading-tone vii°. When the target
+    // carries a quality, trust it; otherwise only treat the degree as
+    // diminished if it explicitly bears the ° symbol -- so a bare "VII"
+    // (the MAJOR subtonic of a natural minor key, which lowercases to "vii")
+    // is never mistaken for a diminished node.
+    var isDim = (quality === "diminished") ||
+                (!quality && roman.indexOf("°") !== -1);
+    // The dominant degree: roman "V"/"v" (NOT "vi"/"vii").
+    var isDom = (roman.charAt(0) === "v" && roman.charAt(1) !== "i");
+    if (isDim) {
+      var dimPc = (rootPc != null) ? rootPc : (keyPc + 11) % 12;
+      var ds = pcIndex[dimPc];
+      if (ds && ds.diminished_triad) primary = ds.diminished_triad[0];
+    } else if (isDom) {
+      var domPc = (rootPc != null) ? rootPc : (keyPc + 7) % 12;
+      var d7 = pcIndex[domPc];
+      if (d7 && d7.dominant_seventh) primary = d7.dominant_seventh[0];
     }
-    if (!id) {                                        // tonic / anything else -> key
-      var slot = pcIndex[pc] || {};
-      id = (mode === "minor" && slot.minor_key) ? slot.minor_key[0]
-        : (slot.major_key ? slot.major_key[0] : null);
+
+    var ids = [];
+    if (primary) ids.push(primary);             // most specific node first
+    if (keyNode && ids.indexOf(keyNode) === -1) ids.push(keyNode);  // key context
+    if (!ids.length) {                          // nearest graph context fallback
+      var any = pcIndex[keyPc] || {};
+      var first = (any.major_key || any.minor_key || any.dominant_seventh ||
+                   any.diminished_triad || [])[0];
+      if (first) ids.push(first);
     }
-    return id ? selectNode(id) : null;
+    return setSyncHighlight(ids);
   }
 
-  // map an Atlas sync payload (scale/degree/triad ids) onto a network node.
+  // Map an Atlas sync payload (scale/degree/triad ids) onto a network node.
+  // Also a sync highlight (coexists with selection), not a selection change.
   function highlightFromAtlasSync(active) {
-    if (!active) return null;
+    if (!active) return clearSync();
     var ref = active.scale || active.triad || null;   // "scale:C:major" / "triad:C:major:0"
-    if (!ref) return clearSelection();
+    if (!ref) return clearSync();
     var parts = String(ref).split(":");
     var key = parts[1], mode = parts[2] || "major";
     var pc = parsePc(key);
@@ -610,7 +699,7 @@
     var slot = pcIndex[pc] || {};
     var id = (mode.indexOf("minor") !== -1 && slot.minor_key) ? slot.minor_key[0]
       : (slot.major_key ? slot.major_key[0] : null);
-    return id ? selectNode(id) : null;
+    return setSyncHighlight(id ? [id] : []);
   }
 
   function tonicOf(key) {
@@ -627,6 +716,9 @@
       visibleNodes: visibleNodes().length,
       visibleEdges: visibleEdges().length,
       launchQueue: launchQueue.length,
+      lastLaunch: lastLaunch ? Object.assign({}, lastLaunch) : null,
+      syncNodes: syncNodeIds.slice(),
+      syncPrimary: syncPrimaryId,
       searchHits: searchHits.size,
       filters: { kinds: Object.assign({}, filters.kinds),
         relations: Object.assign({}, filters.relations), search: filters.search },
@@ -642,11 +734,22 @@
   function edgeColor(visualClass) {
     return ({
       fifth: "#94a3b8", relative: "#38bdf8", resolve: "#fb7185",
-      leading: "#c084fc", dominant: "#fbbf24", function: "#64748b",
+      leading: "#c084fc", dominant: "#fbbf24", function: "#a78bfa",
       shared: "#22c55e", samepc: "#94a3b8", trainer: "#10b981",
       atlas: "#3b82f6", reserved: "#475569",
     })[visualClass] || "#64748b";
   }
+  // Dash style per edge visual class -- the SINGLE source of truth shared by the
+  // left-panel legend swatch and (via CSS class .edge--<vc>) the SVG paths.
+  //   solid : fifth, dominant, resolve, leading
+  //   dashed: relative, shared, samepc, trainer, atlas
+  //   dotted: function, reserved
+  var EDGE_STYLE = {
+    fifth: "solid", relative: "dashed", dominant: "solid", resolve: "solid",
+    leading: "solid", shared: "dashed", samepc: "dashed", function: "dotted",
+    trainer: "dashed", atlas: "dashed", reserved: "dotted",
+  };
+  function edgeStyleOf(visualClass) { return EDGE_STYLE[visualClass] || "solid"; }
 
   // ======================================================================
   // init
@@ -654,6 +757,8 @@
   function init(payload) {
     data = payload || {};
     launchQueue = [];
+    lastLaunch = null;
+    syncNodeIds = []; syncPrimaryId = null;
     selectedNodeId = null; selectedEdgeId = null;
     searchHits = new Set();
     indexPayload();
@@ -673,8 +778,12 @@
     takeLaunch: takeLaunch,
     launch: launch,                                  // exposed for host/tests
     pendingCount: function () { return launchQueue.length; },
+    lastLaunch: function () { return lastLaunch ? Object.assign({}, lastLaunch) : null; },
     highlightFromTrainerTarget: highlightFromTrainerTarget,
     highlightFromAtlasSync: highlightFromAtlasSync,
+    clearSync: clearSync,
+    syncNodes: function () { return syncNodeIds.slice(); },
+    edgeStyleOf: edgeStyleOf,                         // "solid"|"dashed"|"dotted"
     exportState: exportState,
     // -- inspection helpers (used by the headless test) --
     nodeIds: function () { return Object.keys(nodesById); },

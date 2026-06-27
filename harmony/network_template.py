@@ -467,3 +467,114 @@ def get_template(template_id: Optional[str] = None) -> HarmonicNetworkTemplate:
 def load_template(data: Dict) -> HarmonicNetworkTemplate:
     """Load (and validate) a template from a serialised dict (future loading)."""
     return HarmonicNetworkTemplate.from_dict(data)
+
+
+# ---------------------------------------------------------------------------
+# Planned (not-yet-built) templates -- metadata stubs only
+# ---------------------------------------------------------------------------
+#
+# These are *audited* future topologies (see docs/harmonic_network_template_audit.md).
+# They are intentionally metadata-only: no generation rules, no factory, and NOT
+# registered in ``TEMPLATES``, so ``get_template()`` keeps working for the one
+# buildable template.  A stub graduates to a real template by writing a builder
+# + factory and moving it into ``TEMPLATES``.
+
+@dataclass(frozen=True)
+class PlannedTemplate:
+    """A reserved future network template -- description + rationale only."""
+
+    template_id: str
+    title: str
+    description: str
+    rationale: str
+    status: str = "planned"
+    priority: str = "medium"            # low | medium | high
+    dependencies: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+
+PLANNED_TEMPLATES: List[PlannedTemplate] = [
+    PlannedTemplate(
+        template_id="core_triad_function_network_v1",
+        title="Core triad / function network",
+        description=(
+            "Triad-only topology mapping I, ii, iii, IV, V, vi and vii° across "
+            "all keys, with no seventh-chord theoretical nodes. Directly aligns "
+            "with the Global Diatonic Map, Transposition Matrix, Quality Matrix "
+            "and Function Map."),
+        rationale=(
+            "Highest-value, lowest-risk next template: every node is a real "
+            "launchable diatonic triad (no reserved seventh-chord honesty caveat), "
+            "and the builder already derives all seven degrees per key from "
+            "theory.diatonic_harmony. Mostly a new node-class set + a "
+            "'diatonic_degree_edges' rule."),
+        priority="high",
+        dependencies=[
+            "theory.diatonic_harmony (generate_diatonic_triads)",
+            "harmony.atlas degree/function/quality ids",
+            "a new 'diatonic_degree' node class + generation rule",
+        ],
+    ),
+    PlannedTemplate(
+        template_id="cadence_resolution_network_v1",
+        title="Cadence resolution network",
+        description=(
+            "A graph of cadence paths -- V→I, IV→I, ii→V→I, vi→ii→V→I, V→vi and "
+            "i→VII→i -- integrating the Voice-leading Lab and the Cadence "
+            "curriculum."),
+        rationale=(
+            "Each path is already expressible as a HarmonyExerciseSpec function "
+            "drill, so launchables come for free. Needs a path/sequence node-edge "
+            "model (ordered multi-node arcs) the current pairwise builder does not "
+            "yet have -- medium effort."),
+        priority="medium",
+        dependencies=[
+            "harmony.exercise_spec function drills (V–I, ii–V–I, ...)",
+            "curriculum cadence catalogue",
+            "Music Theory Lab voice-leading experiments",
+            "an ordered-path edge model (new)",
+        ],
+    ),
+    PlannedTemplate(
+        template_id="inversion_space_network_v1",
+        title="Inversion-space network",
+        description=(
+            "Slash-chord / inversion topology (C, C/E, C/G): one chord identity, "
+            "changing bass, with voice-leading adjacency between inversions."),
+        rationale=(
+            "Pedagogically valuable but blocked: the trainer's spec compiler and "
+            "MusicXML builder are root-position triad based, so inversion drills "
+            "are not launchable yet. Defer until inversion support lands "
+            "(consistent with the project's non-goals)."),
+        priority="low",
+        dependencies=[
+            "inversion support in harmony.exercise_spec + harmony.musicxml_builder "
+            "(not present; an explicit non-goal for now)",
+        ],
+    ),
+]
+
+
+def list_planned_templates() -> List[Dict]:
+    """Metadata for every planned (not-yet-built) template."""
+    return [pt.to_dict() for pt in PLANNED_TEMPLATES]
+
+
+def list_templates() -> List[Dict]:
+    """Every template: the buildable one(s) (``status='implemented'``) + planned stubs."""
+    out: List[Dict] = []
+    for tid, factory in TEMPLATES.items():
+        tpl = factory()
+        out.append({
+            "template_id": tid,
+            "title": tpl.title,
+            "description": tpl.description,
+            "status": "implemented",
+            "priority": "shipped",
+            "rationale": "",
+            "dependencies": [],
+        })
+    out.extend(list_planned_templates())
+    return out

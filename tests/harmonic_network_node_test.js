@@ -237,4 +237,175 @@ const PAYLOAD = loadPayload();
   console.log("Test G (search + exportState): PASS");
 })();
 
+// === Test H: launch hardening + debug state (PATCH 1) =======================
+(function testLaunchHardening() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+
+  // A launchable click queues exactly one spec and records it in lastLaunch.
+  h.ui.selectNode("hn:major:C");
+  byClass("launchBtn")[0].fire("click");
+  assert(h.ui.pendingCount() === 1, "launchable click queues one spec");
+  let ll = h.ui.lastLaunch();
+  assert(ll && ll.queued === true && ll.drill === "full_key",
+    "lastLaunch records the queued full_key drill");
+  assert(h.ui.exportState().lastLaunch.queued === true, "exportState surfaces lastLaunch");
+  const drained = h.ui.takeLaunch();
+  assert(drained && drained.drill === "full_key", "takeLaunch drains exactly the queued spec");
+  assert(h.ui.takeLaunch() === null, "queue holds exactly one -> second drain is null");
+
+  // A reserved seventh-chord spec can NEVER be queued, even via launch() directly.
+  assert(h.ui.launch({ exercise_id: "x", drill: "seventh_chord" }) === false,
+    "reserved seventh_chord spec is refused");
+  assert(h.ui.pendingCount() === 0, "reserved spec is not queued");
+  ll = h.ui.lastLaunch();
+  assert(ll.queued === false && ll.reason === "reserved-drill",
+    "lastLaunch flags the reserved-drill refusal");
+
+  // Malformed specs are refused with a reason.
+  assert(h.ui.launch({}) === false, "spec without a drill is refused");
+  assert(h.ui.launch(null) === false, "null spec is refused");
+  assert(h.ui.lastLaunch().reason === "missing-or-malformed-spec", "reason recorded");
+
+  // The reserved G7 seventh action renders NO launch button (cannot queue).
+  ALL.length = 0;
+  h.ui.selectNode("hn:dom7:G");
+  const g7 = h.ui.nodeById("hn:dom7:G");
+  const reserved = g7.trainerSpecs.filter((t) => t.status === "reserved");
+  assert(reserved.length === 1 && reserved[0].spec === null, "G7 has a reserved, spec-less drill");
+  assert(byClass("reservedBadge").length >= 1, "reserved drill is clearly labelled");
+  assert(byClass("launchBtn").length === 1, "G7 exposes only the triad-surrogate launch button");
+  console.log("Test H (launch hardening + debug state): PASS");
+})();
+
+// === Test I: edge styles solid/dashed/dotted + markers (PATCH 2) ============
+(function testEdgeStyles() {
+  const h = makeHarness(PAYLOAD);
+  h.document.createElementNS = function (ns, tag) { return makeNode(tag); };  // SVG path
+  h.ui.init(PAYLOAD);
+
+  // The dash style mapping is the shared source of truth.
+  assert(h.ui.edgeStyleOf("fifth") === "solid", "fifth_relation -> solid");
+  assert(h.ui.edgeStyleOf("relative") === "dashed", "relative_minor_of -> dashed");
+  assert(h.ui.edgeStyleOf("resolve") === "solid", "resolves_to -> solid");
+  assert(h.ui.edgeStyleOf("leading") === "solid", "leading_tone_to -> solid");
+  assert(h.ui.edgeStyleOf("function") === "dotted", "same_function -> dotted");
+  assert(h.ui.edgeStyleOf("shared") === "dashed", "shares_scale_with -> dashed");
+
+  // Rendered SVG paths carry both the visual-class and the relation classes.
+  const relEdges = byClass("edge--relative").filter(
+    (n) => n.className.indexOf("relation--relative_minor_of") !== -1);
+  assert(relEdges.length >= 1, "relative_minor_of renders with the dashed edge--relative class");
+  assert(byClass("edge--fifth").length >= 1, "fifth_relation renders with the solid edge--fifth class");
+
+  // A directed resolves_to edge keeps its arrow marker.
+  const resolveEdges = byClass("relation--resolves_to");
+  assert(resolveEdges.length >= 1, "resolves_to edges are rendered");
+  assert(resolveEdges.some((p) => /url\(#arw-/.test(p.getAttribute("marker-end") || "")),
+    "a resolves_to edge has a directed marker-end");
+
+  // Toggling a relation's visibility does not strip the style class: hide then
+  // re-show same_function and confirm a specific edge returns with its classes.
+  const fnEdgeId = PAYLOAD.edges.filter((e) => e.relation === "same_function")[0].id;
+  ALL.length = 0;
+  h.ui.setFilter({ relations: { same_function: false } });
+  assert(byClass("edge--function").length === 0, "same_function off -> its edges are hidden");
+  ALL.length = 0;
+  h.ui.setFilter({ relations: { same_function: true } });
+  const reshown = byClass("relation--same_function");
+  assert(reshown.length >= 1, "same_function back on -> its edges render again");
+  assert(reshown.every((p) => p.className.indexOf("edge--function") !== -1),
+    "re-shown same_function edges still carry the edge--function style class");
+  console.log("Test I (edge styles + markers + toggle preserves class): PASS, fnEdge=" + fnEdgeId);
+})();
+
+// === Test J: trainer-target sync highlight (PATCH 4) ========================
+(function testSyncHighlight() {
+  const h = makeHarness(PAYLOAD);
+  h.document.createElementNS = function (ns, tag) { return makeNode(tag); };
+  h.ui.init(PAYLOAD);
+  function gById(id) {
+    return ALL.filter((n) => n.getAttribute && n.getAttribute("data-id") === id);
+  }
+
+  // C major I -> sync-highlight the C-major node (primary gets node--flash).
+  ALL.length = 0;
+  let p = h.ui.highlightFromTrainerTarget(
+    { key: "C major", mode: "major", roman: "I", root: "C", quality: "major" });
+  assert(p === "hn:major:C", "C major I highlights hn:major:C, got " + p);
+  let g = gById("hn:major:C");
+  assert(g.length === 1 && g[0].className.indexOf("node--sync") !== -1, "C node has node--sync");
+  assert(g[0].className.indexOf("node--flash") !== -1, "C node (primary) has node--flash");
+
+  // A natural minor i -> hn:minor:A.
+  assert(h.ui.highlightFromTrainerTarget(
+    { key: "A", mode: "natural_minor", roman: "i", root: "A", quality: "minor" }) === "hn:minor:A",
+    "A natural minor i highlights hn:minor:A");
+
+  // C major vii° (B° diminished) -> hn:dim:B.
+  assert(h.ui.highlightFromTrainerTarget(
+    { key: "C", mode: "major", roman: "vii°", root: "B", quality: "diminished" }) === "hn:dim:B",
+    "C major vii° highlights hn:dim:B");
+
+  // C major V -> primary G7 + the C-major key as context; the G7->C edge syncs.
+  ALL.length = 0;
+  let pv = h.ui.highlightFromTrainerTarget(
+    { key: "C", mode: "major", roman: "V", root: "G", quality: "major" });
+  assert(pv === "hn:dom7:G", "C major V primary is hn:dom7:G, got " + pv);
+  const sn = h.ui.syncNodes();
+  assert(sn.indexOf("hn:dom7:G") !== -1 && sn.indexOf("hn:major:C") !== -1,
+    "V syncs both G7 and the C-major key context");
+  assert(byClass("edge--sync").length >= 1, "the edge joining the two synced nodes is lit");
+
+  // D major V / A7 -> hn:dom7:A.
+  assert(h.ui.highlightFromTrainerTarget(
+    { key: "D", mode: "major", roman: "V", root: "A", quality: "major" }) === "hn:dom7:A",
+    "D major V highlights hn:dom7:A");
+  // Natural-minor VII is a MAJOR subtonic, not a diminished -> falls back to key node.
+  assert(h.ui.highlightFromTrainerTarget(
+    { key: "A", mode: "natural_minor", roman: "VII", root: "G", quality: "major" }) === "hn:minor:A",
+    "Am VII (major subtonic) is not mistaken for a diminished node");
+
+  // Selection and sync highlight coexist.
+  h.ui.selectNode("hn:major:C");
+  ALL.length = 0;
+  h.ui.highlightFromTrainerTarget({ key: "C", mode: "major", roman: "V", root: "G", quality: "major" });
+  const st = h.ui.exportState();
+  assert(st.selectedNode === "hn:major:C", "selection persists beneath the sync highlight");
+  assert(st.syncNodes.indexOf("hn:dom7:G") !== -1, "sync coexists with the active selection");
+  const cg = gById("hn:major:C"), gg = gById("hn:dom7:G");
+  assert(cg.length === 1 && cg[0].className.indexOf("sel") !== -1, "C keeps its selection (sel) class");
+  assert(gg.length === 1 && gg[0].className.indexOf("node--sync") !== -1, "G7 is synced while C stays selected");
+  console.log("Test J (trainer-target sync highlight + coexistence): PASS");
+})();
+
+// === Test K: CSS dash styles match the JS EDGE_STYLE map (PATCH 2 drift guard) ===
+// The dashed/solid/dotted distinction is the PRIMARY visual signal (e.g. fifth and
+// same_pitch_class share a grey colour and are told apart ONLY by the dash). That
+// style lives in two hand-maintained copies -- JS EDGE_STYLE (edgeStyleOf) and the
+// CSS .edge--<vc> stroke-dasharray. This asserts they cannot silently diverge.
+(function testDashConsistency() {
+  const css = fs.readFileSync(
+    path.join(ROOT, "beat_selector", "harmonic_network.css"), "utf-8");
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+  const VCS = ["fifth", "relative", "dominant", "resolve", "leading", "shared",
+    "samepc", "function", "trainer", "atlas", "reserved"];
+  function cssCategory(vc) {
+    const m = new RegExp("\\.edge\\.edge--" + vc + "\\s*\\{([^}]*)\\}").exec(css);
+    assert(m, "CSS defines a .edge.edge--" + vc + " rule");
+    const da = /stroke-dasharray\s*:\s*([^;]+)/.exec(m[1]);
+    assert(da, "edge--" + vc + " sets stroke-dasharray");
+    const val = da[1].trim();
+    if (val === "none") return "solid";
+    return parseFloat(val.split(/[\s,]+/)[0]) <= 2 ? "dotted" : "dashed";
+  }
+  VCS.forEach(function (vc) {
+    const cssCat = cssCategory(vc), jsCat = h.ui.edgeStyleOf(vc);
+    assert(cssCat === jsCat,
+      "edge--" + vc + ": CSS dash (" + cssCat + ") matches edgeStyleOf (" + jsCat + ")");
+  });
+  console.log("Test K (CSS<->JS dash-style consistency): PASS");
+})();
+
 console.log("\nAll harmonic_network.js behavioural checks passed (" + passed + " assertions).");

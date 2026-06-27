@@ -35,10 +35,12 @@ from harmony.network_template import (  # noqa: E402
     get_template, load_template, dominant_diminished_relative_network_v1,
     NODE_KINDS, IMPLEMENTED_RELATIONS, RESERVED_RELATIONS, ALL_RELATIONS,
     GENERATION_RULES,
+    PLANNED_TEMPLATES, list_planned_templates, list_templates,
 )
 from harmony.harmonic_network import (  # noqa: E402
     build_network, build_network_payload, HarmonicNetwork,
     major_node_id, minor_node_id, dom7_node_id, dim_node_id,
+    NETWORK_GROUP_BY_KIND,
 )
 
 
@@ -484,6 +486,175 @@ class TestPayloadShape(unittest.TestCase):
         self.assertTrue(build_atlas().nodes)
         self.assertEqual(build_circle_payload()["schema"], "harmony-circle/v1")
         self.assertTrue(default_exercise_groups())
+
+
+# ---------------------------------------------------------------------------
+# 6. Graph-relevant trainer groups (PATCH 3) -- the embedded trainer must only
+#    expose drills the graph actually visualises.
+# ---------------------------------------------------------------------------
+
+class TestNetworkTrainerGroups(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.net = build_network()
+        cls.groups = cls.net.trainer_groups()
+        # every exercise_id that any graph node advertises as launchable
+        cls.node_launchable_ids = {
+            t["spec"]["exercise_id"]
+            for n in cls.net.nodes for t in n.trainer_specs
+            if t.get("status") == "launchable" and t.get("spec")
+        }
+
+    def test_groups_are_the_network_relevance_groups(self):
+        # Only the four network-relevance groups appear (no generic trainer groups).
+        self.assertEqual(set(self.groups.keys()),
+                         set(NETWORK_GROUP_BY_KIND.values()))
+
+    def test_group_sizes_cover_every_key(self):
+        # 12 major + 12 minor + 12 leading-tone dim + 12 dominant resolutions.
+        for name, specs in self.groups.items():
+            self.assertEqual(len(specs), 12, f"{name} should have 12 drills")
+        total = sum(len(v) for v in self.groups.values())
+        self.assertEqual(total, 48)
+
+    def test_only_network_launchables_appear(self):
+        # Every dropdown spec traces back to a launchable graph-node entry.
+        for specs in self.groups.values():
+            for spec in specs:
+                self.assertIn(spec.exercise_id, self.node_launchable_ids,
+                              f"{spec.exercise_id} is not a graph-node launchable")
+
+    def test_no_reserved_seventh_chord_drill_in_dropdown(self):
+        for specs in self.groups.values():
+            for spec in specs:
+                self.assertNotEqual(spec.drill, "seventh_chord")
+                self.assertIn(spec.drill, {"full_key", "function"})
+
+    def test_every_dropdown_spec_compiles_within_cap(self):
+        for specs in self.groups.values():
+            for spec in specs:
+                compiled = compile_exercise(spec)
+                self.assertLessEqual(len(compiled), MAX_CHORDS_PER_SPEC)
+
+    def test_groups_are_far_smaller_than_full_default_set(self):
+        # Regression for the original bug: the network trainer must not surface
+        # the full ~100-exercise generic registry.
+        from harmony.exercise_spec import all_default_specs
+        self.assertLess(48, len(all_default_specs()))
+
+
+# ---------------------------------------------------------------------------
+# 7. Python launch bridge (PATCH 1) -- what the JS queues must load cleanly.
+# ---------------------------------------------------------------------------
+
+class TestPythonLaunchBridge(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.net = build_network()
+
+    def test_every_launchable_spec_round_trips_like_on_launch(self):
+        # HarmonicNetworkWindow._on_launch does HarmonyExerciseSpec.from_dict(d).
+        # Every launchable entry the JS could queue must survive that unchanged.
+        launchable = 0
+        for item in self.net.launchables():
+            if item["status"] == "launchable":
+                launchable += 1
+                spec = HarmonyExerciseSpec.from_dict(item["spec"])  # must not raise
+                self.assertEqual(spec.drill, item["drill"])
+                self.assertTrue(item["spec"].get("drill"),
+                                "queued dict must carry a 'drill' the host checks")
+            else:
+                self.assertIsNone(item["spec"])
+        self.assertEqual(launchable, 48)
+
+    def test_reserved_entries_are_never_launchable(self):
+        reserved = [i for i in self.net.launchables() if i["status"] == "reserved"]
+        self.assertEqual(len(reserved), 12)         # one per dominant seventh
+        for item in reserved:
+            self.assertIsNone(item["spec"])
+            self.assertEqual(item["drill"], "seventh_chord")
+
+
+# ---------------------------------------------------------------------------
+# 8. Planned-template registry (PATCH 5) -- stubs must not break get_template().
+# ---------------------------------------------------------------------------
+
+class TestPlannedTemplates(unittest.TestCase):
+    def test_default_get_template_still_works(self):
+        tpl = get_template()
+        self.assertEqual(tpl.template_id,
+                         "dominant_diminished_relative_network_v1")
+        # named lookup of the buildable template also still works
+        self.assertEqual(
+            get_template("dominant_diminished_relative_network_v1").template_id,
+            "dominant_diminished_relative_network_v1")
+
+    def test_planned_stubs_have_required_metadata(self):
+        self.assertTrue(PLANNED_TEMPLATES)
+        for pt in list_planned_templates():
+            for field in ("template_id", "title", "description", "rationale",
+                          "status", "priority", "dependencies"):
+                self.assertIn(field, pt)
+            self.assertEqual(pt["status"], "planned")
+
+    def test_planned_templates_are_not_buildable(self):
+        # A planned stub is metadata-only -> get_template must reject it cleanly.
+        for pt in PLANNED_TEMPLATES:
+            with self.assertRaises(KeyError):
+                get_template(pt.template_id)
+
+    def test_audited_candidates_are_present(self):
+        ids = {pt.template_id for pt in PLANNED_TEMPLATES}
+        for expected in ("core_triad_function_network_v1",
+                         "cadence_resolution_network_v1",
+                         "inversion_space_network_v1"):
+            self.assertIn(expected, ids)
+
+    def test_list_templates_mixes_implemented_and_planned(self):
+        statuses = {t["template_id"]: t["status"] for t in list_templates()}
+        self.assertEqual(statuses["dominant_diminished_relative_network_v1"],
+                         "implemented")
+        self.assertEqual(statuses["core_triad_function_network_v1"], "planned")
+
+
+# ---------------------------------------------------------------------------
+# 9. Regression: deterministic node/edge counts (PATCH 6).
+# ---------------------------------------------------------------------------
+
+class TestRegressionCounts(unittest.TestCase):
+    def test_build_network_node_edge_counts_are_deterministic(self):
+        a, b = build_network(), build_network()
+        self.assertEqual(len(a.nodes), 48)
+        self.assertEqual(len(b.nodes), 48)
+        self.assertEqual(len(a.edges), len(b.edges))
+        ca, cb = a.counts(), b.counts()
+        self.assertEqual(ca, cb)
+        self.assertEqual(ca["launchableDrills"], 48)
+        self.assertEqual(ca["reservedDrills"], 12)
+
+    def test_edge_counts_are_a_pinned_fingerprint(self):
+        # Literal totals so adding/removing a generation rule is actually caught
+        # (a two-build comparison alone would not notice -- both builds change).
+        net = build_network()
+        self.assertEqual(len(net.nodes), 48)
+        self.assertEqual(len(net.edges), 240)
+        self.assertEqual(net.counts()["nodesByKind"], {
+            "major_key": 12, "minor_key": 12,
+            "dominant_seventh": 12, "diminished_triad": 12,
+        })
+        self.assertEqual(net.counts()["edgesByRelation"], {
+            "fifth_relation": 12,
+            "relative_minor_of": 12, "relative_major_of": 12,
+            "dominant_of": 12, "resolves_to": 36,
+            "leading_tone_to": 24, "same_function": 12,
+            "shares_scale_with": 36, "same_pitch_class": 36,
+            "trainer_drill_available": 24, "atlas_node_available": 24,
+        })
+
+    def test_launchables_partition_into_launchable_and_reserved(self):
+        net = build_network()
+        for item in net.launchables():
+            self.assertIn(item["status"], {"launchable", "reserved"})
 
 
 if __name__ == "__main__":
