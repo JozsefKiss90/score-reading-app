@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Score Soul Graph</title>
+  <link rel="stylesheet" href="score_soul.css" />
+</head>
+<body>
+  <div id="soulRoot" class="soul-root">
+    <!-- LEFT rail: navigator + current chord card -->
+    <aside id="soulRail" class="soul-rail">
+      <header id="soulHeader" class="soul-header">
+        <div class="soul-title" id="soulTitle">Score Soul Graph</div>
+        <div class="soul-sub" id="soulSub"></div>
+      </header>
+
+      <section class="soul-card" id="soulChordCard">
+        <div class="soul-card-head">Current measure</div>
+        <div class="soul-chord-empty" id="soulChordBody">Select a measure to begin.</div>
+      </section>
+
+      <section class="soul-panel">
+        <div class="soul-panel-head">Form sections</div>
+        <ul class="soul-list" id="soulSections"></ul>
+      </section>
+
+      <section class="soul-panel">
+        <div class="soul-panel-head">Measures</div>
+        <ol class="soul-list soul-measures" id="soulMeasures"></ol>
+      </section>
+
+      <section class="soul-panel">
+        <div class="soul-panel-head">Cadences</div>
+        <ul class="soul-list" id="soulCadences"></ul>
+      </section>
+    </aside>
+
+    <!-- RIGHT: the mandala -->
+    <main id="soulMandalaWrap" class="soul-mandala-wrap">
+      <div class="soul-mandala-head">
+        <span id="soulMandalaTitle">Harmonic mandala</span>
+        <span class="soul-mandala-counts" id="soulMandalaCounts"></span>
+      </div>
+      <div id="soulMandala" class="soul-mandala"></div>
+    </main>
+  </div>
+
+  <script src="score_soul.js"></script>
+</body>
+</html>

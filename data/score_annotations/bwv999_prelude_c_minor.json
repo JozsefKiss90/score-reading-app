@@ -1,0 +1,32 @@
+{
+  "score_id": "bwv999_prelude_c_minor",
+  "title": "Prelude in C minor, BWV 999",
+  "composer": "J. S. Bach (Kleines Praludium / lute, BWV 999)",
+  "key": "C",
+  "mode": "minor",
+  "score_graph_template_id": "score_soul_radial_v1",
+  "readiness": "score-file pending: BWV 999 is NOT in the music21 corpus, so this analysis is curated from analytical knowledge of the piece and has NOT yet been verified against an imported MusicXML/MXL. Drop a 'bwv999_prelude_c_minor.mxl' (or .musicxml) into data/scores/ to enable live rendering; the importer will then fill the literal note content. The annotation contract, the diatonic C-minor mapping, and the honest chromatic marking are fully exercised by this opening excerpt.",
+  "global_summary": "Bach's C-minor Prelude (BWV 999) is a chromatic arpeggio study. Even its opening bars lean on the harmonic-minor dominant (G major, with a raised leading-tone B-natural), a Neapolitan (Db major), and applied/secondary dominants -- all of which lie OUTSIDE the pilot's diatonic, natural-minor, triad-only engine. Those bars are deliberately marked status='unsupported_chromatic' with an explanation naming the layer they need (harmonic-minor / secondary-dominant / Neapolitan). The genuinely diatonic C-minor bars (i, iv, III, VI, VII, v, ii0) are analysed and mapped to the Atlas and Harmonic Network in full. This is the roadmap signal: BWV 999 motivates a future harmonic-minor + secondary-dominant layer.",
+  "sections": [
+    {"label": "Opening tonic and dominant", "start_measure": 1, "end_measure": 3, "tonal_area": "C minor (i - V - i)", "description": "Tonic established and answered by the harmonic-minor dominant."},
+    {"label": "Diatonic descent", "start_measure": 4, "end_measure": 8, "tonal_area": "C minor", "description": "A descent through the natural-minor diatonic triads iv - VII - III - VI - ii0."},
+    {"label": "Chromatic intensification", "start_measure": 9, "end_measure": 12, "tonal_area": "C minor (chromatic)", "description": "A secondary dominant and a Neapolitan drive toward a half cadence on the dominant -- the chromatic heart of the prelude."}
+  ],
+  "cadences": [
+    {"start_measure": 10, "end_measure": 11, "pattern": ["iv", "V"], "cadence_type": "half", "romans": ["N6", "V"], "functions": ["subdominant", "dominant"], "chord_symbols": ["Db", "G"], "confidence": 0.6, "explanation": "Phrygian/Neapolitan approach to a half cadence on the dominant (G major). Both members need the chromatic layer; marked accordingly."}
+  ],
+  "slices": [
+    {"measure": 1, "roman": "i", "base_roman": "i", "chord_symbol": "Cm", "inferred_root": "C", "chord_tones": ["C", "Eb", "G"], "function_label": "tonic", "source": "manual", "status": "ok", "explanation": "Tonic of C minor (i, C-Eb-G)."},
+    {"measure": 2, "roman": "V", "base_roman": null, "chord_symbol": "G", "inferred_root": "G", "chord_tones": ["G", "B", "D"], "function_label": "dominant", "source": "manual", "status": "unsupported_chromatic", "explanation": "Dominant of C minor as a MAJOR triad (G-B-D) -- the leading tone B-natural is raised from the natural-minor Bb. Requires the reserved harmonic-minor layer; mapped to the G7 network node by pitch class."},
+    {"measure": 3, "roman": "i", "base_roman": "i", "chord_symbol": "Cm", "inferred_root": "C", "chord_tones": ["C", "Eb", "G"], "function_label": "tonic", "source": "manual", "status": "ok", "explanation": "Return to the tonic (i)."},
+    {"measure": 4, "roman": "iv", "base_roman": "iv", "chord_symbol": "Fm", "inferred_root": "F", "chord_tones": ["F", "Ab", "C"], "function_label": "subdominant", "source": "manual", "status": "ok", "explanation": "Subdominant (iv, F minor) -- diatonic predominant in natural minor."},
+    {"measure": 5, "roman": "VII", "base_roman": "VII", "chord_symbol": "Bb", "inferred_root": "Bb", "chord_tones": ["Bb", "D", "F"], "function_label": "subtonic", "source": "manual", "status": "ok", "explanation": "Subtonic (VII, Bb major) -- the natural-minor flat-seventh, a diatonic major triad (NOT a leading-tone chord)."},
+    {"measure": 6, "roman": "III", "base_roman": "III", "chord_symbol": "Eb", "inferred_root": "Eb", "chord_tones": ["Eb", "G", "Bb"], "function_label": "mediant", "source": "manual", "status": "ok", "explanation": "Mediant (III, Eb major) -- the relative major triad, a tonic-area colour."},
+    {"measure": 7, "roman": "VI", "base_roman": "VI", "chord_symbol": "Ab", "inferred_root": "Ab", "chord_tones": ["Ab", "C", "Eb"], "function_label": "submediant", "source": "manual", "status": "ok", "explanation": "Submediant (VI, Ab major) -- diatonic in natural minor."},
+    {"measure": 8, "roman": "ii0", "base_roman": "ii°", "chord_symbol": "Ddim", "inferred_root": "D", "chord_tones": ["D", "F", "Ab"], "function_label": "predominant", "source": "manual", "status": "ok", "explanation": "Supertonic diminished (ii0, D-F-Ab) -- the diatonic minor-key predominant."},
+    {"measure": 9, "roman": "V7/iv", "base_roman": null, "chord_symbol": "C7", "inferred_root": "C", "chord_tones": ["C", "E", "G", "Bb"], "function_label": "dominant", "source": "manual", "status": "unsupported_chromatic", "explanation": "Secondary dominant V7/iv (C7, with chromatic E-natural and Bb) tonicising the subdominant. Reserved secondary-dominant layer; mapped to the C7 network node."},
+    {"measure": 10, "roman": "N6", "base_roman": null, "chord_symbol": "Db", "inferred_root": "Db", "chord_tones": ["Db", "F", "Ab"], "function_label": "subdominant", "source": "manual", "status": "unsupported_chromatic", "explanation": "Neapolitan sixth (bII6, Db major) -- a chromatic predominant built on the lowered second degree. Requires the reserved Neapolitan/chromatic layer."},
+    {"measure": 11, "roman": "V", "base_roman": null, "chord_symbol": "G", "inferred_root": "G", "chord_tones": ["G", "B", "D"], "function_label": "dominant", "source": "manual", "status": "unsupported_chromatic", "explanation": "Half cadence on the harmonic-minor dominant (G major, raised leading-tone B). Chromatic; reserved harmonic-minor layer."},
+    {"measure": 12, "roman": "i", "base_roman": "i", "chord_symbol": "Cm", "inferred_root": "C", "chord_tones": ["C", "Eb", "G"], "function_label": "tonic", "source": "manual", "status": "ok", "explanation": "Tonic return (i) -- closing the excerpt."}
+  ]
+}

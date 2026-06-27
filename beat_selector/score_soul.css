@@ -1,0 +1,116 @@
+:root {
+  --bg: #11141c;
+  --panel: #1a1f2b;
+  --panel2: #232a3a;
+  --ink: #e7ecf5;
+  --muted: #8b97ad;
+  --line: #2c3445;
+  --tonic: #3fbf6f;
+  --dominant: #e0564b;
+  --predominant: #4d8fe0;
+  --mediant: #b07bd6;
+  --chromatic: #e6a23c;
+  --ambiguous: #7a869c;
+  --cadence: #d9b14a;
+  --atlas: #36c2c9;
+  --network: #d36bb0;
+  --score: #f0d060;
+  --key: #6fae8f;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+
+.soul-root { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+
+/* ---------------- LEFT rail ---------------- */
+.soul-rail { background: var(--panel); border-right: 1px solid var(--line);
+  overflow-y: auto; padding: 10px; }
+.soul-header { padding: 4px 4px 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.soul-title { font-size: 15px; font-weight: 650; }
+.soul-sub { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+
+.soul-panel { margin-top: 12px; }
+.soul-panel-head, .soul-card-head { color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; font-size: 10.5px; font-weight: 700; margin: 0 0 6px 2px; }
+
+.soul-list { list-style: none; margin: 0; padding: 0; }
+.soul-list li { padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; margin-bottom: 3px; background: var(--panel2);
+  display: flex; align-items: center; gap: 8px; }
+.soul-list li:hover { border-color: var(--line); }
+.soul-list li.active { border-color: var(--score); background: #2b2f24; }
+
+.soul-measures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.soul-measures li { font-variant-numeric: tabular-nums; }
+
+.soul-mnum { color: var(--muted); min-width: 26px; font-size: 11px; }
+.soul-badge { font-weight: 650; }
+.soul-dot { width: 9px; height: 9px; border-radius: 50%; margin-left: auto; flex: none; }
+.dot-ok { background: var(--tonic); }
+.dot-unsupported_chromatic { background: var(--chromatic); }
+.dot-ambiguous { background: var(--ambiguous); }
+
+.soul-secrange { color: var(--muted); font-size: 11px; }
+
+/* ---------------- chord card ---------------- */
+.soul-card { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; }
+.soul-chord-empty { color: var(--muted); padding: 6px 0; }
+.soul-chord-roman { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.soul-chord-sym { font-size: 14px; color: var(--muted); margin-left: 6px; }
+.soul-chord-row { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.soul-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #2b3142;
+  border: 1px solid var(--line); }
+.soul-pill.tonic { color: var(--tonic); }
+.soul-pill.dominant { color: var(--dominant); }
+.soul-pill.predominant { color: var(--predominant); }
+.soul-pill.mediant { color: var(--mediant); }
+.soul-pill.chromatic { color: var(--chromatic); border-color: var(--chromatic); }
+.soul-pill.ambiguous { color: var(--ambiguous); }
+.soul-chord-expl { margin-top: 8px; font-size: 12px; color: #cdd6e6; line-height: 1.45; }
+.soul-refs { margin-top: 8px; font-size: 10.5px; color: var(--muted); }
+.soul-refs code { color: #aeb9cc; }
+.soul-status-flag { margin-top: 6px; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
+.soul-status-flag.chromatic { background: #3a2c14; color: var(--chromatic); }
+.soul-status-flag.ambiguous { background: #2a2f3a; color: var(--ambiguous); }
+
+/* ---------------- mandala ---------------- */
+.soul-mandala-wrap { display: flex; flex-direction: column; min-width: 0; }
+.soul-mandala-head { padding: 8px 12px; border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; color: var(--muted); font-size: 11.5px; }
+.soul-mandala { flex: 1; overflow: hidden; }
+.soul-mandala svg { width: 100%; height: 100%; display: block; }
+
+.soul-edge { stroke: #39435a; stroke-width: 1; opacity: .35; fill: none; }
+.soul-edge.rel-follows { stroke: #4a5570; opacity: .5; }
+.soul-edge.rel-resolves_to { stroke: var(--dominant); opacity: .5; }
+.soul-edge.rel-prepares { stroke: var(--predominant); opacity: .45; }
+.soul-edge.rel-prolongs { stroke: var(--tonic); opacity: .3; stroke-dasharray: 3 3; }
+.soul-edge.rel-maps_to_atlas { stroke: var(--atlas); opacity: .18; }
+.soul-edge.rel-maps_to_network { stroke: var(--network); opacity: .18; }
+.soul-edge.edge-active { opacity: .95; stroke-width: 2; }
+
+.soul-node { stroke: #0c0f16; stroke-width: 1; cursor: pointer; }
+.soul-node.vc-score { fill: var(--score); }
+.soul-node.vc-section { fill: #4a5366; }
+.soul-node.vc-tonic { fill: var(--tonic); }
+.soul-node.vc-dominant { fill: var(--dominant); }
+.soul-node.vc-predominant { fill: var(--predominant); }
+.soul-node.vc-mediant { fill: var(--mediant); }
+.soul-node.vc-chromatic { fill: var(--chromatic); }
+.soul-node.vc-ambiguous { fill: var(--ambiguous); }
+.soul-node.vc-cadence { fill: var(--cadence); }
+.soul-node.vc-key { fill: var(--key); }
+.soul-node.vc-atlas { fill: var(--atlas); }
+.soul-node.vc-network { fill: var(--network); }
+.soul-node.vc-function { fill: #c9d2e2; }
+.soul-node.vc-chord, .soul-node.vc-roman { fill: #8893a8; }
+.soul-node.node-active { stroke: #fff; stroke-width: 2.5; }
+.soul-node.node-dim { opacity: .18; }
+
+.soul-nlabel { fill: #cfd8e8; font-size: 11px; pointer-events: none;
+  text-anchor: middle; dominant-baseline: middle; }
+.soul-nlabel.lbl-dim { opacity: .12; }
+.soul-headless { padding: 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
