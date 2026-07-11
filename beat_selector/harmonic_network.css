@@ -155,6 +155,7 @@ body{
 /* node-kind colour helpers (bidirectional-mapping templates) */
 .k-key_center{background:#64748b;} .k-diatonic_triad{background:#14b8a6;}
 .k-function_family{background:#f59e0b;} .k-inversion_state{background:#f43f5e;}
+.k-degree_class{background:#22c55e;} .k-quality_class{background:#a855f7;}
 
 /* ==== bidirectional drill<->graph layout + layers (plan sections 11, 16) ==== */
 #hnCenterWrap{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;}
@@ -219,6 +220,7 @@ body{
 .edge.edge--prolong{stroke-dasharray:2 4;opacity:.5;}
 .edge.edge--inversion{stroke-dasharray:2 3;opacity:.5;}
 .edge.edge--voicing{stroke-dasharray:8 3;}
+.edge.edge--substitute{stroke-dasharray:5 3;}
 
 /* dark mode (panels) */
 body.dark{--bg:#0b1220;--fg:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--card:#0f172a;

@@ -1154,7 +1154,7 @@
       atlas: "#3b82f6", reserved: "#475569",
       // canonical theory relations used by the core / cadence / inversion templates
       membership: "#64748b", prepare: "#f59e0b", prolong: "#64748b",
-      inversion: "#f43f5e", voicing: "#f472b6",
+      inversion: "#f43f5e", voicing: "#f472b6", substitute: "#f59e0b",
       // runtime projection overlay edges (sequence relations)
       "overlay-drill": "#eab308", "overlay-transpose": "#38bdf8",
       "overlay-enumerate": "#64748b", "overlay-voicing": "#f472b6",

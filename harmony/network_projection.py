@@ -614,11 +614,209 @@ def _ensure_voicing_proxy(proxies, node_id, ann, anchor, inv) -> None:
     )
 
 
+# --------------------------------------------------------------------------------------------- #
+# Public entry: project a curated score analysis (plan sections 9 phase 9, 8.4)
+# --------------------------------------------------------------------------------------------- #
+
+def harmonic_step_from_score_slice(sl, network: HarmonicNetwork, *, sequence_index: int,
+                                   group_index: int, index_in_group: int,
+                                   index: Optional[NetworkIndex] = None,
+                                   atlas=None) -> Tuple[HarmonicStep, Optional[ProjectionNode]]:
+    """Map one :class:`~harmony.score_analysis.ScoreHarmonySlice` onto a :class:`HarmonicStep`.
+
+    Reuses ``score_analysis`` (``canon_mode`` / ``diatonic_triad_match`` / the slice's already
+    resolved ``atlas_refs``) rather than forking a second mapper.  The honesty gate is the
+    curator's ``base_roman``: a chromatic chord whose triad merely *coincides* with a diatonic one
+    (``base_roman=None``) is marked ``unsupported`` and never claims a diatonic node -- automatic
+    harmonic certainty is never invented.  Returns ``(step, optional_proxy_node)``.
+    """
+    from harmony.score_analysis import canon_mode, diatonic_triad_match  # lazy: avoids cycle
+
+    if index is None:
+        index = NetworkIndex(network)
+    if atlas is None:
+        atlas = build_atlas()
+
+    # Parse defensively: a slice may carry an unparseable key/mode from a curated sidecar
+    # (e.g. German 'H' for B). Degrade that slice to an honest 'unsupported' marker rather than
+    # crashing the whole projection.
+    try:
+        mode = canon_mode(sl.mode or "major")
+    except Exception:
+        mode = "major"
+    try:
+        tonic = sl.key_tonic
+    except Exception:
+        tonic = ""
+    mode_word = "minor" if mode == "natural_minor" else "major"
+    key_context = sl.key or (f"{tonic} {mode_word}" if tonic else "")
+    anchor = index.key_anchor(tonic, mode) if tonic else None
+    context_nodes = [anchor.id] if anchor is not None else []
+
+    # diatonic reading only when the curator supplied a base_roman AND the slice is not chromatic
+    diatonic = (not sl.is_chromatic) and bool(sl.base_roman) and bool(sl.key)
+    triad = None
+    if diatonic:
+        try:
+            triad = diatonic_triad_match(sl.key, sl.mode, sl.inferred_root,
+                                         sl.chord_quality_hint())
+        except Exception:
+            triad = None
+
+    proxy_node: Optional[ProjectionNode] = None
+    if triad is not None:
+        res = _resolve_chord(triad, index, atlas)
+        primary = None if res.is_proxy else res.node_id
+        visual = res.node_id
+        status, mapping_type, reason = res.status, res.mapping_type, res.reason
+        if res.is_proxy:
+            bucket: Dict[str, ProjectionNode] = {}
+            _ensure_proxy(bucket, res, triad, anchor, index)
+            proxy_node = bucket[res.node_id]
+        degree_index = triad.degree_index
+        pitch_classes = tuple(triad.pitch_classes)
+        chord_tones = tuple(sl.chord_tones) if sl.chord_tones else tuple(triad.pitches)
+        quality = triad.chord_quality
+        interval_layer = sl.interval_layer or triad.interval_layer
+        function_label = sl.function_label or triad.function_label
+    else:
+        visual = f"overlay:score:{sl.score_id}:{sequence_index}"
+        primary = None
+        status, mapping_type = "unsupported", "chord_instance"
+        reason = (f"{sl.chord_symbol or sl.roman or 'chord'} is not a diatonic triad of "
+                  f"{key_context or 'the key'}")
+        proxy_node = _score_unsupported_proxy(visual, sl, anchor, sequence_index)
+        degree_index = None
+        pitch_classes = ()
+        chord_tones = tuple(sl.chord_tones)
+        quality = sl.chord_quality_hint() or ""
+        interval_layer = sl.interval_layer or ""
+        function_label = sl.function_label or ""
+
+    conf = "" if sl.confidence >= 1.0 else f" (confidence {sl.confidence:g})"
+    step = HarmonicStep(
+        occurrence_id=occurrence_id(sl.score_id, group_index, index_in_group, sequence_index),
+        sequence_index=sequence_index, group_index=group_index, index_in_group=index_in_group,
+        source_kind="score", source_id=sl.score_id, drill_family="score",
+        key_context=key_context, tonic=tonic, mode=mode,
+        roman=sl.roman or sl.base_roman or "", degree_index=degree_index,
+        chord_symbol=sl.chord_symbol or "", root=sl.inferred_root or "",
+        quality=quality, function_label=function_label, interval_layer=interval_layer,
+        pitch_classes=pitch_classes, chord_tones=chord_tones,
+        semantic_group=default_group_for_drill("score"),
+        sequence_semantics=default_sequence_semantics_for_drill("score"),
+        atlas_refs=tuple(sl.atlas_refs), primary_network_node=primary,
+        context_network_nodes=tuple(context_nodes), visual_node_id=visual,
+        mapping_type=mapping_type, mapping_status=status,
+        mapping_reason=f"[{sl.status}] {reason}{conf}",
+    )
+    return step, proxy_node
+
+
+def _score_unsupported_proxy(pid: str, sl, anchor, seq: int) -> ProjectionNode:
+    ax = getattr(anchor, "x", 0.0) if anchor is not None else 0.0
+    ay = getattr(anchor, "y", 0.0) if anchor is not None else 0.0
+    dx, dy = _spoke_xy(seq % 12, 12, PROXY_ORBIT_RADIUS, 0.0)
+    return ProjectionNode(
+        id=pid, label=(sl.chord_symbol or sl.roman or "?"), kind="occurrence_marker",
+        canonical_ref=None, atlas_refs=tuple(sl.atlas_refs),
+        anchor_node_id=(anchor.id if anchor is not None else None),
+        x=ax + dx, y=ay + dy, visual_class="proxy", mapping_status="unsupported",
+        data={"chromatic": True, "roman": sl.roman, "measure": sl.measure,
+              "chordSymbol": sl.chord_symbol},
+    )
+
+
+def project_score_analysis(result, network: HarmonicNetwork, *, resolve: bool = True) -> DrillGraphProjection:
+    """Project a curated :class:`~harmony.score_analysis.ScoreAnalysisResult` onto the network.
+
+    Slices become ordered occurrences in ``score_time`` semantics; every slice is visible (exact
+    canonical node, diatonic proxy, or an honest ``unsupported`` marker for chromatic chords).
+    Group boundaries fall at key changes (a real modulation in the piece). No theory edges are
+    asserted between slices -- the curated/heuristic status is preserved, not upgraded.
+    """
+    if resolve:
+        try:
+            result.resolve_refs()          # idempotent; fills atlas/network refs, never clobbers
+        except Exception:
+            pass
+    atlas = build_atlas()
+    index = NetworkIndex(network)
+
+    steps: List[HarmonicStep] = []
+    proxies: Dict[str, ProjectionNode] = {}
+    anchor_ids: List[str] = []
+    constellation: List[str] = []
+    warnings: List[str] = []
+
+    slices = sorted(result.slices, key=lambda s: s.measure)
+    prev_key = object()
+    group_index = -1
+    index_in_group = 0
+    for seq, sl in enumerate(slices):
+        if sl.key != prev_key:
+            group_index += 1
+            index_in_group = 0
+            prev_key = sl.key
+        else:
+            index_in_group += 1
+        step, proxy = harmonic_step_from_score_slice(
+            sl, network, sequence_index=seq, group_index=group_index,
+            index_in_group=index_in_group, index=index, atlas=atlas)
+        steps.append(step)
+        if proxy is not None and proxy.id not in proxies:
+            proxies[proxy.id] = proxy
+        for cid in step.context_network_nodes:
+            if cid not in anchor_ids:
+                anchor_ids.append(cid)
+            if cid not in constellation:
+                constellation.append(cid)
+        if step.primary_network_node and step.primary_network_node not in constellation:
+            constellation.append(step.primary_network_node)
+        if step.visual_node_id not in constellation:
+            constellation.append(step.visual_node_id)
+        if step.mapping_status == "unsupported":
+            warnings.append(f"m{sl.measure}: {step.mapping_reason}")
+
+    transitions: List[HarmonicTransition] = []
+    proj_edges: List[ProjectionEdge] = []
+    for a, b in zip(steps, steps[1:]):
+        boundary = a.group_index != b.group_index
+        tr = HarmonicTransition(
+            id=transition_id(a.occurrence_id, b.occurrence_id, "drill_next"),
+            from_occurrence=a.occurrence_id, to_occurrence=b.occurrence_id,
+            sequence_relation="drill_next", theory_relation=None, canonical_edge_id=None,
+            is_group_boundary=boundary, relation_status="sequence_only",
+            explanation=("key change (modulation in the score)" if boundary
+                         else "the next chord in the score"))
+        transitions.append(tr)
+        proj_edges.append(ProjectionEdge(
+            id=f"pe:{tr.id}", source=a.visual_node_id, target=b.visual_node_id,
+            relation="drill_next", canonical_edge_id=None,
+            visual_class=_OVERLAY_VISUAL_CLASS["drill_next"], explanation=tr.explanation))
+
+    projection = DrillGraphProjection(
+        projection_id=f"proj:{result.score_id}", template_id=network.template.template_id,
+        source_kind="score", source_id=result.score_id,
+        title=result.title or result.score_id, drill_family="score",
+        semantic_group=default_group_for_drill("score"),
+        sequence_semantics=default_sequence_semantics_for_drill("score"),
+        anchor_node_ids=anchor_ids, constellation_node_ids=constellation,
+        steps=steps, transitions=transitions, projection_nodes=list(proxies.values()),
+        projection_edges=proj_edges, warnings=warnings,
+        metadata={"scoreId": result.score_id, "composer": result.composer,
+                  "measures": result.measure_count})
+    projection.validate()
+    return projection
+
+
 __all__ = [
     "NetworkIndex",
     "PROXY_ORBIT_RADIUS",
     "HARMONIC_MOTION_RELATIONS",
     "project_harmony_exercise",
     "project_lab_experiment",
+    "project_score_analysis",
+    "harmonic_step_from_score_slice",
     "resolve_theory_relation",
 ]

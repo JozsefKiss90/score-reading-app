@@ -33,7 +33,7 @@ for a chord the template can't draw) · **theory edge** (an asserted harmonic re
 | Module | Responsibility |
 |---|---|
 | `harmony/harmonic_flow.py` | Shared contracts + controlled vocabularies: `HarmonicStep`, `HarmonicTransition`, `ProjectionNode`, `ProjectionEdge`, `DrillGraphProjection` (+`validate()`/`to_dict`/`from_dict`), `GraphDrillRequest`, `LaunchAction`, `HarmonicPath`, stable-id helpers. |
-| `harmony/network_projection.py` | **Drill → Graph.** `project_harmony_exercise(spec, network)` and `project_lab_experiment(spec, network)`. Exact/contextual/approximate mapping, proxy placement, group boundaries, the theory-relation resolver. |
+| `harmony/network_projection.py` | **Drill → Graph.** `project_harmony_exercise`, `project_lab_experiment`, and `project_score_analysis` / `harmonic_step_from_score_slice`. Exact/contextual/approximate mapping, proxy placement, group boundaries, the theory-relation resolver. |
 | `harmony/network_launch.py` | **Graph → Drill.** `actions_for_selection(request, network)` and `compile_graph_drill_action(...)`. Node/edge/path action registry, reserved-action honesty, cap enforcement, preview projections. |
 
 ### Changed
@@ -54,9 +54,23 @@ for a chord the template can't draw) · **theory edge** (an asserted harmonic re
 | `core_triad_function_network_v1` | 11 (1 key + 7 triads + 3 functions) | Exact diatonic-triad nodes by function. A `full_key` drill maps to **exact** chord nodes; `Dm` → `hn:triad:C:major:1`, not the key node. Key-local (parameterised by key/mode). |
 | `cadence_resolution_network_v1` | 11 + paths | The core graph overlaid with first-class `HarmonicPath` cadence arcs (8 major / 5 minor). Theory edges light up only where the network independently supports them. |
 | `inversion_space_network_v1` | 4 (1 identity + 3 voicings) | One chord identity + root/1st/2nd inversion states. Routes to the Music Theory Lab (`compile_lab`) — no renderer duplicated. |
+| `transposition_orbit_network_v1` | 1 degree + N instances | An abstract degree orbiting a set of keys as exact per-key instances. A `horizontal_degree` drill maps exact with `transpose_next` overlays — a transposition, never a modulation. |
+| `quality_class_network_v1` | 3–4 classes + 7 triads | A key's diatonic triads grouped by chord quality; a `quality` drill enumerates a class (`enumerate_next`, never a progression). |
+| `functional_equivalence_network_v1` | 4 | The dominant-function alternatives V (launchable) / V7 (**reserved**) / vii° (launchable), showing the exact triad vs. seventh vs. diminished distinction. |
 
-Post-MVP stubs remain in `PLANNED_TEMPLATES`: `transposition_orbit_network_v1`,
-`quality_class_network_v1`, `functional_equivalence_network_v1`.
+Genuinely-future reserved stubs remain in `PLANNED_TEMPLATES`: `modulation_path_network_v1`,
+`secondary_dominant_network_v1` (both need chromatic/pivot support the engine intentionally lacks).
+
+## Score adapter (Phase 9)
+
+`project_score_analysis(result, network)` adapts a curated `ScoreAnalysisResult` (Score Soul
+Graph) to the same `DrillGraphProjection` contract — slices become ordered `score_time`
+occurrences. It **reuses** `score_analysis` (`canon_mode`, `diatonic_triad_match`, the slice's
+resolved `atlas_refs`) rather than forking a second mapper, and does not destabilise it. The
+honesty gate is the curator's **`base_roman`**: a chromatic chord whose triad merely *coincides*
+with a diatonic one (e.g. `C7` = V7/IV, triad = C major = I) has `base_roman=None` and is marked
+`unsupported`, never claiming the tonic node. No theory edges are inferred between slices (curated
+status is preserved, not upgraded); group boundaries fall at key changes.
 
 ## Honesty rules (enforced by `validate()` + tested)
 
@@ -103,12 +117,14 @@ Clicking a graph node or timeline chip seeks the running drill to that occurrenc
 * `tests/test_network_templates.py` — the three new templates + builder refactor + cadence paths.
 * `tests/test_network_launch.py` — Graph → Drill actions + lab-action specs.
 * `tests/test_network_inversion.py` — inversion template + `project_lab_experiment`.
+* `tests/test_score_projection.py` — the score adapter (honesty gate, chromatic markers, key
+  boundaries, no inferred theory, score-analysis stability).
 * `tests/harmonic_network_node_test.js` — JS controller incl. projection/flow/timeline/seek.
 
 ## Known limitations / non-goals (unchanged from the plan §22)
 
 No seventh-chord trainer engine, secondary dominants, borrowed chords, tritone subs, chromatic
 modulation, pivot detection, harmonic/melodic-minor redesign, counterpoint validation, or
-automatic Bach analysis. The score-analysis adapter (`harmonic_step_from_score_slice`, plan
-Phase 9) is a documented extension seam and is intentionally deferred so the Score Soul Graph
-stays stable.
+automatic Bach analysis (the score adapter only *adapts* already-curated slices — it never invents
+harmonic certainty). `modulation_path` and `secondary_dominant` remain reserved templates until
+that chromatic support lands.

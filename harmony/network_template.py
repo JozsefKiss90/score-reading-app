@@ -85,6 +85,7 @@ IMPLEMENTED_RELATIONS = [
     "substitutes_for",
     "inversion_of",
     "voice_leads_to",
+    "instance_of",       # a concrete chord is an instance of an abstract degree / quality class
 ]
 
 #: The eleven relations the legacy reference template declares (used to keep the legacy
@@ -123,6 +124,10 @@ GENERATION_RULES = [
     "diatonic_membership_edges",    # triad belongs_to_key + member_of_function (core template)
     "core_function_motion_edges",   # supported V->I / ii->V / vii°->I motions between triads
     "inversion_adjacency_edges",    # inversion_of / voice_leads_to (inversion template)
+    # post-MVP orbit / class / equivalence templates:
+    "transposition_orbit_edges",    # each per-key instance instance_of the abstract degree
+    "quality_membership_edges",     # each triad instance_of its quality class
+    "functional_equivalence_edges", # V member_of dominant, V7 substitutes_for V, V7 same_function vii°
 ]
 
 #: The deterministic NODE-generation passes (dispatched to a ``_node_<name>`` method). A template
@@ -134,6 +139,9 @@ NODE_GENERATION_RULES = [
     "core_function_family_nodes",   # tonic / predominant / dominant families
     "inversion_identity_node",      # one chord-identity anchor (inversion template)
     "inversion_state_nodes",        # root / 1st / 2nd inversion voicing states
+    "transposition_orbit_nodes",    # abstract degree class + per-key triad instances
+    "quality_class_nodes",          # quality classes + a key's diatonic triads
+    "functional_equivalence_nodes", # dominant family + V (triad) / V7 (reserved) / vii°
 ]
 
 #: The visual classes (colours). The first four are the reference image's palette; the rest are
@@ -686,6 +694,154 @@ def inversion_space_network_v1() -> HarmonicNetworkTemplate:
     )
 
 
+def transposition_orbit_network_v1() -> HarmonicNetworkTemplate:
+    """One abstract degree orbiting a set of keys as exact per-key chord instances.
+
+    A central key-invariant ``degree_class`` node (e.g. "V") is surrounded by the concrete
+    realisation of that degree in each key (V-in-C = G, V-in-G = D, ...), each an exact
+    diatonic-triad node.  A ``horizontal_degree`` drill maps onto these exactly; the runtime
+    overlay is ``transpose_next`` -- a transposition, never a modulation (plan section 14.4).
+    """
+    node_classes = [
+        NodeClass("degree_class", "Abstract degree", "green", "#22c55e",
+                  "A key-invariant scale degree (the same pattern in every key).",
+                  semantic_level="class", entity_role="reference", canonical_ref="degree"),
+        NodeClass("diatonic_triad", "Degree instance", "teal", "#14b8a6",
+                  "The abstract degree realised as an exact triad in one key.",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
+    ]
+    edge_classes = [
+        EdgeClass("instance_of", "Instance of", directed=True,
+                  visual_class="membership", default_visible=True,
+                  description="A per-key triad is an instance of the abstract degree."),
+    ]
+    layout_rules = [
+        LayoutRule("degree_class", "central", radius=0.0, angle_offset=0.0, node_radius=26.0),
+        LayoutRule("diatonic_triad", "outer", radius=300.0, angle_offset=0.0, node_radius=18.0),
+    ]
+    return HarmonicNetworkTemplate(
+        template_id="transposition_orbit_network_v1",
+        title="Transposition-orbit network",
+        description=(
+            "One abstract scale degree orbiting a set of keys: the invariant degree at the "
+            "centre, its exact per-key chord instances around the ring. A horizontal-degree "
+            "drill lights the orbit with transpose-next overlays (no modulation claim)."),
+        node_classes=node_classes, edge_classes=edge_classes, layout_rules=layout_rules,
+        generation_rules=["transposition_orbit_edges"],
+        node_generation_rules=["transposition_orbit_nodes"],
+        layout_strategy="key_local",
+        context_schema={"degree": "V", "mode": "major", "keys": []},
+        center_keys=["C"],
+        node_layers=["degree_class", "diatonic_triad"],
+        launch_rules={"launchable_kinds": ["diatonic_triad", "degree_class"],
+                      "reserved_kinds": [], "reserved_reason": ""},
+    )
+
+
+def quality_class_network_v1() -> HarmonicNetworkTemplate:
+    """A key's diatonic triads grouped by chord quality (major / minor / diminished).
+
+    Quality-class nodes anchor the exact diatonic triads of the active key that share each
+    quality.  The overlay is ``enumerate_next`` (a classification, never a progression, plan
+    section 14.4).
+    """
+    node_classes = [
+        NodeClass("quality_class", "Quality class", "purple", "#a855f7",
+                  "A chord-quality category (major / minor / diminished / augmented).",
+                  semantic_level="class", entity_role="reference", canonical_ref="quality"),
+        NodeClass("diatonic_triad", "Diatonic triad", "teal", "#14b8a6",
+                  "An exact diatonic triad of the key, classified by its quality.",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
+    ]
+    edge_classes = [
+        EdgeClass("instance_of", "Instance of", directed=True,
+                  visual_class="membership", default_visible=True,
+                  description="A triad is an instance of its quality class."),
+    ]
+    layout_rules = [
+        LayoutRule("quality_class", "inner", radius=140.0, angle_offset=0.0, node_radius=24.0),
+        LayoutRule("diatonic_triad", "outer", radius=300.0, angle_offset=0.0, node_radius=19.0),
+    ]
+    return HarmonicNetworkTemplate(
+        template_id="quality_class_network_v1",
+        title="Quality-class network",
+        description=(
+            "The seven diatonic triads of the active key grouped by chord quality. A quality "
+            "drill enumerates a class's members; the overlay is a classification, not a "
+            "progression."),
+        node_classes=node_classes, edge_classes=edge_classes, layout_rules=layout_rules,
+        generation_rules=["quality_membership_edges"],
+        node_generation_rules=["quality_class_nodes"],
+        layout_strategy="key_local",
+        context_schema={"key": "C", "mode": "major"},
+        center_keys=["C"],
+        node_layers=["quality_class", "diatonic_triad"],
+        launch_rules={"launchable_kinds": ["diatonic_triad", "quality_class"],
+                      "reserved_kinds": [], "reserved_reason": ""},
+    )
+
+
+def functional_equivalence_network_v1() -> HarmonicNetworkTemplate:
+    """The dominant-function alternatives (V triad / V7 / vii°) sharing one function.
+
+    Shows the exact distinction between the launchable V triad, the *reserved* dominant seventh
+    (the engine is triad-based), and the leading-tone diminished triad -- all members of, or
+    substitutes within, the dominant function (plan section 14.4).
+    """
+    node_classes = [
+        NodeClass("function_family", "Dominant function", "amber", "#f59e0b",
+                  "The dominant function the alternatives share.",
+                  semantic_level="function", entity_role="family", canonical_ref="function"),
+        NodeClass("diatonic_triad", "V triad", "teal", "#14b8a6",
+                  "The V major triad (launchable).",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
+        NodeClass("dominant_seventh", "V7 (reserved)", "yellow", "#facc15",
+                  "The dominant seventh -- a reserved node (the engine is triad-based).",
+                  semantic_level="chord", entity_role="reference", canonical_ref="triad"),
+        NodeClass("diminished_triad", "vii°", "purple", "#a855f7",
+                  "The leading-tone diminished triad (a rootless dominant; launchable).",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
+    ]
+    edge_classes = [
+        EdgeClass("member_of_function", "Member of function", directed=True,
+                  visual_class="membership", default_visible=True,
+                  description="A chord is a member of the dominant function."),
+        EdgeClass("substitutes_for", "Substitutes for", directed=True,
+                  visual_class="substitute", default_visible=True,
+                  description="The V7 substitutes for (extends) the V triad."),
+        EdgeClass("same_function", "Same function", directed=False,
+                  visual_class="function", default_visible=True,
+                  description="V7 and vii° share the dominant function."),
+    ]
+    layout_rules = [
+        LayoutRule("function_family", "central", radius=0.0, angle_offset=0.0, node_radius=26.0),
+        LayoutRule("diatonic_triad", "outer", radius=210.0, angle_offset=0.0, node_radius=20.0),
+        LayoutRule("dominant_seventh", "outer", radius=210.0, angle_offset=120.0, node_radius=20.0),
+        LayoutRule("diminished_triad", "outer", radius=210.0, angle_offset=240.0, node_radius=20.0),
+    ]
+    return HarmonicNetworkTemplate(
+        template_id="functional_equivalence_network_v1",
+        title="Functional-equivalence network",
+        description=(
+            "The dominant-function alternatives V, V7 and vii° with the exact distinction "
+            "between triad, seventh chord and diminished triad. The V7 stays reserved until "
+            "seventh-chord support expands; the V triad and vii° are launchable."),
+        node_classes=node_classes, edge_classes=edge_classes, layout_rules=layout_rules,
+        generation_rules=["functional_equivalence_edges"],
+        node_generation_rules=["functional_equivalence_nodes"],
+        layout_strategy="key_local",
+        context_schema={"key": "C", "mode": "major"},
+        center_keys=["C"],
+        node_layers=["function_family", "diatonic_triad", "dominant_seventh", "diminished_triad"],
+        launch_rules={
+            "launchable_kinds": ["diatonic_triad", "diminished_triad", "function_family"],
+            "reserved_kinds": ["dominant_seventh"],
+            "reserved_reason": ("The engine is triad-based; seventh-chord drills are reserved. "
+                                "The V triad and vii° are launchable."),
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Template registry (future topologies register here)
 # ---------------------------------------------------------------------------
@@ -699,6 +855,12 @@ TEMPLATES = {
         cadence_resolution_network_v1,
     "inversion_space_network_v1":
         inversion_space_network_v1,
+    "transposition_orbit_network_v1":
+        transposition_orbit_network_v1,
+    "quality_class_network_v1":
+        quality_class_network_v1,
+    "functional_equivalence_network_v1":
+        functional_equivalence_network_v1,
 }
 
 DEFAULT_TEMPLATE_ID = "dominant_diminished_relative_network_v1"
@@ -748,41 +910,31 @@ class PlannedTemplate:
 
 PLANNED_TEMPLATES: List[PlannedTemplate] = [
     PlannedTemplate(
-        template_id="transposition_orbit_network_v1",
-        title="Transposition-orbit network",
+        template_id="modulation_path_network_v1",
+        title="Modulation-path network",
         description=(
-            "One degree or progression pattern orbiting a set of keys (circle-of-fifths "
-            "or trainer order), with transpose_next overlays and no false modulation claim."),
+            "Movement between key areas via pivot / common chords, distinct from a mere "
+            "transposition. Reserved until pivot-chord / chromatic support exists."),
         rationale=(
-            "Post-MVP: the projection already handles horizontal_degree drills as a "
-            "transposition orbit; a dedicated template gives the abstract-degree anchor a "
-            "home. Add after the core bidirectional gates pass."),
-        priority="medium",
-        dependencies=["harmony.atlas degree_spec", "the horizontal_degree projection path"],
+            "The `modulation_path` thematic group is explicitly reserved (plan section 3.1): "
+            "a real modulation must not be inferred from adjacent key changes. Needs pivot-chord "
+            "detection the engine does not yet have."),
+        priority="low",
+        dependencies=["pivot-chord / chromatic support (a non-goal for now)",
+                      "the reserved modulation_path_to relation"],
     ),
     PlannedTemplate(
-        template_id="quality_class_network_v1",
-        title="Quality-class network",
+        template_id="secondary_dominant_network_v1",
+        title="Secondary-dominant network",
         description=(
-            "Major / minor / diminished / augmented class nodes plus their exact chord "
-            "instances across key contexts, with enumerate_next overlays (no progression)."),
+            "Applied dominants (V/V, V/ii, ...) and their tonicisation targets, using the "
+            "reserved secondary_dominant_of relation."),
         rationale=(
-            "Post-MVP: the projection already classifies quality drills; a template gives "
-            "the class nodes a home."),
+            "Secondary dominants are an explicit non-goal until the trainer grows chromatic / "
+            "seventh-chord support; the relation is reserved so the honesty model stays intact."),
         priority="low",
-        dependencies=["harmony.atlas quality_drills", "the quality projection path"],
-    ),
-    PlannedTemplate(
-        template_id="functional_equivalence_network_v1",
-        title="Functional-equivalence network",
-        description=(
-            "V, V7, vii° and future substitutes sharing the dominant function, with the "
-            "exact distinction between triad, seventh chord and diminished triad."),
-        rationale=(
-            "Most useful once seventh-chord support expands; reserved until then to keep the "
-            "triad/seventh honesty model intact."),
-        priority="low",
-        dependencies=["seventh-chord trainer support (a non-goal for now)"],
+        dependencies=["chromatic / seventh-chord trainer support (a non-goal for now)",
+                      "the reserved secondary_dominant_of relation"],
     ),
 ]
 

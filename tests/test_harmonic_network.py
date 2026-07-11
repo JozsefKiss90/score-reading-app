@@ -614,21 +614,23 @@ class TestPlannedTemplates(unittest.TestCase):
                 get_template(pt.template_id)
 
     def test_audited_candidates_are_present(self):
-        # The post-MVP candidates remain planned stubs after the core template graduates.
+        # Genuinely-future templates remain planned stubs; all seven built templates graduated.
         ids = {pt.template_id for pt in PLANNED_TEMPLATES}
-        for expected in ("transposition_orbit_network_v1",
-                         "quality_class_network_v1",
-                         "functional_equivalence_network_v1"):
+        for expected in ("modulation_path_network_v1", "secondary_dominant_network_v1"):
             self.assertIn(expected, ids)
-        # core has graduated into the buildable registry
-        self.assertNotIn("core_triad_function_network_v1", ids)
+        # every buildable template has graduated OUT of the planned list
+        for graduated in ("core_triad_function_network_v1", "cadence_resolution_network_v1",
+                          "inversion_space_network_v1", "transposition_orbit_network_v1",
+                          "quality_class_network_v1", "functional_equivalence_network_v1"):
+            self.assertNotIn(graduated, ids)
 
     def test_list_templates_mixes_implemented_and_planned(self):
         statuses = {t["template_id"]: t["status"] for t in list_templates()}
         self.assertEqual(statuses["dominant_diminished_relative_network_v1"],
                          "implemented")
         self.assertEqual(statuses["core_triad_function_network_v1"], "implemented")
-        self.assertEqual(statuses["quality_class_network_v1"], "planned")
+        self.assertEqual(statuses["quality_class_network_v1"], "implemented")
+        self.assertEqual(statuses["modulation_path_network_v1"], "planned")
 
 
 # ---------------------------------------------------------------------------

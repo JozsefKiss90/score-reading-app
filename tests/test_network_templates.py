@@ -226,6 +226,81 @@ class TestCadenceTemplate(unittest.TestCase):
         self.assertEqual(labels, {"v–i", "VII–i", "iv–v–i", "i–iv–v–i", "i–VI–VII–i"})
 
 
+class TestPhase8Templates(unittest.TestCase):
+    """Post-MVP orbit / class / equivalence templates (plan section 14.4)."""
+
+    def test_all_three_registered_and_build(self):
+        for tid in ("transposition_orbit_network_v1", "quality_class_network_v1",
+                    "functional_equivalence_network_v1"):
+            net = build_network(get_template(tid))
+            self.assertTrue(net.nodes)
+
+    def test_transposition_orbit_structure_and_projection(self):
+        from harmony.atlas import degree_spec
+        net = build_network(get_template("transposition_orbit_network_v1"))
+        self.assertEqual(net.counts()["nodesByKind"], {"degree_class": 1, "diatonic_triad": 12})
+        self.assertTrue(all(e.relation == "instance_of" for e in net.edges))
+        proj = project_harmony_exercise(degree_spec("V", "major"), net)
+        proj.validate()
+        self.assertEqual(len(proj.steps), 12)
+        self.assertEqual(proj.counts()["byMappingStatus"], {"exact": 12})
+        # transposition, never modulation
+        self.assertTrue(all(t.sequence_relation == "transpose_next" for t in proj.transitions))
+        self.assertEqual(proj.counts()["theoryEdges"], 0)
+
+    def test_transposition_orbit_degree_and_keys_context(self):
+        net = build_network(get_template("transposition_orbit_network_v1"),
+                            context=NetworkBuildContext(degree="ii", mode="major",
+                                                        keys=("C", "G", "D")))
+        self.assertIn("hn:degree:major:ii", {n.id for n in net.nodes})
+        self.assertEqual(len(net.nodes_of_kind("diatonic_triad")), 3)
+
+    def test_quality_class_structure_and_projection(self):
+        from harmony.exercise_spec import HarmonyExerciseSpec
+        net = build_network(get_template("quality_class_network_v1"))
+        self.assertEqual(net.counts()["nodesByKind"], {"quality_class": 3, "diatonic_triad": 7})
+        qids = {n.id for n in net.nodes_of_kind("quality_class")}
+        self.assertEqual(qids, {"hn:quality:major", "hn:quality:minor", "hn:quality:diminished"})
+        spec = HarmonyExerciseSpec(exercise_id="q", title="maj", drill="quality",
+                                   quality="major", mode="major", keys=["C"])
+        proj = project_harmony_exercise(spec, net)
+        proj.validate()
+        self.assertEqual(proj.semantic_group, "quality_class")
+        self.assertEqual(proj.sequence_semantics, "class_enumeration")
+        self.assertEqual(proj.counts()["byMappingStatus"].get("exact"), 3)
+        self.assertEqual(proj.counts()["theoryEdges"], 0)
+
+    def test_functional_equivalence_honesty(self):
+        net = build_network(get_template("functional_equivalence_network_v1"))
+        self.assertEqual(net.counts()["nodesByKind"],
+                         {"function_family": 1, "diatonic_triad": 1,
+                          "dominant_seventh": 1, "diminished_triad": 1})
+        # the seventh chord is RESERVED, the V triad and vii° are launchable
+        v7 = net.node("hn:dom7:G")
+        self.assertEqual(v7.trainer_specs[0]["status"], "reserved")
+        self.assertIsNone(v7.trainer_specs[0]["spec"])
+        self.assertEqual(net.node("hn:triad:C:major:4").trainer_specs[0]["status"], "launchable")
+        self.assertEqual(net.node("hn:dim:B").trainer_specs[0]["status"], "launchable")
+        rels = {e.relation for e in net.edges}
+        self.assertEqual(rels, {"member_of_function", "substitutes_for", "same_function"})
+
+    def test_functional_equivalence_rejects_minor_mode(self):
+        # review finding: the V/V7/vii° equivalence has no honest natural-minor reading, so
+        # building it in minor must raise rather than emit a self-contradictory graph.
+        with self.assertRaises(ValueError):
+            build_network(get_template("functional_equivalence_network_v1"),
+                          context=NetworkBuildContext(key="A", mode="natural_minor"))
+
+    def test_deterministic(self):
+        for tid in ("transposition_orbit_network_v1", "quality_class_network_v1",
+                    "functional_equivalence_network_v1"):
+            a = build_network(get_template(tid))
+            b = build_network(get_template(tid))
+            self.assertEqual([n.id for n in a.nodes], [n.id for n in b.nodes])
+            self.assertEqual([(e.source, e.target, e.relation) for e in a.edges],
+                             [(e.source, e.target, e.relation) for e in b.edges])
+
+
 class TestLegacyUnchanged(unittest.TestCase):
     def test_legacy_still_48_nodes_240_edges(self):
         net = build_network()  # default legacy

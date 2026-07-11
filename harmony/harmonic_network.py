@@ -46,6 +46,8 @@ from harmony.exercise_spec import (
     HarmonyExerciseSpec,
     compile_exercise,
     MAX_CHORDS_PER_SPEC,
+    DEFAULT_MAJOR_KEYS,
+    DEFAULT_MINOR_KEYS,
 )
 from harmony.atlas import (
     Atlas,
@@ -554,6 +556,15 @@ class _NetworkBuilder:
         self.core_function_by_label: Dict[str, str] = {}
         self.inv_anchor_id: Optional[str] = None
         self.inv_state_ids: List[str] = []
+        # post-MVP orbit / class / equivalence template state
+        self.orbit_degree_id: Optional[str] = None
+        self.orbit_instance_ids: List[str] = []
+        self.quality_class_ids: Dict[str, str] = {}
+        self.quality_membership: List[tuple] = []
+        self.fe_family_id: Optional[str] = None
+        self.fe_v_id: Optional[str] = None
+        self.fe_v7_id: Optional[str] = None
+        self.fe_dim_id: Optional[str] = None
 
     # -- engine helpers --------------------------------------------------
     def _scale(self, key: str):
@@ -973,6 +984,207 @@ class _NetworkBuilder:
                 canonical_ref=(triad_ref or triad_id(tonic, mode, deg)),
             ))
 
+    # -- post-MVP template node rules (orbit / quality / equivalence) ----
+    def _safe_launch(self, spec: HarmonyExerciseSpec, label: str) -> List[Dict]:
+        """A launch entry, or [] if the spec is invalid / exceeds the readability cap."""
+        try:
+            return [_launch_entry(spec, label)]
+        except Exception:
+            return []
+
+    def _node_transposition_orbit_nodes(self) -> None:
+        mode = self.ctx.mode
+        try:
+            degree = roman_token_to_index(self.ctx.degree or "V")
+        except Exception:
+            degree = 4
+        keys = list(self.ctx.keys) or (
+            DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS)
+        roman = generate_diatonic_triads(keys[0], mode)[degree].roman
+
+        deg_lay = self.t.layout_for("degree_class")
+        deg_vc = self.t.node_class("degree_class").visual_class
+        deg_id = f"hn:degree:{mode}:{roman}"
+        self.orbit_degree_id = deg_id
+        deg_ref = _present(self.atlas, degree_id(mode, roman))
+        self._add_node(NetNode(
+            id=deg_id, label=roman, kind="degree_class", pitch_class=-1, spelling="",
+            quality="", key_contexts=[], atlas_refs=[deg_ref] if deg_ref else [],
+            x=0.0, y=0.0, radius=deg_lay.node_radius, visual_class=deg_vc,
+            explanation=(f"The abstract degree {roman} in {mode.replace('_', ' ')} — the same "
+                         f"pattern transposed across every key."),
+            data={"mode": mode, "roman": roman, "sublabel": "degree"},
+            semantic_level="class", entity_role="reference", canonical_ref=deg_ref or "",
+        ))
+
+        lay = self.t.layout_for("diatonic_triad")
+        vc = self.t.node_class("diatonic_triad").visual_class
+        n = len(keys)
+        self.orbit_instance_ids = []
+        for i, key in enumerate(keys):
+            t = generate_diatonic_triads(key, mode)[degree]
+            x, y = _spoke_xy(i, n, lay.radius, lay.angle_offset)
+            tid = f"hn:triad:{key}:{mode}:{degree}"
+            triad_ref = _resolve_triad_ref(self.atlas, key, mode, degree)
+            self.orbit_instance_ids.append(tid)
+            spec = function_spec([roman], t.chord_symbol, mode, [key])
+            self._add_node(NetNode(
+                id=tid, label=t.chord_symbol, kind="diatonic_triad",
+                pitch_class=note_pc(t.root), spelling=t.root, quality=t.chord_quality,
+                key_contexts=[t.key], atlas_refs=self._triad_atlas_refs(t, key, mode),
+                trainer_specs=self._safe_launch(spec, f"Play {t.chord_symbol} ({roman} in {key})"),
+                x=x, y=y, radius=lay.node_radius, visual_class=vc,
+                explanation=f"{t.chord_symbol} is {roman} in {t.key}.",
+                data={"key": key, "mode": mode, "roman": roman, "sublabel": key,
+                      "degreeIndex": degree, "chordSymbol": t.chord_symbol},
+                semantic_level="chord", entity_role="instance",
+                canonical_ref=(triad_ref or triad_id(key, mode, degree)),
+            ))
+
+    def _node_quality_class_nodes(self) -> None:
+        key, mode = self.ctx.key, self.ctx.mode
+        triads = generate_diatonic_triads(key, mode)
+        qualities: List[str] = []
+        for t in triads:
+            if t.chord_quality not in qualities:
+                qualities.append(t.chord_quality)
+
+        q_lay = self.t.layout_for("quality_class")
+        q_vc = self.t.node_class("quality_class").visual_class
+        self.quality_class_ids = {}
+        for i, q in enumerate(qualities):
+            x, y = _spoke_xy(i, len(qualities), q_lay.radius, q_lay.angle_offset)
+            qid = f"hn:quality:{q}"
+            self.quality_class_ids[q] = qid
+            q_ref = _present(self.atlas, quality_id(q))
+            members = [t.chord_symbol for t in triads if t.chord_quality == q]
+            spec = HarmonyExerciseSpec(
+                exercise_id=f"qcls_{mode}_{key}_{q}", title=f"{q.title()} triads in {key}",
+                drill="quality", quality=q, mode=mode, keys=[key])
+            self._add_node(NetNode(
+                id=qid, label=q.title(), kind="quality_class", pitch_class=-1, spelling="",
+                quality=q, key_contexts=[triads[0].key], atlas_refs=[q_ref] if q_ref else [],
+                trainer_specs=self._safe_launch(spec, f"{q.title()} triads in {key}"),
+                x=x, y=y, radius=q_lay.node_radius, visual_class=q_vc,
+                explanation=(f"The {q} triads of {triads[0].key}: {', '.join(members)}. "
+                             f"A quality classification, not a progression."),
+                data={"quality": q, "members": members, "sublabel": ", ".join(members)},
+                semantic_level="class", entity_role="reference", canonical_ref=q_ref or "",
+            ))
+
+        lay = self.t.layout_for("diatonic_triad")
+        vc = self.t.node_class("diatonic_triad").visual_class
+        self.quality_membership = []
+        for t in triads:
+            deg = t.degree_index
+            x, y = _spoke_xy(deg, 7, lay.radius, lay.angle_offset)
+            tid = f"hn:triad:{key}:{mode}:{deg}"
+            triad_ref = _resolve_triad_ref(self.atlas, key, mode, deg)
+            spec = function_spec([t.roman], t.chord_symbol, mode, [key])
+            self._add_node(NetNode(
+                id=tid, label=t.chord_symbol, kind="diatonic_triad",
+                pitch_class=note_pc(t.root), spelling=t.root, quality=t.chord_quality,
+                key_contexts=[t.key], atlas_refs=self._triad_atlas_refs(t, key, mode),
+                trainer_specs=self._safe_launch(spec, f"Play {t.chord_symbol} ({t.roman})"),
+                x=x, y=y, radius=lay.node_radius, visual_class=vc,
+                explanation=t.explanation_text,
+                data={"key": key, "mode": mode, "roman": t.roman, "sublabel": t.roman,
+                      "degreeIndex": deg, "chordSymbol": t.chord_symbol,
+                      "quality": t.chord_quality},
+                semantic_level="chord", entity_role="instance",
+                canonical_ref=(triad_ref or triad_id(key, mode, deg)),
+            ))
+            self.quality_membership.append((tid, self.quality_class_ids[t.chord_quality]))
+
+    def _node_functional_equivalence_nodes(self) -> None:
+        key, mode = self.ctx.key, self.ctx.mode
+        # The V / V7 / vii° dominant equivalence needs the leading tone that natural minor lacks
+        # (there is no diatonic dominant seventh or leading-tone diminished in natural minor).
+        # Refuse rather than emit a dishonest, self-contradictory graph (e.g. the G-major subtonic
+        # labelled as a diminished vii°).
+        if mode != "major":
+            raise ValueError(
+                "functional_equivalence_network_v1 requires major mode: the V7 / vii° dominant "
+                "equivalence has no natural-minor reading (build it in major, or use harmonic "
+                "minor once the engine supports it).")
+        triads = generate_diatonic_triads(key, mode)
+        v_triad = triads[4]
+        vii_triad = triads[6]
+        tonic_roman = "I" if mode == "major" else "i"
+
+        fam_lay = self.t.layout_for("function_family")
+        fam_id = f"hn:function:{mode}:dominant"
+        self.fe_family_id = fam_id
+        fam_ref = _present(self.atlas, function_id(mode, "dominant"))
+        self._add_node(NetNode(
+            id=fam_id, label="Dominant function", kind="function_family", pitch_class=-1,
+            spelling="", quality="", key_contexts=[triads[0].key],
+            atlas_refs=[fam_ref] if fam_ref else [], x=0.0, y=0.0,
+            radius=fam_lay.node_radius, visual_class=self.t.node_class("function_family").visual_class,
+            explanation="The dominant function shared by V, V7 and vii°.",
+            data={"mode": mode, "functionLabel": "dominant", "sublabel": "dominant"},
+            semantic_level="function", entity_role="family", canonical_ref=fam_ref or "",
+        ))
+
+        v_lay = self.t.layout_for("diatonic_triad")
+        vx, vy = _spoke_xy(0, 1, v_lay.radius, v_lay.angle_offset)
+        v_id = f"hn:triad:{key}:{mode}:4"
+        self.fe_v_id = v_id
+        v_ref = _resolve_triad_ref(self.atlas, key, mode, 4)
+        v_spec = function_spec([v_triad.roman, tonic_roman], "V–I", mode, [key])
+        self._add_node(NetNode(
+            id=v_id, label=v_triad.chord_symbol, kind="diatonic_triad",
+            pitch_class=note_pc(v_triad.root), spelling=v_triad.root, quality=v_triad.chord_quality,
+            key_contexts=[v_triad.key], atlas_refs=self._triad_atlas_refs(v_triad, key, mode),
+            trainer_specs=self._safe_launch(v_spec, f"V→{tonic_roman} ({v_triad.chord_symbol})"),
+            x=vx, y=vy, radius=v_lay.node_radius, visual_class=self.t.node_class("diatonic_triad").visual_class,
+            explanation=f"{v_triad.chord_symbol} — the V triad (launchable).",
+            data={"key": key, "mode": mode, "roman": v_triad.roman, "sublabel": v_triad.roman,
+                  "degreeIndex": 4, "chordSymbol": v_triad.chord_symbol},
+            semantic_level="chord", entity_role="instance",
+            canonical_ref=(v_ref or triad_id(key, mode, 4)),
+        ))
+
+        d7_lay = self.t.layout_for("dominant_seventh")
+        dx, dy = _spoke_xy(0, 1, d7_lay.radius, d7_lay.angle_offset)
+        d7_id = f"hn:dom7:{v_triad.root}"
+        self.fe_v7_id = d7_id
+        self._add_node(NetNode(
+            id=d7_id, label=f"{v_triad.root}7", kind="dominant_seventh",
+            pitch_class=note_pc(v_triad.root), spelling=v_triad.root, quality="dominant",
+            key_contexts=[v_triad.key], atlas_refs=[],
+            trainer_specs=[_reserved_entry(f"Dominant seventh drill ({v_triad.root}7)",
+                                           "The engine is triad-based; seventh-chord drills are "
+                                           "reserved.")],
+            x=dx, y=dy, radius=d7_lay.node_radius, visual_class=self.t.node_class("dominant_seventh").visual_class,
+            explanation=f"{v_triad.root}7 — the dominant seventh (a reserved node).",
+            data={"key": key, "mode": mode, "root": v_triad.root, "sublabel": "V7",
+                  "reservedSeventh": True},
+            semantic_level="chord", entity_role="reference", canonical_ref="",
+        ))
+
+        dim_lay = self.t.layout_for("diminished_triad")
+        mx, my = _spoke_xy(0, 1, dim_lay.radius, dim_lay.angle_offset)
+        dim_id = f"hn:dim:{vii_triad.root}"
+        self.fe_dim_id = dim_id
+        dim_ref = _resolve_triad_ref(self.atlas, key, mode, 6)
+        vii_roman = vii_triad.roman
+        vii_spec = function_spec([vii_roman, tonic_roman], f"{vii_roman}–{tonic_roman}", mode, [key])
+        self._add_node(NetNode(
+            id=dim_id, label=vii_triad.chord_symbol, kind="diminished_triad",
+            pitch_class=note_pc(vii_triad.root), spelling=vii_triad.root,
+            quality=vii_triad.chord_quality, key_contexts=[vii_triad.key],
+            atlas_refs=self._triad_atlas_refs(vii_triad, key, mode),
+            trainer_specs=self._safe_launch(vii_spec,
+                                            f"{vii_roman}→{tonic_roman} ({vii_triad.chord_symbol})"),
+            x=mx, y=my, radius=dim_lay.node_radius, visual_class=self.t.node_class("diminished_triad").visual_class,
+            explanation=f"{vii_triad.chord_symbol} — the leading-tone diminished triad.",
+            data={"key": key, "mode": mode, "roman": vii_roman, "sublabel": vii_roman,
+                  "degreeIndex": 6, "chordSymbol": vii_triad.chord_symbol},
+            semantic_level="chord", entity_role="instance",
+            canonical_ref=(dim_ref or triad_id(key, mode, 6)),
+        ))
+
     # -- edge construction (one method per generation rule) --------------
     def run_rule(self, rule: str) -> None:
         method = getattr(self, f"_rule_{rule}", None)
@@ -992,6 +1204,39 @@ class _NetworkBuilder:
             self._add_edge(a, b, "voice_leads_to",
                            explanation="Smooth voice-leading to the next inversion.",
                            strength=0.5)
+
+    def _rule_transposition_orbit_edges(self) -> None:
+        deg = self.orbit_degree_id
+        if not deg:
+            return
+        for tid in self.orbit_instance_ids:
+            self._add_edge(tid, deg, "instance_of",
+                           explanation="A per-key instance of the abstract degree.",
+                           strength=0.5)
+
+    def _rule_quality_membership_edges(self) -> None:
+        for tid, qid in self.quality_membership:
+            self._add_edge(tid, qid, "instance_of",
+                           explanation="An instance of this quality class.", strength=0.5)
+
+    def _rule_functional_equivalence_edges(self) -> None:
+        fam = self.fe_family_id
+        if fam and self.fe_v_id:
+            self._add_edge(self.fe_v_id, fam, "member_of_function",
+                           explanation="The V triad is a member of the dominant function.",
+                           strength=0.6)
+        if fam and self.fe_dim_id:
+            self._add_edge(self.fe_dim_id, fam, "member_of_function",
+                           explanation="The vii° is a member of the dominant function.",
+                           strength=0.6)
+        if self.fe_v7_id and self.fe_v_id:
+            self._add_edge(self.fe_v7_id, self.fe_v_id, "substitutes_for",
+                           explanation="The V7 extends / substitutes for the V triad.",
+                           strength=0.5)
+        if self.fe_v7_id and self.fe_dim_id:
+            self._add_edge(self.fe_v7_id, self.fe_dim_id, "same_function",
+                           explanation="V7 and vii° share the dominant function "
+                                       "(vii° is a rootless V7).", strength=0.5)
 
     def _rule_diatonic_membership_edges(self) -> None:
         """Each triad belongs_to_key its key centre and is member_of_function its family."""
