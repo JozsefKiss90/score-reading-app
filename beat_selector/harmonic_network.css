@@ -94,6 +94,17 @@ body{
 .hnNode text{font:11px/1 system-ui;font-weight:700;fill:#0b1020;
   text-anchor:middle;dominant-baseline:central;pointer-events:none;}
 .hnNode.dim{opacity:.18;}
+/* progressive journey (functional degree network): nodes start grey ("unlit")
+   and a correctly played chord permanently lights them (node--done). Declared
+   BEFORE the sel/neighbor/searchHit/sync rules so every live interaction ring
+   still wins the stroke. Unlit only recolours the FILL (the stroke stays free
+   for the rings). */
+.hnNode.node--unlit circle{fill:#3f4a61;}
+.hnNode.node--unlit text{fill:#94a3b8;}
+.hnNode.node--done circle{stroke:#22c55e;stroke-width:3;
+  filter:drop-shadow(0 0 5px rgba(34,197,94,.65));}
+.hnNode.node--locked{opacity:.25;pointer-events:none;}
+.hnNode text.sub{font:8px/1 system-ui;font-weight:600;opacity:.8;}
 .hnNode.sel circle{stroke:var(--select);stroke-width:3.5;}
 .hnNode.neighbor circle{stroke:#fff;stroke-width:2.5;}
 .hnNode.searchHit circle{stroke:#22d3ee;stroke-width:3;}
@@ -138,6 +149,9 @@ body{
 /* node-kind colour helpers */
 .k-major_key{background:var(--pink);} .k-minor_key{background:var(--blue);}
 .k-dominant_seventh{background:var(--yellow);} .k-diminished_triad{background:var(--purple);}
+/* node-kind colour helpers (functional degree network) */
+.k-degree_triad{background:#34d399;} .k-function_group{background:#a78bfa;}
+.k-key_hub{background:#fbbf24;}
 
 /* dark mode (panels) */
 body.dark{--bg:#0b1220;--fg:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--card:#0f172a;

@@ -1,0 +1,55 @@
+{
+  "schema": "harmony-curriculum-progress/v1",
+  "progress": {
+    "fnet:stage:meet_the_scale": {
+      "node_id": "fnet:stage:meet_the_scale",
+      "state": "started",
+      "attempts": 0,
+      "best_score": 0.0,
+      "last_played": "2026-07-06T19:01:51",
+      "avg_accuracy": 0.0,
+      "avg_timing": 0.0,
+      "completion": 0.0
+    },
+    "fnet:stage:three_jobs": {
+      "node_id": "fnet:stage:three_jobs",
+      "state": "started",
+      "attempts": 0,
+      "best_score": 0.0,
+      "last_played": "2026-07-06T19:02:16",
+      "avg_accuracy": 0.0,
+      "avg_timing": 0.0,
+      "completion": 0.0
+    },
+    "fnet:stage:tension_home": {
+      "node_id": "fnet:stage:tension_home",
+      "state": "started",
+      "attempts": 0,
+      "best_score": 0.0,
+      "last_played": "2026-07-06T19:02:36",
+      "avg_accuracy": 0.0,
+      "avg_timing": 0.0,
+      "completion": 0.0
+    },
+    "fnet:stage:approach_chain": {
+      "node_id": "fnet:stage:approach_chain",
+      "state": "started",
+      "attempts": 0,
+      "best_score": 0.0,
+      "last_played": "2026-07-06T19:02:58",
+      "avg_accuracy": 0.0,
+      "avg_timing": 0.0,
+      "completion": 0.0
+    },
+    "fnet:stage:substitutes": {
+      "node_id": "fnet:stage:substitutes",
+      "state": "started",
+      "attempts": 0,
+      "best_score": 0.0,
+      "last_played": "2026-07-06T19:16:35",
+      "avg_accuracy": 0.0,
+      "avg_timing": 0.0,
+      "completion": 0.0
+    }
+  }
+}

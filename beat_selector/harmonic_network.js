@@ -50,6 +50,12 @@
   var syncNodeIds = [];          // trainer-target sync highlight (separate from selection)
   var syncPrimaryId = null;      // the closest/primary sync node (returned to host)
   var searchHits = new Set();
+  // Progressive-journey state (functional degree network payloads). Both are
+  // host-driven and layered ON TOP of the user's kind/relation filters:
+  //   visibleWhitelist -- optional stage whitelist (null = no whitelist);
+  //   completedSet     -- permanently lit ("done") node ids for this session.
+  var visibleWhitelist = null;   // Set(nodeId) | null
+  var completedSet = new Set();
 
   // -- tiny DOM helpers (tolerant of the Node test's stubbed document) -------
   function byId(id) { return document.getElementById(id); }
@@ -135,6 +141,7 @@
 
   // -- visibility model (pure; drives both the SVG and the test) ------------
   function nodeVisible(n) {
+    if (visibleWhitelist && !visibleWhitelist.has(n.id)) return false;
     if (!filters.kinds[n.kind]) return false;
     if (filters.search) {
       return matchesSearch(n);
@@ -149,6 +156,10 @@
   }
   function edgeVisible(e) {
     if (!filters.relations[e.relation]) return false;
+    if (visibleWhitelist &&
+        (!visibleWhitelist.has(e.source) || !visibleWhitelist.has(e.target))) {
+      return false;              // an edge into a whitelisted-out node is hidden
+    }
     var a = nodesById[e.source], b = nodesById[e.target];
     if (!a || !b) return false;
     // a relation is only drawn if both endpoints' kinds are enabled
@@ -332,10 +343,7 @@
       return;
     }
 
-    var R = graphRadius();
-    var pad = 40, span = (R + pad) * 2;
-    var s = svg("svg", { id: "hnSvg",
-      viewBox: (-(R + pad)) + " " + (-(R + pad)) + " " + span + " " + span });
+    var s = svg("svg", { id: "hnSvg", viewBox: viewBoxSpec() });
 
     // arrowhead marker definitions, one per edge colour in use
     var defs = svg("defs", {});
@@ -380,8 +388,15 @@
         "data-id": n.id,
         transform: "translate(" + n.x + "," + n.y + ")" });
       g.appendChild(svg("circle", { r: n.radius, fill: nodeColor(n) }));
-      var tx = svg("text", {}); tx.textContent = n.label;
+      var sub = n.data && n.data.sublabel;
+      var tx = sub ? svg("text", { dy: "-4" }) : svg("text", {});
+      tx.textContent = n.label;
       g.appendChild(tx);
+      if (sub) {                       // small second line (e.g. chord symbol)
+        var ts = svg("text", { class: "sub", dy: "8" });
+        ts.textContent = String(sub);
+        g.appendChild(ts);
+      }
       g.addEventListener("click", function () { selectNode(n.id); });
       s.appendChild(g);
     });
@@ -397,6 +412,38 @@
     return r || 320;
   }
 
+  // The SVG viewBox. Legacy payloads without a whitelist keep the original
+  // origin-centred square (the v1 circular field). With a stage whitelist
+  // active it is the bounding box of the whitelisted nodes (+labels), so each
+  // stage "zooms" to its panel and later stages appear to grow the graph; a
+  // progressive payload with NO whitelist (free exploration) uses the all-node
+  // bounding box, which equals the everything-whitelisted box -- no jump at
+  // the last stage transition. Deliberately keyed on the WHITELIST (not on
+  // search/kind filters) so typing in the search box never moves the viewport.
+  function viewBoxSpec() {
+    var pad = 40;
+    var ns = null;
+    if (visibleWhitelist) {
+      ns = (data.nodes || []).filter(function (n) {
+        return visibleWhitelist.has(n.id);
+      });
+    } else if (data && data.progressive) {
+      ns = data.nodes || [];
+    }
+    if (!ns || !ns.length) {
+      var R = graphRadius(), span = (R + pad) * 2;
+      return (-(R + pad)) + " " + (-(R + pad)) + " " + span + " " + span;
+    }
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    ns.forEach(function (n) {
+      var r = (n.radius || 18) + 14;      // room for the label ring
+      minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r);
+      minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r);
+    });
+    return (minX - pad) + " " + (minY - pad) + " " +
+           (maxX - minX + 2 * pad) + " " + (maxY - minY + 2 * pad);
+  }
+
   // quadratic curve bowing toward the centre -> the reference image's "petals".
   function edgePath(a, b) {
     var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -408,16 +455,26 @@
 
   function selectionHighlight() {
     if (selectedNodeId) {
-      var nb = neighborsOf(selectedNodeId);
-      var inc = new Set(incidentEdges(selectedNodeId).map(function (e) { return e.id; }));
-      return { node: selectedNodeId, neighbors: nb, edges: inc, active: true };
+      // Only VISIBLE edges define the halo: in a sparse stage (relations
+      // switched off) a hidden relation must not dim seemingly-unrelated
+      // nodes. With no visible incident edge at all, keep the selection ring
+      // but dim nothing (dimOthers false) -- uniform dimming with no visible
+      // cause reads as noise.
+      var incVisible = incidentEdges(selectedNodeId).filter(edgeVisible);
+      var nb = new Set(incVisible.map(function (e) {
+        return e.source === selectedNodeId ? e.target : e.source;
+      }));
+      var inc = new Set(incVisible.map(function (e) { return e.id; }));
+      return { node: selectedNodeId, neighbors: nb, edges: inc, active: true,
+        dimOthers: incVisible.length > 0 };
     }
     if (selectedEdgeId && edgeById[selectedEdgeId]) {
       var e = edgeById[selectedEdgeId];
       return { node: null, neighbors: new Set([e.source, e.target]),
-        edges: new Set([e.id]), active: true };
+        edges: new Set([e.id]), active: true, dimOthers: true };
     }
-    return { node: null, neighbors: new Set(), edges: new Set(), active: false };
+    return { node: null, neighbors: new Set(), edges: new Set(),
+      active: false, dimOthers: false };
   }
 
   function nodeStateClass(n, sel) {
@@ -425,9 +482,13 @@
     if (sel.active) {
       if (n.id === sel.node) c += " sel";
       else if (sel.neighbors.has(n.id)) c += " neighbor";
-      else c += " dim";
+      else if (sel.dimOthers) c += " dim";
     }
     if (filters.search && searchHits.has(n.id)) c += " searchHit";
+    // progressive-journey classes: done = permanently lit; unlit = the grey
+    // default for progressive payloads (nothing for legacy payloads).
+    if (completedSet.has(n.id)) c += " node--done";
+    else if (data && data.progressive) c += " node--unlit";
     // sync highlight is independent of (and visually wins over) selection dimming
     if (syncNodeIds.indexOf(n.id) !== -1) {
       c += " node--sync";
@@ -437,7 +498,7 @@
   }
   function edgeStateClass(e, sel) {
     var c = "";
-    if (sel.active) c += sel.edges.has(e.id) ? " sel" : " dim";
+    if (sel.active && sel.dimOthers) c += sel.edges.has(e.id) ? " sel" : " dim";
     // light up edges that connect two currently-synced nodes
     if (syncNodeIds.length > 1 &&
         syncNodeIds.indexOf(e.source) !== -1 &&
@@ -525,8 +586,12 @@
       root.appendChild(lab);
     }
 
-    // neighbours (clickable)
-    var nb = Array.from(neighborsOf(n.id));
+    // neighbours (clickable). A stage whitelist also gates this list, so the
+    // info panel never leaks (or lets the user select) not-yet-revealed nodes;
+    // kind/search filters deliberately do NOT apply here (legacy behaviour).
+    var nb = Array.from(neighborsOf(n.id)).filter(function (id) {
+      return !visibleWhitelist || visibleWhitelist.has(id);
+    });
     if (nb.length) {
       var nbSect = el("div", { class: "sect" }, [el("h3", { text: "Connected nodes" })]);
       nb.forEach(function (id) {
@@ -708,6 +773,77 @@
     return m ? m[1] : key;
   }
 
+  // -- progressive-journey API (functional degree network payloads) ----------
+  // Three additive host hooks (see docs/functional_network_plan.md §3.4). All
+  // are safe no-ops / fallbacks on legacy payloads, so the v1 demo and its
+  // Node test are untouched.
+
+  // An optional node-id whitelist layered on top of the kind filters. This is
+  // what makes stages *appear to grow the graph* without re-init(): a single
+  // payload, progressively revealed -- no flicker, selection survives.
+  function setVisibleNodes(ids) {
+    if (ids == null) {
+      visibleWhitelist = null;
+    } else {
+      visibleWhitelist = new Set();
+      (ids || []).forEach(function (id) {
+        if (nodesById[id]) visibleWhitelist.add(id);
+      });
+    }
+    renderGraph();
+    return exportState();
+  }
+
+  // Permanently light nodes for this session (rendered as node--done). The set
+  // survives every re-render / filter change; init() with a fresh payload
+  // clears it (the host re-applies persisted progress after init).
+  function markCompleted(ids) {
+    (ids || []).forEach(function (id) {
+      if (nodesById[id]) completedSet.add(id);
+    });
+    renderGraph();
+    return completedSet.size;
+  }
+  function completedIds() { return Array.from(completedSet); }
+
+  // "fnet:deg:<tonic>:<degreeNumber-1>" for a trainer target, or null.
+  function degreeNodeIdFor(key, degreeNumber) {
+    var tonic = tonicOf(key || "");
+    var num = parseInt(degreeNumber, 10);
+    if (!tonic || !num || num < 1) return null;
+    return "fnet:deg:" + tonic + ":" + (num - 1);
+  }
+
+  // Exact-id trainer sync for functional payloads: node ids encode
+  // key+degree, so no pitch-class guessing is needed. Highlights the exact
+  // degree node + its function group; when the host passes the NEXT chord
+  // ({nextKey, nextDegreeNumber}) its node joins the sync set, so the
+  // incident resolves_to / prepares edge lights via the existing
+  // two-endpoint edge--sync rule. Falls back to the legacy
+  // highlightFromTrainerTarget when the payload isn't a fnet template.
+  function highlightFromDegreeTarget(target) {
+    if (!target) return clearSync();
+    var tid = data && data.template && data.template.template_id;
+    var isFnet = String(tid || "").indexOf("functional_degree_network") === 0;
+    if (!isFnet) return highlightFromTrainerTarget(target);
+    // the functional graph is major-only: a minor-mode target must clear the
+    // sync rather than land on the same-tonic MAJOR panel node
+    if (String(target.mode || "").indexOf("minor") !== -1) {
+      return setSyncHighlight([]);
+    }
+    var degId = degreeNodeIdFor(target.key, target.degreeNumber);
+    if (!degId || !nodesById[degId]) return setSyncHighlight([]);
+    var ids = [degId];
+    var node = nodesById[degId];
+    var group = node.data && node.data.functionGroup;
+    var fnId = "fnet:fn:" + tonicOf(target.key) + ":" + group;
+    if (group && nodesById[fnId]) ids.push(fnId);
+    var nextId = degreeNodeIdFor(target.nextKey || target.key,
+                                 target.nextDegreeNumber);
+    if (nextId && nextId !== degId && nodesById[nextId]) ids.push(nextId);
+    return setSyncHighlight(ids);
+  }
+
   function exportState() {
     return {
       schema: data && data.schema,
@@ -720,6 +856,8 @@
       syncNodes: syncNodeIds.slice(),
       syncPrimary: syncPrimaryId,
       searchHits: searchHits.size,
+      completed: completedSet.size,
+      visibleWhitelist: visibleWhitelist ? visibleWhitelist.size : null,
       filters: { kinds: Object.assign({}, filters.kinds),
         relations: Object.assign({}, filters.relations), search: filters.search },
     };
@@ -761,8 +899,16 @@
     syncNodeIds = []; syncPrimaryId = null;
     selectedNodeId = null; selectedEdgeId = null;
     searchHits = new Set();
+    visibleWhitelist = null;
+    completedSet = new Set();
     indexPayload();
     filters = defaultFilters();
+    // Let the payload's template name the header (this html shell is shared
+    // by the v1 tonal graph and the functional degree network).
+    var tpl = data.template || {};
+    var ht = byId("hnTitle"), hsub = byId("hnSubtitle");
+    if (ht && tpl.title) ht.textContent = tpl.title;
+    if (hsub && tpl.description) hsub.textContent = tpl.description;
     renderControls();
     renderGraph();
     renderInfoPlaceholder();
@@ -781,6 +927,10 @@
     lastLaunch: function () { return lastLaunch ? Object.assign({}, lastLaunch) : null; },
     highlightFromTrainerTarget: highlightFromTrainerTarget,
     highlightFromAtlasSync: highlightFromAtlasSync,
+    highlightFromDegreeTarget: highlightFromDegreeTarget,
+    setVisibleNodes: setVisibleNodes,
+    markCompleted: markCompleted,
+    completedIds: completedIds,
     clearSync: clearSync,
     syncNodes: function () { return syncNodeIds.slice(); },
     edgeStyleOf: edgeStyleOf,                         // "solid"|"dashed"|"dotted"

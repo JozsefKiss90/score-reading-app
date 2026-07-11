@@ -51,6 +51,18 @@ honesty caveat (reserved, not launchable) is the only place the topology is
 ### A. `core_triad_function_network_v1` — Core triad / function network
 **Priority: HIGH. Recommended as the next template.**
 
+> **STATUS UPDATE — superseded / implemented.** This candidate shipped as
+> **`functional_degree_network_v1`** (`harmony/functional_network_template.py`
+> + `harmony/functional_network.py`, launcher `run_functional_network_demo.py`;
+> see `docs/functional_network.md`). It deliberately lives in a **parallel
+> template module** with its own closed vocabularies instead of widening this
+> module's `NODE_KINDS`/`ALL_RELATIONS` (the v1 `validate()` is a contract
+> other tests rely on), so the §1 graduation recipe was intentionally not
+> followed; the stub stays in `PLANNED_TEMPLATES` as inert metadata. The
+> shipped network also absorbs the *staged-drill half* of candidate B (V→I,
+> ii→V→I, vi→ii→V–I etc. as guided journey stages); B's ordered-path *edge
+> model* remains unbuilt and B stays planned.
+
 - **Purpose:** triads only — `I ii iii IV V vi vii°` across all keys, with **no
   seventh-chord theoretical nodes**. Aligns directly with the Global Diatonic
   Map, Transposition Matrix, Quality Matrix and Function Map.
@@ -117,8 +129,8 @@ See §2. Shipped and stable; no action.
 
 | candidate | priority | launchable today? | new edge model? | blocker |
 |-----------|----------|-------------------|-----------------|---------|
-| A. core triad / function | **high** | yes (all triads) | no | none |
-| B. cadence resolution | medium | yes (function drills) | **yes** (ordered paths) | path-edge model |
+| A. core triad / function | **shipped** as `functional_degree_network_v1` | yes (all triads) | no | none |
+| B. cadence resolution | medium (drill half absorbed by A's journey stages) | yes (function drills) | **yes** (ordered paths) | path-edge model |
 | C. inversion space | low | **no** | yes (voice-leading) | engine lacks inversions |
 
 ## 6. Where the stubs live
