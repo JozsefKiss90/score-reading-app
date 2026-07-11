@@ -93,12 +93,14 @@ class TestTemplateValidation(unittest.TestCase):
         self.assertIn("teleports_to", str(ctx.exception))
 
     def test_v1_vocabulary_is_not_widened(self):
-        # The v1 module's closed sets are a contract; this template must not
-        # inject its kinds/relations there (parallel module, not extension).
+        # The functional-network module must not inject ITS kinds/relations into the harmonic
+        # network vocabulary (parallel module, not extension). NB: the harmonic network's own
+        # bidirectional-mapping work independently added a `prepares` relation of its own, so
+        # that name is no longer exclusive to this module and is not asserted here.
         from harmony import network_template as v1
         for kind in NODE_KINDS:
             self.assertNotIn(kind, v1.NODE_KINDS)
-        for rel in ("function_member", "prepares", "tonic_substitute",
+        for rel in ("function_member", "tonic_substitute",
                     "deceptive_to", "shared_triad", "in_key"):
             self.assertNotIn(rel, v1.ALL_RELATIONS)
 

@@ -57,6 +57,23 @@
   var visibleWhitelist = null;   // Set(nodeId) | null
   var completedSet = new Set();
 
+  // -- bidirectional drill<->graph state (plan sections 6, 11, 12) -----------
+  //   mode         : "explore" | "graph_to_drill" | "drill_to_graph"
+  //   projection   : the active DrillGraphProjection dict (null = none)
+  //   flow*        : the running trainer position projected onto occurrences
+  //   hostRequestQueue : typed requests the host polls (launch | seek | ...)
+  var mode = "explore";
+  var projection = null;
+  var previewProjection = null;
+  var occurrenceById = {};       // occurrenceId -> step
+  var occByVisualNode = {};      // visualNodeId -> [occurrenceId]
+  var proxyById = {};            // proxy/overlay node id -> projection node
+  var visitedOccurrenceIds = new Set();
+  var currentOccurrenceId = null;
+  var nextOccurrenceId = null;
+  var correctnessByOccurrence = {}; // occurrenceId -> "correct"|"incorrect"|null
+  var hostRequestQueue = [];      // {type, ...} the host dequeues via takeHostRequest()
+
   // -- tiny DOM helpers (tolerant of the Node test's stubbed document) -------
   function byId(id) { return document.getElementById(id); }
   function clear(node) { if (node) node.innerHTML = ""; }
@@ -212,6 +229,196 @@
   }
   function takeLaunch() { return launchQueue.length ? launchQueue.shift() : null; }
 
+  // -- host request queue (Drill<->Graph navigation) ------------------------
+  // The host polls takeHostRequest(); the UI (timeline / graph click / launch
+  // button) enqueues typed requests. takeLaunch() stays a compat alias that
+  // only dequeues launch-type requests carrying a raw spec.
+  function enqueueHostRequest(req) { hostRequestQueue.push(req); return req; }
+  function takeHostRequest() {
+    return hostRequestQueue.length ? hostRequestQueue.shift() : null;
+  }
+  function requestSeek(occurrenceId) {
+    var step = occurrenceById[occurrenceId];
+    if (!step) return null;
+    return enqueueHostRequest({ type: "seek", occurrenceId: occurrenceId,
+      sequenceIndex: step.sequenceIndex });
+  }
+
+  // ======================================================================
+  // Drill projection (Drill -> Graph) -- host pushes a DrillGraphProjection
+  // ======================================================================
+  function indexProjection() {
+    occurrenceById = {}; occByVisualNode = {}; proxyById = {};
+    if (!projection) return;
+    (projection.steps || []).forEach(function (s) {
+      occurrenceById[s.occurrenceId] = s;
+      (occByVisualNode[s.visualNodeId] = occByVisualNode[s.visualNodeId] || [])
+        .push(s.occurrenceId);
+    });
+    (projection.projectionNodes || []).forEach(function (n) { proxyById[n.id] = n; });
+  }
+
+  function setProjection(p) {
+    projection = p || null;
+    previewProjection = null;
+    visitedOccurrenceIds = new Set();
+    currentOccurrenceId = null;
+    nextOccurrenceId = (projection && projection.steps && projection.steps.length)
+      ? projection.steps[0].occurrenceId : null;
+    correctnessByOccurrence = {};
+    if (projection) mode = "drill_to_graph";
+    indexProjection();
+    renderGraph();
+    renderTimeline();
+    renderProjectionSummary();
+    return exportState();
+  }
+  function clearProjection() {
+    projection = null; previewProjection = null;
+    occurrenceById = {}; occByVisualNode = {}; proxyById = {};
+    visitedOccurrenceIds = new Set();
+    currentOccurrenceId = null; nextOccurrenceId = null;
+    correctnessByOccurrence = {};
+    mode = "explore";
+    renderGraph(); renderTimeline(); renderProjectionSummary();
+    return exportState();
+  }
+
+  // Update the running trainer position (does NOT rebuild the projection). The
+  // host calls this on each flow-state poll; it mutates flow vars + redraws the
+  // graph only, leaving the user's explore-mode selection untouched.
+  function updateFlowState(state) {
+    if (!state || !projection) return exportState();
+    var occ = state.occurrenceId;
+    if (occ == null && state.sequenceIndex != null) {
+      var s = (projection.steps || [])[state.sequenceIndex];
+      occ = s ? s.occurrenceId : null;
+    }
+    if (occ != null && occurrenceById[occ]) {
+      if (currentOccurrenceId != null && currentOccurrenceId !== occ) {
+        visitedOccurrenceIds.add(currentOccurrenceId);
+      }
+      currentOccurrenceId = occ;
+      var idx = occurrenceById[occ].sequenceIndex;
+      var nxt = (projection.steps || [])[idx + 1];
+      nextOccurrenceId = nxt ? nxt.occurrenceId : null;
+    }
+    if (state.correct === true) correctnessByOccurrence[occ] = "correct";
+    else if (state.correct === false) correctnessByOccurrence[occ] = "incorrect";
+    renderGraph();
+    renderTimeline();
+    return exportState();
+  }
+
+  function previewLaunch(proj) {
+    // proj may be a projection dict (preview_projection) or null to clear.
+    previewProjection = proj || null;
+    renderGraph();
+    renderProjectionSummary();
+    return exportState();
+  }
+
+  function setMode(m) {
+    if (m === "explore" || m === "graph_to_drill" || m === "drill_to_graph") mode = m;
+    renderGraph();
+    return mode;
+  }
+
+  // The projection currently driving the graph (active projection, else preview).
+  function activeProjection() { return projection || previewProjection; }
+
+  // Strongest flow/projection state class for a visual node id (canonical or proxy).
+  function projectionClassFor(visualNodeId) {
+    var ap = activeProjection();
+    if (!ap) return "";
+    var c = "";
+    var occs = occByVisualNode[visualNodeId];
+    var inProjection = !!occs ||
+      (ap.constellationNodeIds && ap.constellationNodeIds.indexOf(visualNodeId) !== -1);
+    if (inProjection) c += " in-projection";
+    if (ap.anchorNodeIds && ap.anchorNodeIds.indexOf(visualNodeId) !== -1) c += " is-anchor";
+    if (occs && projection) {
+      var isCurrent = occs.indexOf(currentOccurrenceId) !== -1;
+      var isNext = occs.indexOf(nextOccurrenceId) !== -1;
+      var isVisited = occs.some(function (o) { return visitedOccurrenceIds.has(o); });
+      if (isCurrent) c += " is-current";
+      else if (isNext) c += " is-next";
+      else if (isVisited) c += " is-visited";
+      // correctness ring for the current occurrence
+      var corr = correctnessByOccurrence[currentOccurrenceId];
+      if (isCurrent && corr === "correct") c += " is-correct";
+      else if (isCurrent && corr === "incorrect") c += " is-incorrect";
+    }
+    return c;
+  }
+
+  // ======================================================================
+  // Occurrence timeline + projection summary (el()-built -> headless-safe).
+  // The timeline is the authoritative occurrence-level view (one canonical node
+  // may occur N times); the graph is the canonical-entity view.
+  // ======================================================================
+  function renderTimeline() {
+    var root = byId("hnTimeline");
+    if (!root) return;
+    clear(root);
+    if (!projection || !(projection.steps || []).length) return;
+    projection.steps.forEach(function (s) {
+      var cls = "occChip";
+      if (s.occurrenceId === currentOccurrenceId) cls += " is-current";
+      else if (s.occurrenceId === nextOccurrenceId) cls += " is-next";
+      else if (visitedOccurrenceIds.has(s.occurrenceId)) cls += " is-visited";
+      cls += mappingStatusClass(s.mappingStatus);
+      var corr = correctnessByOccurrence[s.occurrenceId];
+      if (corr) cls += (corr === "correct" ? " is-correct" : " is-incorrect");
+      var chip = el("div", { class: cls, dataset: { occ: s.occurrenceId },
+        onClick: (function (occ) { return function () { requestSeek(occ); }; })(s.occurrenceId) },
+        [
+          el("span", { class: "occIdx", text: String(s.sequenceIndex + 1) }),
+          el("span", { class: "occRoman", text: s.roman || "" }),
+          el("span", { class: "occChord", text: s.chordSymbol || "" }),
+          el("span", { class: "occKey", text: s.keyContext || "" }),
+          el("span", { class: "occStatus occStatus--" + s.mappingStatus,
+            text: s.mappingStatus }),
+        ]);
+      root.appendChild(chip);
+    });
+  }
+
+  function renderProjectionSummary() {
+    var root = byId("hnSummary");
+    if (!root) return;
+    clear(root);
+    var ap = activeProjection();
+    if (!ap) return;
+    var counts = ap.counts || {};
+    var byStatus = counts.byMappingStatus || {};
+    var total = (ap.steps || []).length;
+    var curIdx = null;
+    if (currentOccurrenceId && occurrenceById[currentOccurrenceId]) {
+      curIdx = occurrenceById[currentOccurrenceId].sequenceIndex + 1;
+    }
+    root.appendChild(el("div", { class: "sumTitle", text: ap.title || "" }));
+    root.appendChild(el("div", { class: "sumMeta" }, [
+      el("span", { text: "family: " + (ap.drillFamily || "") }),
+      el("span", { text: "group: " + (ap.semanticGroup || "") }),
+      el("span", { text: "order: " + (ap.sequenceSemantics || "") }),
+    ]));
+    root.appendChild(el("div", { class: "sumPos",
+      text: (curIdx == null ? "—" : curIdx) + " / " + total }));
+    root.appendChild(el("div", { class: "sumMapping" }, [
+      el("span", { class: "occStatus--exact", text: "exact " + (byStatus.exact || 0) }),
+      el("span", { class: "occStatus--contextual",
+        text: "contextual " + (byStatus.contextual || 0) }),
+      el("span", { class: "occStatus--approximate",
+        text: "approx " + (byStatus.approximate || 0) }),
+      el("span", { class: "occStatus--unsupported",
+        text: "unsupported " + (byStatus.unsupported || 0) }),
+    ]));
+    (ap.warnings || []).forEach(function (w) {
+      root.appendChild(el("div", { class: "sumWarning", text: w }));
+    });
+  }
+
   // ======================================================================
   // LEFT: controls
   // ======================================================================
@@ -337,9 +544,16 @@
 
     if (!document.createElementNS) {          // stubbed DOM (Node test): summary
       var vn = visibleNodes().length, ve = visibleEdges().length;
-      root.appendChild(el("div", { class: "hnFallback",
+      var ap = activeProjection();
+      var extra = "";
+      if (ap) {
+        extra = ", projection " + ((ap.steps || []).length) + " steps / " +
+                ((ap.projectionNodes || []).length) + " proxies" +
+                (currentOccurrenceId ? " @" + currentOccurrenceId : "");
+      }
+      root.appendChild(el("div", { class: "hnFallback", dataset: { mode: mode },
         text: (data.nodes || []).length + " nodes (" + vn + " shown), " +
-              (data.edges || []).length + " edges (" + ve + " shown)" }));
+              (data.edges || []).length + " edges (" + ve + " shown)" + extra }));
       return;
     }
 
@@ -397,11 +611,57 @@
         ts.textContent = String(sub);
         g.appendChild(ts);
       }
-      g.addEventListener("click", function () { selectNode(n.id); });
+      g.addEventListener("click", function () {
+        selectNode(n.id);
+        // in Drill->Graph mode a graph-node click also seeks the trainer to that occurrence
+        if (mode === "drill_to_graph" && occByVisualNode[n.id]) {
+          requestSeek(occByVisualNode[n.id][0]);
+        }
+      });
       s.appendChild(g);
     });
 
+    // -- drill-projection overlay: sequence edges + proxy nodes --------------
+    var ap = activeProjection();
+    if (ap) {
+      (ap.projectionEdges || []).forEach(function (pe) {
+        var a = visualNodePos(pe.source), b = visualNodePos(pe.target);
+        if (!a || !b) return;
+        s.appendChild(svg("path", {
+          class: "hnEdge edge edge--" + pe.visualClass + " overlay-seq",
+          d: edgePath(a, b), stroke: edgeColor(pe.visualClass),
+        }));
+      });
+      (ap.projectionNodes || []).forEach(function (pn) {
+        var cls = "hnNode hnProxy is-proxy" + projectionClassFor(pn.id) +
+                  mappingStatusClass(pn.mappingStatus);
+        var g = svg("g", { class: cls, "data-id": pn.id,
+          transform: "translate(" + pn.x + "," + pn.y + ")" });
+        g.appendChild(svg("circle", { r: 15, fill: "#0b1220" }));
+        var tx = svg("text", {});
+        tx.textContent = pn.label;
+        g.appendChild(tx);
+        g.addEventListener("click", function () {
+          if (occByVisualNode[pn.id]) requestSeek(occByVisualNode[pn.id][0]);
+        });
+        s.appendChild(g);
+      });
+    }
+
     root.appendChild(s);
+  }
+
+  // Position of a visual node id (canonical node OR projection proxy).
+  function visualNodePos(id) {
+    if (nodesById[id]) return { x: nodesById[id].x, y: nodesById[id].y };
+    if (proxyById[id]) return { x: proxyById[id].x, y: proxyById[id].y };
+    return null;
+  }
+  function mappingStatusClass(status) {
+    if (status === "approximate") return " is-approximate";
+    if (status === "unsupported") return " is-unsupported";
+    if (status === "contextual") return " is-contextual";
+    return "";
   }
 
   function graphRadius() {
@@ -494,6 +754,8 @@
       c += " node--sync";
       if (n.id === syncPrimaryId) c += " node--flash";
     }
+    // drill projection / flow layer (independent of selection & sync)
+    c += projectionClassFor(n.id);
     return c;
   }
   function edgeStateClass(e, sel) {
@@ -860,6 +1122,21 @@
       visibleWhitelist: visibleWhitelist ? visibleWhitelist.size : null,
       filters: { kinds: Object.assign({}, filters.kinds),
         relations: Object.assign({}, filters.relations), search: filters.search },
+      // -- bidirectional drill<->graph layer (additive) --
+      mode: mode,
+      projection: projection ? {
+        projectionId: projection.projectionId,
+        steps: (projection.steps || []).length,
+        proxies: (projection.projectionNodes || []).length,
+        drillFamily: projection.drillFamily,
+        semanticGroup: projection.semanticGroup,
+        sequenceSemantics: projection.sequenceSemantics,
+      } : null,
+      previewActive: !!previewProjection,
+      currentOccurrence: currentOccurrenceId,
+      nextOccurrence: nextOccurrenceId,
+      visited: visitedOccurrenceIds.size,
+      hostRequests: hostRequestQueue.length,
     };
   }
 
@@ -875,6 +1152,12 @@
       leading: "#c084fc", dominant: "#fbbf24", function: "#a78bfa",
       shared: "#22c55e", samepc: "#94a3b8", trainer: "#10b981",
       atlas: "#3b82f6", reserved: "#475569",
+      // canonical theory relations used by the core / cadence / inversion templates
+      membership: "#64748b", prepare: "#f59e0b", prolong: "#64748b",
+      inversion: "#f43f5e", voicing: "#f472b6",
+      // runtime projection overlay edges (sequence relations)
+      "overlay-drill": "#eab308", "overlay-transpose": "#38bdf8",
+      "overlay-enumerate": "#64748b", "overlay-voicing": "#f472b6",
     })[visualClass] || "#64748b";
   }
   // Dash style per edge visual class -- the SINGLE source of truth shared by the
@@ -901,6 +1184,14 @@
     searchHits = new Set();
     visibleWhitelist = null;
     completedSet = new Set();
+    // reset the bidirectional drill<->graph layer
+    mode = "explore";
+    projection = null; previewProjection = null;
+    occurrenceById = {}; occByVisualNode = {}; proxyById = {};
+    visitedOccurrenceIds = new Set();
+    currentOccurrenceId = null; nextOccurrenceId = null;
+    correctnessByOccurrence = {};
+    hostRequestQueue = [];
     indexPayload();
     filters = defaultFilters();
     // Let the payload's template name the header (this html shell is shared
@@ -912,6 +1203,8 @@
     renderControls();
     renderGraph();
     renderInfoPlaceholder();
+    renderTimeline();
+    renderProjectionSummary();
     return { ok: true, nodes: (data.nodes || []).length, edges: (data.edges || []).length };
   }
 
@@ -928,6 +1221,14 @@
     highlightFromTrainerTarget: highlightFromTrainerTarget,
     highlightFromAtlasSync: highlightFromAtlasSync,
     highlightFromDegreeTarget: highlightFromDegreeTarget,
+    // -- bidirectional drill<->graph API (plan section 18) --
+    setMode: setMode,
+    setProjection: setProjection,
+    clearProjection: clearProjection,
+    updateFlowState: updateFlowState,
+    previewLaunch: previewLaunch,
+    takeHostRequest: takeHostRequest,
+    requestSeek: requestSeek,
     setVisibleNodes: setVisibleNodes,
     markCompleted: markCompleted,
     completedIds: completedIds,

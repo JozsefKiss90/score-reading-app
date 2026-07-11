@@ -408,4 +408,145 @@ const PAYLOAD = loadPayload();
   console.log("Test K (CSS<->JS dash-style consistency): PASS");
 })();
 
+// --- load a real Drill->Graph projection from Python ------------------------
+function loadProjection() {
+  const candidates = [
+    path.join(ROOT, ".venv", "Scripts", "python.exe"),
+    path.join(ROOT, ".venv", "bin", "python"),
+    "python", "python3",
+  ];
+  const code =
+    "import json;from harmony.harmonic_network import build_network;" +
+    "from harmony.network_template import get_template;" +
+    "from harmony.network_projection import project_harmony_exercise;" +
+    "from harmony.atlas import full_key_spec;" +
+    "net=build_network(get_template());" +
+    "print(json.dumps(project_harmony_exercise(full_key_spec('C','major'),net).to_dict()))";
+  for (const py of candidates) {
+    try {
+      const out = cp.execFileSync(py, ["-c", code],
+        { cwd: ROOT, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+      return JSON.parse(out);
+    } catch (e) { /* next */ }
+  }
+  console.error("SKIP: could not build projection payload.");
+  process.exit(0);
+}
+
+const PROJECTION = loadProjection();
+
+// timeline / summary container helpers (the stub's global ALL accumulates across
+// re-renders, so we inspect the actual container's live children instead).
+function timelineChips(h) { return h.byId.get("hnTimeline")._children; }
+function summaryChildren(h) { return h.byId.get("hnSummary")._children; }
+function hasClass(n, c) { return n.className && n.className.split(" ").indexOf(c) !== -1; }
+
+// === Test L: projection ingestion + timeline ================================
+(function testProjectionIngestion() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+  const st = h.ui.setProjection(PROJECTION);
+  assert(st.mode === "drill_to_graph", "setProjection enters drill_to_graph mode");
+  assert(st.projection && st.projection.steps === 7, "projection has 7 steps");
+  assert(st.nextOccurrence === PROJECTION.steps[0].occurrenceId,
+    "next starts at the first occurrence");
+  // occurrence timeline chips (el()-built -> visible headlessly)
+  assert(timelineChips(h).length === 7, "timeline shows 7 occurrence chips, got " +
+    timelineChips(h).length);
+  assert(timelineChips(h).every((c) => hasClass(c, "occChip")), "each timeline item is a chip");
+  // projection summary rendered
+  assert(summaryChildren(h).some((c) => hasClass(c, "sumTitle")),
+    "projection summary title rendered");
+  console.log("Test L (projection ingestion + timeline): PASS");
+})();
+
+// === Test M: flow-state advances current/visited/next =======================
+(function testFlowState() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+  h.ui.setProjection(PROJECTION);
+  const occ0 = PROJECTION.steps[0].occurrenceId;
+  const occ1 = PROJECTION.steps[1].occurrenceId;
+  const occ2 = PROJECTION.steps[2].occurrenceId;
+  let st = h.ui.updateFlowState({ sequenceIndex: 0 });
+  assert(st.currentOccurrence === occ0, "current is occurrence 0");
+  assert(st.nextOccurrence === occ1, "next is occurrence 1");
+  st = h.ui.updateFlowState({ sequenceIndex: 1 });
+  assert(st.currentOccurrence === occ1, "current advances to occurrence 1");
+  assert(st.nextOccurrence === occ2, "next advances to occurrence 2");
+  assert(st.visited === 1, "occurrence 0 is now visited");
+  // exactly one chip in the LIVE timeline is current, and it is occ1's chip
+  const chips = timelineChips(h);
+  const cur = chips.filter((c) => hasClass(c, "is-current"));
+  assert(cur.length === 1, "exactly one chip is current, got " + cur.length);
+  assert(cur[0].dataset.occ === occ1, "the current chip is occurrence 1");
+  console.log("Test M (flow state current/next/visited): PASS");
+})();
+
+// === Test N: timeline click + graph seek enqueue a host request =============
+(function testSeekRequests() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+  h.ui.setProjection(PROJECTION);
+  // clicking a timeline chip requests a seek to that occurrence
+  timelineChips(h)[3].fire("click");
+  const req = h.ui.takeHostRequest();
+  assert(req && req.type === "seek", "timeline click enqueues a seek request");
+  assert(req.sequenceIndex === 3, "seek targets sequence index 3, got " + req.sequenceIndex);
+  assert(h.ui.takeHostRequest() === null, "the queue drains to null");
+  // requestSeek API also enqueues
+  h.ui.requestSeek(PROJECTION.steps[5].occurrenceId);
+  assert(h.ui.takeHostRequest().sequenceIndex === 5, "requestSeek enqueues by occurrence");
+  console.log("Test N (seek host requests): PASS");
+})();
+
+// === Test O: clearProjection resets to explore ==============================
+(function testClearProjection() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+  h.ui.setProjection(PROJECTION);
+  const st = h.ui.clearProjection();
+  assert(st.mode === "explore", "clearProjection returns to explore mode");
+  assert(st.projection === null, "projection is cleared");
+  assert(timelineChips(h).length === 0, "timeline is empty after clear");
+  console.log("Test O (clear projection): PASS");
+})();
+
+// === Test P: v1 payload compatibility (no projection) =======================
+(function testV1Compat() {
+  const h = makeHarness(PAYLOAD);
+  const r = h.ui.init(PAYLOAD);
+  assert(r.nodes === 48, "legacy v1 payload still inits 48 nodes");
+  const st = h.ui.exportState();
+  assert(st.mode === "explore", "no projection -> explore mode");
+  assert(st.projection === null, "no projection by default");
+  // legacy trainer-target sync still works alongside the new layer
+  h.ui.highlightFromTrainerTarget({ key: "C major", mode: "major", roman: "V" });
+  assert(h.ui.exportState().syncNodes.length >= 1, "highlightFromTrainerTarget still syncs");
+  console.log("Test P (v1 payload compatibility): PASS");
+})();
+
+// === Test Q: proxy nodes + overlay edges render under SVG ====================
+(function testProxyRendering() {
+  const h = makeHarness(PAYLOAD);
+  h.document.createElementNS = function (ns, tag) {
+    const n = makeNode(tag); n._ns = ns; return n;
+  };
+  h.ui.init(PAYLOAD);
+  h.ui.setProjection(PROJECTION);
+  // proxy triad nodes (I, ii, iii, IV, vi) render as SVG <g> with data-id + is-proxy
+  const proxies = byClass("is-proxy");
+  assert(proxies.length === PROJECTION.projectionNodes.length,
+    "all proxy nodes render, got " + proxies.length);
+  assert(proxies.every((p) => p.getAttribute("data-id")),
+    "each proxy carries a data-id (host/tests locate it)");
+  // overlay sequence edges render
+  assert(byClass("overlay-seq").length >= 1, "sequence overlay edges render");
+  // the exact-diminished step marks its canonical node in-projection
+  h.ui.updateFlowState({ sequenceIndex: 6 });  // vii° -> hn:dim:B
+  const cur = byClass("is-current");
+  assert(cur.length >= 1, "the current canonical/proxy node is lit");
+  console.log("Test Q (proxy + overlay rendering): PASS");
+})();
+
 console.log("\nAll harmonic_network.js behavioural checks passed (" + passed + " assertions).");

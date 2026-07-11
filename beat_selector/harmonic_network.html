@@ -13,8 +13,17 @@
   </div>
   <div id="hnMain">
     <div id="hnLeft"></div>
-    <div id="hnCenter"></div>
-    <div id="hnRight"></div>
+    <div id="hnCenterWrap">
+      <div id="hnCenter"></div>
+      <!-- occurrence timeline: the authoritative occurrence-level view of a running drill -->
+      <div id="hnTimeline" class="hnTimeline"></div>
+    </div>
+    <div id="hnRightCol">
+      <!-- projection summary (drill family / group / position / mapping counts / warnings).
+           A sibling of #hnRight so the selection info panel's clear() never wipes it. -->
+      <div id="hnSummary" class="hnSummary"></div>
+      <div id="hnRight"></div>
+    </div>
   </div>
 
   <script src="harmonic_network.js"></script>

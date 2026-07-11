@@ -42,15 +42,30 @@ SCHEMA_VERSION = "harmony-network-template/v1"
 # Controlled vocabularies (the schema's closed sets)
 # ---------------------------------------------------------------------------
 
-#: The four node classes the first template uses.  A template may use a subset.
+#: The node classes across all templates.  A template uses a subset.  The first four are the
+#: legacy reference-image classes; the rest (key/chord/function/class/degree/voicing) are the
+#: semantic-level classes the bidirectional-mapping templates introduce (plan section 13.3).
 NODE_KINDS = [
     "major_key",
     "minor_key",
     "dominant_seventh",
     "diminished_triad",
+    "key_center",
+    "diatonic_triad",
+    "function_family",
+    "quality_class",
+    "degree_class",
+    "inversion_state",
 ]
 
-#: Relationship vocabulary that is *implemented* by the v1 graph builder.
+#: Ontological level / role a node class occupies (plan section 7). Additive metadata on
+#: :class:`NodeClass`; ``""`` means "unspecified" (the legacy classes leave them blank).
+SEMANTIC_LEVELS = ["key", "chord", "function", "class", "voicing", "path"]
+ENTITY_ROLES = ["anchor", "instance", "family", "state", "reference"]
+
+#: Relationship vocabulary that is *implemented* by a graph builder rule.  The first eleven are
+#: the legacy relations; the rest are the membership / functional-motion / voicing relations the
+#: new templates add (plan section 13.3).
 IMPLEMENTED_RELATIONS = [
     "fifth_relation",
     "relative_minor_of",
@@ -63,6 +78,21 @@ IMPLEMENTED_RELATIONS = [
     "same_function",
     "trainer_drill_available",
     "atlas_node_available",
+    "belongs_to_key",
+    "member_of_function",
+    "prepares",
+    "prolongs",
+    "substitutes_for",
+    "inversion_of",
+    "voice_leads_to",
+]
+
+#: The eleven relations the legacy reference template declares (used to keep the legacy
+#: fingerprint pinned while the shared vocabulary grows).
+LEGACY_IMPLEMENTED_RELATIONS = [
+    "fifth_relation", "relative_minor_of", "relative_major_of", "dominant_of",
+    "resolves_to", "leading_tone_to", "shares_scale_with", "same_pitch_class",
+    "same_function", "trainer_drill_available", "atlas_node_available",
 ]
 
 #: Relationship vocabulary that is *reserved* (named now, generated later).
@@ -78,7 +108,8 @@ RESERVED_RELATIONS = [
 #: Every relation a template may legally name (implemented + reserved).
 ALL_RELATIONS = IMPLEMENTED_RELATIONS + RESERVED_RELATIONS
 
-#: The deterministic edge-generation passes the builder knows how to run.
+#: The deterministic EDGE-generation passes the builder knows how to run (dispatched to a
+#: ``_rule_<name>`` method).
 GENERATION_RULES = [
     "major_circle_by_fifths",       # 1. major keys connect by fifths/fourths
     "relative_minor_edges",         # 2. C major <-> A minor, ...
@@ -88,10 +119,27 @@ GENERATION_RULES = [
     "same_function_edges",          # V7 and vii° share the dominant function
     "same_pitch_class_edges",       # cross-class same-root overlay (optional)
     "integration_overlays",         # trainer_drill_available / atlas_node_available
+    # bidirectional-mapping templates:
+    "diatonic_membership_edges",    # triad belongs_to_key + member_of_function (core template)
+    "core_function_motion_edges",   # supported V->I / ii->V / vii°->I motions between triads
+    "inversion_adjacency_edges",    # inversion_of / voice_leads_to (inversion template)
 ]
 
-#: The visual classes (colours) from the reference image.
-VISUAL_CLASSES = ["pink", "blue", "yellow", "purple"]
+#: The deterministic NODE-generation passes (dispatched to a ``_node_<name>`` method). A template
+#: with no ``node_generation_rules`` falls back to the legacy 4-kind builder for compatibility.
+NODE_GENERATION_RULES = [
+    "legacy_key_dom_dim_nodes",     # the reference-image 48-node builder (default)
+    "core_key_center_node",         # one key-centre anchor
+    "core_diatonic_triad_nodes",    # the seven exact diatonic triads
+    "core_function_family_nodes",   # tonic / predominant / dominant families
+    "inversion_identity_node",      # one chord-identity anchor (inversion template)
+    "inversion_state_nodes",        # root / 1st / 2nd inversion voicing states
+]
+
+#: The visual classes (colours). The first four are the reference image's palette; the rest are
+#: the semantic-level classes the new templates use.
+VISUAL_CLASSES = ["pink", "blue", "yellow", "purple",
+                  "slate", "teal", "amber", "green", "rose"]
 
 
 # ---------------------------------------------------------------------------
@@ -100,13 +148,21 @@ VISUAL_CLASSES = ["pink", "blue", "yellow", "purple"]
 
 @dataclass
 class NodeClass:
-    """One node class: a kind + how it is drawn + what it means."""
+    """One node class: a kind + how it is drawn + what it means.
+
+    ``semantic_level`` / ``entity_role`` make the ontological distinction explicit (a key node is
+    an *anchor*, a triad node a chord *instance*), and ``canonical_ref`` names the Atlas concept
+    the class mirrors.  They are additive; the legacy classes leave them blank.
+    """
 
     kind: str
     label: str
-    visual_class: str            # pink | blue | yellow | purple
+    visual_class: str            # pink | blue | yellow | purple | slate | teal | amber | ...
     color: str                   # hex fill
     description: str = ""
+    semantic_level: str = ""     # key | chord | function | class | voicing | path
+    entity_role: str = ""        # anchor | instance | family | state | reference
+    canonical_ref: str = ""      # e.g. an Atlas id family this class mirrors
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -159,6 +215,14 @@ class HarmonicNetworkTemplate:
     center_keys: List[str] = field(default_factory=list)
     node_layers: List[str] = field(default_factory=list)
     launch_rules: Dict[str, Any] = field(default_factory=dict)
+    #: Which NODE-generation passes the builder runs.  Empty => the legacy 4-kind builder (so the
+    #: reference template keeps building unchanged).  Key-local templates list their own rules.
+    node_generation_rules: List[str] = field(default_factory=list)
+    #: How the builder lays nodes out (``concentric_fifths`` for the circle template,
+    #: ``key_local`` for the parameterised triad/function/inversion templates).
+    layout_strategy: str = "concentric_fifths"
+    #: Declares the build-context parameters a parameterised template accepts (key/mode/degree...).
+    context_schema: Dict[str, Any] = field(default_factory=dict)
     schema: str = SCHEMA_VERSION
 
     # -- lookups ---------------------------------------------------------
@@ -224,6 +288,14 @@ class HarmonicNetworkTemplate:
                 raise ValueError(
                     f"unknown visual class {nc.visual_class!r} for {nc.kind!r}; "
                     f"expected one of {VISUAL_CLASSES}")
+            if nc.semantic_level and nc.semantic_level not in SEMANTIC_LEVELS:
+                raise ValueError(
+                    f"unknown semantic level {nc.semantic_level!r} for {nc.kind!r}; "
+                    f"expected one of {SEMANTIC_LEVELS}")
+            if nc.entity_role and nc.entity_role not in ENTITY_ROLES:
+                raise ValueError(
+                    f"unknown entity role {nc.entity_role!r} for {nc.kind!r}; "
+                    f"expected one of {ENTITY_ROLES}")
 
         for ec in self.edge_classes:
             if ec.relation not in ALL_RELATIONS:
@@ -241,6 +313,12 @@ class HarmonicNetworkTemplate:
                 raise ValueError(
                     f"unknown generation rule {rule!r}; expected one of "
                     f"{GENERATION_RULES}")
+
+        for rule in self.node_generation_rules:
+            if rule not in NODE_GENERATION_RULES:
+                raise ValueError(
+                    f"unknown node generation rule {rule!r}; expected one of "
+                    f"{NODE_GENERATION_RULES}")
 
         layout_kinds = set()
         for lr in self.layout_rules:
@@ -266,6 +344,9 @@ class HarmonicNetworkTemplate:
             "generation_rules": list(self.generation_rules),
             "center_keys": list(self.center_keys),
             "launch_rules": dict(self.launch_rules),
+            "node_generation_rules": list(self.node_generation_rules),
+            "layout_strategy": self.layout_strategy,
+            "context_schema": dict(self.context_schema),
         }
 
     @classmethod
@@ -281,6 +362,9 @@ class HarmonicNetworkTemplate:
             center_keys=list(d.get("center_keys", [])),
             node_layers=list(d.get("node_layers", [])),
             launch_rules=dict(d.get("launch_rules", {})),
+            node_generation_rules=list(d.get("node_generation_rules", [])),
+            layout_strategy=d.get("layout_strategy", "concentric_fifths"),
+            context_schema=dict(d.get("context_schema", {})),
             schema=d.get("schema", SCHEMA_VERSION),
         )
         tpl.validate()
@@ -441,6 +525,167 @@ def dominant_diminished_relative_network_v1() -> HarmonicNetworkTemplate:
     )
 
 
+def core_triad_function_network_v1() -> HarmonicNetworkTemplate:
+    """A parameterised, key-local graph of the seven exact diatonic triads by function.
+
+    Unlike the reference template (whole keys + reserved sevenths), every node here is a real,
+    launchable diatonic triad -- so a ``full_key`` drill maps to *exact* chord nodes instead of
+    proxies, and ``Dm`` maps to ``hn:triad:C:major:1`` rather than the C key node.  Default
+    context: C major (override via a :class:`~harmony.harmonic_network.NetworkBuildContext`).
+
+    Topology: one key-centre anchor at the centre, three broad function-family nodes (tonic /
+    predominant / dominant) around it, and the seven triads on the outer ring wired to their key
+    (``belongs_to_key``) and function family (``member_of_function``), plus the supported
+    functional motions (``ii/IV -> V``, ``V -> I``, ``vii° -> I``) as canonical theory edges.
+    """
+    node_classes = [
+        NodeClass("key_center", "Key centre", "slate", "#64748b",
+                  "The tonal centre / scale context. A key anchor -- NOT the tonic chord.",
+                  semantic_level="key", entity_role="anchor", canonical_ref="scale"),
+        NodeClass("diatonic_triad", "Diatonic triad", "teal", "#14b8a6",
+                  "One of the seven exact diatonic triads of the key context.",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
+        NodeClass("function_family", "Function family", "amber", "#f59e0b",
+                  "A broad harmonic function (tonic / predominant / dominant) grouping its "
+                  "member triads.", semantic_level="function", entity_role="family",
+                  canonical_ref="function"),
+    ]
+
+    edge_classes = [
+        EdgeClass("belongs_to_key", "Belongs to key", directed=True,
+                  visual_class="membership", default_visible=True,
+                  description="A diatonic triad belongs to its key context."),
+        EdgeClass("member_of_function", "Member of function", directed=True,
+                  visual_class="membership", default_visible=True,
+                  description="A triad is a member of a broad function family."),
+        EdgeClass("resolves_to", "Resolves to", directed=True,
+                  visual_class="resolve", default_visible=True,
+                  description="Functional resolution (V -> I, vii° -> I, plagal IV -> I)."),
+        EdgeClass("leading_tone_to", "Leading-tone to", directed=True,
+                  visual_class="leading", default_visible=True,
+                  description="The vii° leading tone resolves up to the tonic."),
+        EdgeClass("prepares", "Prepares", directed=True,
+                  visual_class="prepare", default_visible=True,
+                  description="A predominant prepares the dominant (ii/IV -> V)."),
+        EdgeClass("prolongs", "Prolongs", directed=True,
+                  visual_class="prolong", default_visible=False,
+                  description="A chord prolongs the same function (reserved layer)."),
+    ]
+
+    layout_rules = [
+        LayoutRule("key_center", "central", radius=0.0, angle_offset=0.0, node_radius=28.0),
+        LayoutRule("function_family", "inner", radius=150.0, angle_offset=0.0, node_radius=22.0),
+        LayoutRule("diatonic_triad", "outer", radius=300.0, angle_offset=0.0, node_radius=19.0),
+    ]
+
+    return HarmonicNetworkTemplate(
+        template_id="core_triad_function_network_v1",
+        title="Core triad / function network",
+        description=(
+            "A key-local graph of the seven exact diatonic triads, clustered by broad harmonic "
+            "function around a key-centre anchor. Every triad is a real launchable node, so "
+            "drills map to exact chord nodes. Derived deterministically from the theory engine "
+            "for the active key context (default C major)."),
+        node_classes=node_classes,
+        edge_classes=edge_classes,
+        layout_rules=layout_rules,
+        generation_rules=[
+            "diatonic_membership_edges",
+            "core_function_motion_edges",
+        ],
+        node_generation_rules=[
+            "core_key_center_node",
+            "core_diatonic_triad_nodes",
+            "core_function_family_nodes",
+        ],
+        layout_strategy="key_local",
+        context_schema={"key": "C", "mode": "major"},
+        center_keys=["C"],
+        node_layers=["key_center", "function_family", "diatonic_triad"],
+        launch_rules={
+            "launchable_kinds": ["diatonic_triad", "key_center", "function_family"],
+            "reserved_kinds": [],
+            "reserved_reason": "",
+        },
+    )
+
+
+def cadence_resolution_network_v1() -> HarmonicNetworkTemplate:
+    """The core triad/function graph overlaid with first-class cadence *paths*.
+
+    Reuses the exact diatonic-triad nodes and their supported functional-motion edges (so no chord
+    node is duplicated per cadence), and adds a catalogue of ordered :class:`HarmonicPath` arcs
+    (V-I, IV-I, ii-V-I, i-iv-v-i, ...) built by the network layer from the active key context.
+    Each path launches a block/arpeggio trainer drill and a voice-leading Lab experiment; the
+    active theory edge follows the trainer through the route.
+    """
+    tpl = core_triad_function_network_v1()
+    tpl.template_id = "cadence_resolution_network_v1"
+    tpl.title = "Cadence resolution network"
+    tpl.description = (
+        "The core diatonic-triad graph with a catalogue of cadence paths (authentic, plagal, "
+        "deceptive and multi-chord routes) as first-class ordered arcs. Paths reuse the exact "
+        "triad nodes rather than duplicating chords, and light up canonical theory edges only "
+        "where the network independently supports them.")
+    tpl.launch_rules = {**tpl.launch_rules, "path_catalogue": "cadence"}
+    return tpl
+
+
+def inversion_space_network_v1() -> HarmonicNetworkTemplate:
+    """One chord identity with its three voicing states (root / 1st / 2nd inversion).
+
+    Parameterised by key, mode and degree.  A central chord-identity anchor is surrounded by
+    three inversion-state satellites (C, C/E, C/G); each state ``inversion_of`` the anchor and
+    ``voice_leads_to`` the next.  The states execute in the Music Theory Lab (the root-position
+    trainer cannot voice inversions), so no renderer is duplicated -- the graph mirrors the Lab's
+    changing-bass measures (plan section 14.3).
+    """
+    node_classes = [
+        NodeClass("diatonic_triad", "Chord identity", "teal", "#14b8a6",
+                  "The invariant chord identity whose bass changes across inversions.",
+                  semantic_level="chord", entity_role="reference", canonical_ref="triad"),
+        NodeClass("inversion_state", "Inversion state", "rose", "#f43f5e",
+                  "One voicing of the chord (root position / first / second inversion); same "
+                  "chord identity, changing bass.",
+                  semantic_level="voicing", entity_role="state", canonical_ref="triad"),
+    ]
+    edge_classes = [
+        EdgeClass("inversion_of", "Inversion of", directed=True,
+                  visual_class="inversion", default_visible=True,
+                  description="A voicing state is an inversion of the chord identity."),
+        EdgeClass("voice_leads_to", "Voice-leads to", directed=True,
+                  visual_class="voicing", default_visible=True,
+                  description="Smooth voice-leading to the adjacent inversion."),
+    ]
+    layout_rules = [
+        LayoutRule("diatonic_triad", "central", radius=0.0, angle_offset=0.0, node_radius=28.0),
+        LayoutRule("inversion_state", "inner", radius=150.0, angle_offset=0.0, node_radius=22.0),
+    ]
+    return HarmonicNetworkTemplate(
+        template_id="inversion_space_network_v1",
+        title="Inversion-space network",
+        description=(
+            "One chord identity and its three inversion voicings (C, C/E, C/G) as satellite "
+            "states around a central anchor, with inversion-of and voice-leading edges. The "
+            "voicings run in the Music Theory Lab; the chord's function never changes."),
+        node_classes=node_classes,
+        edge_classes=edge_classes,
+        layout_rules=layout_rules,
+        generation_rules=["inversion_adjacency_edges"],
+        node_generation_rules=["inversion_identity_node", "inversion_state_nodes"],
+        layout_strategy="key_local",
+        context_schema={"key": "C", "mode": "major", "degree": "I"},
+        center_keys=["C"],
+        node_layers=["diatonic_triad", "inversion_state"],
+        launch_rules={
+            "launchable_kinds": ["inversion_state"],
+            "reserved_kinds": [],
+            "reserved_reason": "",
+            "lab_concept": "inversion",
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Template registry (future topologies register here)
 # ---------------------------------------------------------------------------
@@ -448,6 +693,12 @@ def dominant_diminished_relative_network_v1() -> HarmonicNetworkTemplate:
 TEMPLATES = {
     "dominant_diminished_relative_network_v1":
         dominant_diminished_relative_network_v1,
+    "core_triad_function_network_v1":
+        core_triad_function_network_v1,
+    "cadence_resolution_network_v1":
+        cadence_resolution_network_v1,
+    "inversion_space_network_v1":
+        inversion_space_network_v1,
 }
 
 DEFAULT_TEMPLATE_ID = "dominant_diminished_relative_network_v1"
@@ -497,62 +748,41 @@ class PlannedTemplate:
 
 PLANNED_TEMPLATES: List[PlannedTemplate] = [
     PlannedTemplate(
-        template_id="core_triad_function_network_v1",
-        title="Core triad / function network",
+        template_id="transposition_orbit_network_v1",
+        title="Transposition-orbit network",
         description=(
-            "Triad-only topology mapping I, ii, iii, IV, V, vi and vii° across "
-            "all keys, with no seventh-chord theoretical nodes. Directly aligns "
-            "with the Global Diatonic Map, Transposition Matrix, Quality Matrix "
-            "and Function Map."),
+            "One degree or progression pattern orbiting a set of keys (circle-of-fifths "
+            "or trainer order), with transpose_next overlays and no false modulation claim."),
         rationale=(
-            "Highest-value, lowest-risk next template: every node is a real "
-            "launchable diatonic triad (no reserved seventh-chord honesty caveat), "
-            "and the builder already derives all seven degrees per key from "
-            "theory.diatonic_harmony. Mostly a new node-class set + a "
-            "'diatonic_degree_edges' rule."),
-        priority="high",
-        dependencies=[
-            "theory.diatonic_harmony (generate_diatonic_triads)",
-            "harmony.atlas degree/function/quality ids",
-            "a new 'diatonic_degree' node class + generation rule",
-        ],
-    ),
-    PlannedTemplate(
-        template_id="cadence_resolution_network_v1",
-        title="Cadence resolution network",
-        description=(
-            "A graph of cadence paths -- V→I, IV→I, ii→V→I, vi→ii→V→I, V→vi and "
-            "i→VII→i -- integrating the Voice-leading Lab and the Cadence "
-            "curriculum."),
-        rationale=(
-            "Each path is already expressible as a HarmonyExerciseSpec function "
-            "drill, so launchables come for free. Needs a path/sequence node-edge "
-            "model (ordered multi-node arcs) the current pairwise builder does not "
-            "yet have -- medium effort."),
+            "Post-MVP: the projection already handles horizontal_degree drills as a "
+            "transposition orbit; a dedicated template gives the abstract-degree anchor a "
+            "home. Add after the core bidirectional gates pass."),
         priority="medium",
-        dependencies=[
-            "harmony.exercise_spec function drills (V–I, ii–V–I, ...)",
-            "curriculum cadence catalogue",
-            "Music Theory Lab voice-leading experiments",
-            "an ordered-path edge model (new)",
-        ],
+        dependencies=["harmony.atlas degree_spec", "the horizontal_degree projection path"],
     ),
     PlannedTemplate(
-        template_id="inversion_space_network_v1",
-        title="Inversion-space network",
+        template_id="quality_class_network_v1",
+        title="Quality-class network",
         description=(
-            "Slash-chord / inversion topology (C, C/E, C/G): one chord identity, "
-            "changing bass, with voice-leading adjacency between inversions."),
+            "Major / minor / diminished / augmented class nodes plus their exact chord "
+            "instances across key contexts, with enumerate_next overlays (no progression)."),
         rationale=(
-            "Pedagogically valuable but blocked: the trainer's spec compiler and "
-            "MusicXML builder are root-position triad based, so inversion drills "
-            "are not launchable yet. Defer until inversion support lands "
-            "(consistent with the project's non-goals)."),
+            "Post-MVP: the projection already classifies quality drills; a template gives "
+            "the class nodes a home."),
         priority="low",
-        dependencies=[
-            "inversion support in harmony.exercise_spec + harmony.musicxml_builder "
-            "(not present; an explicit non-goal for now)",
-        ],
+        dependencies=["harmony.atlas quality_drills", "the quality projection path"],
+    ),
+    PlannedTemplate(
+        template_id="functional_equivalence_network_v1",
+        title="Functional-equivalence network",
+        description=(
+            "V, V7, vii° and future substitutes sharing the dominant function, with the "
+            "exact distinction between triad, seventh chord and diminished triad."),
+        rationale=(
+            "Most useful once seventh-chord support expands; reserved until then to keep the "
+            "triad/seventh honesty model intact."),
+        priority="low",
+        dependencies=["seventh-chord trainer support (a non-goal for now)"],
     ),
 ]
 

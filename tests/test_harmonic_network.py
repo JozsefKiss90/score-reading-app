@@ -119,9 +119,13 @@ class TestTemplateValidation(unittest.TestCase):
                          set(IMPLEMENTED_RELATIONS) | set(RESERVED_RELATIONS))
 
     def test_required_relations_all_declared(self):
+        # The legacy reference template declares its own eleven implemented relations plus
+        # every reserved relation. (The shared IMPLEMENTED_RELATIONS vocabulary is a superset
+        # now that key-local templates add membership/motion relations.)
+        from harmony.network_template import LEGACY_IMPLEMENTED_RELATIONS
         tpl = _valid_template()
         declared = set(tpl.relations())
-        for r in IMPLEMENTED_RELATIONS:
+        for r in LEGACY_IMPLEMENTED_RELATIONS:
             self.assertIn(r, declared, f"template must declare {r}")
         for r in RESERVED_RELATIONS:
             self.assertIn(r, declared, f"template must reserve {r}")
@@ -506,9 +510,15 @@ class TestNetworkTrainerGroups(unittest.TestCase):
         }
 
     def test_groups_are_the_network_relevance_groups(self):
-        # Only the four network-relevance groups appear (no generic trainer groups).
-        self.assertEqual(set(self.groups.keys()),
-                         set(NETWORK_GROUP_BY_KIND.values()))
+        # The legacy reference network populates exactly its four legacy-kind groups
+        # (NETWORK_GROUP_BY_KIND also carries key-local groups now, but the legacy graph has
+        # no nodes of those kinds, so trainer_groups drops them as empty).
+        legacy_group_names = {
+            NETWORK_GROUP_BY_KIND[k] for k in
+            ("major_key", "minor_key", "diminished_triad", "dominant_seventh")
+        }
+        self.assertEqual(set(self.groups.keys()), legacy_group_names)
+        self.assertTrue(set(self.groups.keys()) <= set(NETWORK_GROUP_BY_KIND.values()))
 
     def test_group_sizes_cover_every_key(self):
         # 12 major + 12 minor + 12 leading-tone dim + 12 dominant resolutions.
@@ -604,17 +614,21 @@ class TestPlannedTemplates(unittest.TestCase):
                 get_template(pt.template_id)
 
     def test_audited_candidates_are_present(self):
+        # The post-MVP candidates remain planned stubs after the core template graduates.
         ids = {pt.template_id for pt in PLANNED_TEMPLATES}
-        for expected in ("core_triad_function_network_v1",
-                         "cadence_resolution_network_v1",
-                         "inversion_space_network_v1"):
+        for expected in ("transposition_orbit_network_v1",
+                         "quality_class_network_v1",
+                         "functional_equivalence_network_v1"):
             self.assertIn(expected, ids)
+        # core has graduated into the buildable registry
+        self.assertNotIn("core_triad_function_network_v1", ids)
 
     def test_list_templates_mixes_implemented_and_planned(self):
         statuses = {t["template_id"]: t["status"] for t in list_templates()}
         self.assertEqual(statuses["dominant_diminished_relative_network_v1"],
                          "implemented")
-        self.assertEqual(statuses["core_triad_function_network_v1"], "planned")
+        self.assertEqual(statuses["core_triad_function_network_v1"], "implemented")
+        self.assertEqual(statuses["quality_class_network_v1"], "planned")
 
 
 # ---------------------------------------------------------------------------

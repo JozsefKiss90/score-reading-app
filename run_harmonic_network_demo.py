@@ -39,6 +39,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from harmony.harmonic_network import build_network
 from harmony.network_template import get_template
 from harmony.exercise_spec import HarmonyExerciseSpec
+from harmony.network_projection import project_harmony_exercise
 from run_harmony_trainer_demo import (
     HarmonyTrainerWindow, MidiService, ATLAS_GROUP,
 )
@@ -51,6 +52,8 @@ class HarmonicNetworkView(QWidget):
 
     #: Emitted with a HarmonyExerciseSpec dict when a launch button is clicked.
     launchRequested = pyqtSignal(dict)
+    #: Emitted with a typed host request from the graph (e.g. {"type":"seek", ...}).
+    hostRequested = pyqtSignal(dict)
 
     def __init__(self, payload: dict, parent=None):
         super().__init__(parent)
@@ -97,7 +100,7 @@ class HarmonicNetworkView(QWidget):
         except Exception:
             pass
 
-    # -- click -> launch -------------------------------------------------
+    # -- click -> launch / host request ----------------------------------
     def _poll_launch(self):
         if not self._ready:
             return
@@ -117,7 +120,41 @@ class HarmonicNetworkView(QWidget):
             "? JSON.stringify(window.HarmonicNetwork.takeLaunch() || null) : null",
             on_spec)
 
-    # -- sync from the trainer's current chord ---------------------------
+        # graph/timeline navigation requests (seek, ...) on the same tick
+        def on_request(val):
+            if not val:
+                return
+            try:
+                req = json.loads(val)
+            except Exception:
+                return
+            if isinstance(req, dict) and req.get("type"):
+                self.hostRequested.emit(req)
+
+        self._run_js(
+            "(window.HarmonicNetwork && window.HarmonicNetwork.takeHostRequest) "
+            "? JSON.stringify(window.HarmonicNetwork.takeHostRequest() || null) : null",
+            on_request)
+
+    # -- push drill projection / flow state to the graph -----------------
+    def send_projection(self, projection: dict):
+        if self._ready and projection:
+            self._run_js(
+                "window.HarmonicNetwork && "
+                "window.HarmonicNetwork.setProjection(%s);" % json.dumps(projection))
+
+    def clear_projection(self):
+        if self._ready:
+            self._run_js("window.HarmonicNetwork && "
+                         "window.HarmonicNetwork.clearProjection();")
+
+    def update_flow_state(self, state: dict):
+        if self._ready and state:
+            self._run_js(
+                "window.HarmonicNetwork && "
+                "window.HarmonicNetwork.updateFlowState(%s);" % json.dumps(state))
+
+    # -- sync from the trainer's current chord (legacy compat) -----------
     def highlight_from_trainer(self, target: dict):
         if self._ready and target:
             self._run_js(
@@ -158,8 +195,14 @@ class HarmonicNetworkWindow(QWidget):
         root.addWidget(splitter, 1)
 
         self.net_view.launchRequested.connect(self._on_launch)
+        self.net_view.hostRequested.connect(self._on_host_request)
 
-        # Follow the trainer's current chord and highlight it in the network.
+        #: The projection currently driving the graph (set on launch, cleared otherwise).
+        self._active_projection = None
+        self._last_flow_index = None
+
+        # Follow the trainer's current chord: when a drill is projected, drive the
+        # occurrence-level flow layer; otherwise fall back to legacy chord highlighting.
         self._sync_timer = QTimer(self)
         self._sync_timer.setInterval(400)
         self._sync_timer.timeout.connect(self._poll_sync)
@@ -183,8 +226,51 @@ class HarmonicNetworkWindow(QWidget):
             print("[NETWORK] ignoring invalid spec:", exc)
             return
         self.trainer.load_external_spec(spec)
+        # Project the launched drill onto the graph so the whole constellation +
+        # running position become visible (Drill -> Graph).
+        try:
+            projection = project_harmony_exercise(spec, self._network)
+            self._active_projection = projection
+            self._last_flow_index = None
+            self.net_view.send_projection(projection.to_dict())
+        except Exception as exc:
+            print("[NETWORK] projection failed (drill still plays):", exc)
+            self._active_projection = None
+            self.net_view.clear_projection()
+
+    def _on_host_request(self, req: dict):
+        if not isinstance(req, dict):
+            return
+        if req.get("type") == "seek" and req.get("sequenceIndex") is not None:
+            try:
+                self.trainer.seek_to_index(int(req["sequenceIndex"]))
+            except Exception:
+                pass
 
     def _poll_sync(self):
+        if self._active_projection is not None:
+            def on_state(state):
+                if not state:
+                    return
+                idx = state.get("idx")
+                if idx is None:
+                    return
+                # avoid redundant JS pushes when the running index has not changed
+                if idx == self._last_flow_index and not state.get("completed"):
+                    return
+                self._last_flow_index = idx
+                flow = {"sequenceIndex": idx}
+                if state.get("completed"):
+                    flow["correct"] = True
+                self.net_view.update_flow_state(flow)
+
+            try:
+                self.trainer.query_trainer_state(on_state)
+            except Exception:
+                pass
+            return
+
+        # no active projection -> legacy chord highlighting
         def on_target(target):
             if target:
                 self.net_view.highlight_from_trainer(target)
@@ -197,6 +283,14 @@ class HarmonicNetworkWindow(QWidget):
 
 def main(argv=None) -> int:
     argv = list(sys.argv if argv is None else argv)
+
+    # Optional first positional arg: the template id to launch (default: the legacy reference).
+    # e.g. `python run_harmonic_network_demo.py core_triad_function_network_v1`
+    template_id = None
+    for a in argv[1:]:
+        if not a.startswith("-"):
+            template_id = a
+            break
 
     QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
     app = QApplication(argv)
@@ -213,7 +307,7 @@ def main(argv=None) -> int:
             print("[NETWORK] MidiService init failed:", exc)
             midi_service = None
 
-    win = HarmonicNetworkWindow(midi_service=midi_service)
+    win = HarmonicNetworkWindow(midi_service=midi_service, template_id=template_id)
     win.resize(1560, 880)
     win.show()
     return app.exec()

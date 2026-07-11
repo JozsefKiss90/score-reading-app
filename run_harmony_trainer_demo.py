@@ -381,6 +381,24 @@ class HarmonyTrainerWindow(QWidget):
         except Exception:
             callback(None)
 
+    def seek_to_index(self, index: int):
+        """Seek the RUNNING drill to chord occurrence ``index`` (not a different exercise).
+
+        Drives the injected controller's ``window.HarmonyTrainer.goTo(i)`` (which clamps, resets
+        the per-chord satisfied/completed state, re-highlights and emits ``targetchange``). This
+        is the in-drill seek the Harmonic Network graph/timeline click uses; distinct from
+        :meth:`load_index`, which switches between exercises.
+        """
+        w = self._score_widget
+        if w is None or not getattr(w, "_html_ready", False):
+            return
+        js = ("window.HarmonyTrainer && window.HarmonyTrainer.goTo "
+              "&& window.HarmonyTrainer.goTo(%d);" % int(index))
+        try:
+            w.web.page().runJavaScript(js)
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------
     def _remove_current_score(self):
         if self._score_widget is None:

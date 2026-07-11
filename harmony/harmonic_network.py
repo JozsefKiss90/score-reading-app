@@ -39,7 +39,9 @@ from theory.diatonic_harmony import (
     generate_diatonic_triads,
     key_signature_fifths,
     note_pc,
+    roman_token_to_index,
 )
+from harmony.harmonic_flow import HarmonicPath
 from harmony.exercise_spec import (
     HarmonyExerciseSpec,
     compile_exercise,
@@ -53,6 +55,7 @@ from harmony.atlas import (
     triad_id,
     quality_id,
     function_id,
+    layer_id,
     full_key_spec,
     function_spec,
 )
@@ -74,7 +77,55 @@ NETWORK_GROUP_BY_KIND = OrderedDict([
     ("minor_key", "Network — Relative minors"),
     ("diminished_triad", "Network — Leading-tone diminished"),
     ("dominant_seventh", "Network — Dominant resolutions"),
+    # bidirectional-mapping (key-local) templates:
+    ("key_center", "Network — Key drills"),
+    ("diatonic_triad", "Network — Diatonic triads"),
+    ("function_family", "Network — Function families"),
 ])
+
+#: The seven fine ``DiatonicTriad.function_label`` values collapsed to the three broad function
+#: families the core template groups by (plan section 10.1).
+BROAD_FUNCTION = {
+    "tonic": "tonic",
+    "mediant": "tonic",
+    "predominant": "predominant",
+    "subdominant": "predominant",
+    "dominant": "dominant",
+}
+
+#: Layout order of the three function families (top, lower-right, lower-left).
+FUNCTION_LAYOUT_ORDER = ["tonic", "dominant", "predominant"]
+
+#: Canonical relations that count as harmonic motion (a path edge may reference one).
+_PATH_MOTION_RELATIONS = frozenset({
+    "resolves_to", "leading_tone_to", "prepares", "prolongs", "dominant_of",
+})
+
+#: Cadence catalogue per mode: (Roman pattern, label, cadence type). Chord content is derived
+#: from the theory engine for the active key; this is only the degree pattern (plan section 14.2).
+CADENCE_CATALOGUE = {
+    "major": [
+        (("V", "I"), "V–I", "authentic"),
+        (("IV", "I"), "IV–I", "plagal"),
+        (("V", "vi"), "V–vi", "deceptive"),
+        (("ii", "V", "I"), "ii–V–I", "authentic"),
+        (("IV", "V", "I"), "IV–V–I", "authentic"),
+        (("I", "IV", "V", "I"), "I–IV–V–I", "authentic"),
+        (("vi", "ii", "V", "I"), "vi–ii–V–I", "authentic"),
+        (("I", "V", "vi", "IV"), "I–V–vi–IV", "mixed"),
+    ],
+    "natural_minor": [
+        (("v", "i"), "v–i", "authentic"),
+        (("VII", "i"), "VII–i", "authentic"),
+        (("iv", "v", "i"), "iv–v–i", "authentic"),
+        (("i", "iv", "v", "i"), "i–iv–v–i", "authentic"),
+        (("i", "VI", "VII", "i"), "i–VI–VII–i", "mixed"),
+    ],
+}
+
+
+def _path_slug(text: str) -> str:
+    return "".join(c if c.isalnum() else "_" for c in text).strip("_").lower()
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +175,11 @@ class NetNode:
     visual_class: str = "pink"
     explanation: str = ""
     data: Dict = field(default_factory=dict)
+    #: Ontological metadata (plan section 7). Blank on the legacy classes; set on the
+    #: bidirectional-mapping templates so the UI can tell a key anchor from a chord instance.
+    semantic_level: str = ""      # key | chord | function | class | voicing | path
+    entity_role: str = ""         # anchor | instance | family | state | reference
+    canonical_ref: str = ""       # the Atlas id this node mirrors (e.g. triad:C:major:1)
 
     def to_dict(self) -> Dict:
         return {
@@ -144,6 +200,9 @@ class NetNode:
             "visualClass": self.visual_class,
             "explanation": self.explanation,
             "data": dict(self.data),
+            "semanticLevel": self.semantic_level,
+            "entityRole": self.entity_role,
+            "canonicalRef": self.canonical_ref,
         }
 
 
@@ -278,6 +337,36 @@ def _spoke_xy(index: int, n_spokes: int, radius: float,
 
 
 # ---------------------------------------------------------------------------
+# Build context (parameterised, key-local templates)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class NetworkBuildContext:
+    """Parameters a key-local template builds against (plan section 13.1).
+
+    The circle template ignores this (it builds all 12 keys from ``center_keys``); the
+    triad/function/inversion templates read ``key``/``mode``/``degree`` to build a local graph.
+    """
+
+    key: str = "C"
+    mode: str = "major"
+    degree: Optional[str] = None
+    quality: Optional[str] = None
+    pattern: "tuple" = ()
+    keys: "tuple" = ()
+
+    def to_dict(self) -> Dict:
+        return {
+            "key": self.key,
+            "mode": self.mode,
+            "degree": self.degree,
+            "quality": self.quality,
+            "pattern": list(self.pattern),
+            "keys": list(self.keys),
+        }
+
+
+# ---------------------------------------------------------------------------
 # The network
 # ---------------------------------------------------------------------------
 
@@ -286,10 +375,29 @@ class HarmonicNetwork:
     template: HarmonicNetworkTemplate
     nodes: List[NetNode]
     edges: List[NetEdge]
+    context: Optional[NetworkBuildContext] = None
+    paths: List = field(default_factory=list)     # List[HarmonicPath] (cadence template)
 
     def node(self, node_id: str) -> Optional[NetNode]:
+        return self._by_id().get(node_id)
+
+    def _by_id(self) -> Dict[str, NetNode]:
+        cache = getattr(self, "_id_cache", None)
+        if cache is None or len(cache) != len(self.nodes):
+            cache = {n.id: n for n in self.nodes}
+            object.__setattr__(self, "_id_cache", cache)
+        return cache
+
+    def nodes_of_kind(self, kind: str) -> List[NetNode]:
+        return [n for n in self.nodes if n.kind == kind]
+
+    def nodes_of_level(self, level: str) -> List[NetNode]:
+        return [n for n in self.nodes if getattr(n, "semantic_level", "") == level]
+
+    def node_by_atlas_triad_ref(self, ref: str) -> Optional[NetNode]:
         for n in self.nodes:
-            if n.id == node_id:
+            if n.kind == "diatonic_triad" and (
+                    getattr(n, "canonical_ref", "") == ref or ref in (n.atlas_refs or [])):
                 return n
         return None
 
@@ -398,6 +506,8 @@ class HarmonicNetwork:
             "legend": self.legend(),
             "launchables": self.launchables(),
             "counts": self.counts(),
+            "context": self.context.to_dict() if self.context else None,
+            "paths": [p.to_dict() for p in self.paths],
         }
 
 
@@ -408,9 +518,16 @@ class HarmonicNetwork:
 class _NetworkBuilder:
     """Internal: turns a template + the theory engine into nodes and edges."""
 
-    def __init__(self, template: HarmonicNetworkTemplate, atlas: Atlas):
+    def __init__(self, template: HarmonicNetworkTemplate, atlas: Atlas,
+                 context: Optional["NetworkBuildContext"] = None):
         self.t = template
         self.atlas = atlas
+        self.ctx = context or NetworkBuildContext(
+            key=(template.context_schema.get("key", "C")
+                 if template.context_schema else "C"),
+            mode=(template.context_schema.get("mode", "major")
+                  if template.context_schema else "major"),
+        )
         self.keys = list(template.center_keys)
         self.n = len(self.keys)
 
@@ -429,6 +546,14 @@ class _NetworkBuilder:
         self.dim_by_pc: Dict[int, str] = {}
         self._scale_cache: Dict[str, object] = {}
         self._triads_cache: Dict[str, List[DiatonicTriad]] = {}
+
+        # key-local template state (core / cadence / inversion templates)
+        self.core_key_center_id: Optional[str] = None
+        self.core_triad_by_deg: Dict[int, str] = {}
+        self.core_triad_family: Dict[int, str] = {}
+        self.core_function_by_label: Dict[str, str] = {}
+        self.inv_anchor_id: Optional[str] = None
+        self.inv_state_ids: List[str] = []
 
     # -- engine helpers --------------------------------------------------
     def _scale(self, key: str):
@@ -647,9 +772,272 @@ class _NetworkBuilder:
             self.dim_by_idx.append(xid)
             self.dim_by_pc[note_pc(vii.root)] = xid
 
+    # -- node construction (one method per node-generation rule) ---------
+    def run_node_rule(self, rule: str) -> None:
+        method = getattr(self, f"_node_{rule}", None)
+        if method is None:
+            raise ValueError(
+                f"template lists node generation rule {rule!r} with no builder method "
+                f"_node_{rule}")
+        method()
+
+    def _node_legacy_key_dom_dim_nodes(self) -> None:
+        """The reference-image 48-node builder (compat wrapper)."""
+        self.build_nodes()
+
+    def _triad_atlas_refs(self, t: DiatonicTriad, tonic: str, mode: str) -> List[str]:
+        refs: List[str] = []
+        for r in (
+            _resolve_scale_ref(self.atlas, tonic, mode),
+            _resolve_triad_ref(self.atlas, tonic, mode, t.degree_index),
+            _present(self.atlas, degree_id(mode, t.roman)),
+            _present(self.atlas, quality_id(t.chord_quality)),
+            _present(self.atlas, function_id(mode, t.function_label)),
+            _present(self.atlas, layer_id(t.interval_layer)),
+        ):
+            if r and r not in refs:
+                refs.append(r)
+        return refs
+
+    def _node_core_key_center_node(self) -> None:
+        tonic, mode = self.ctx.key, self.ctx.mode
+        lay = self.t.layout_for("key_center")
+        vc = self.t.node_class("key_center").visual_class
+        triads = generate_diatonic_triads(tonic, mode)
+        key_label = triads[0].key
+        scale_ref = _resolve_scale_ref(self.atlas, tonic, mode)
+        node_id = f"hn:key:{tonic}"
+        self.core_key_center_id = node_id
+        self._add_node(NetNode(
+            id=node_id,
+            label=key_label,
+            kind="key_center",
+            pitch_class=note_pc(tonic),
+            spelling=tonic,
+            quality="",
+            key_contexts=[key_label],
+            atlas_refs=[scale_ref] if scale_ref else [],
+            x=0.0, y=0.0, radius=lay.node_radius,
+            visual_class=vc,
+            explanation=(f"{key_label} — the tonal centre / scale context. A key anchor; the "
+                         f"tonic chord is the {triads[0].chord_symbol} triad node, not this node."),
+            data={"key": tonic, "mode": mode, "keyLabel": key_label},
+            semantic_level="key", entity_role="anchor",
+            canonical_ref=scale_ref or "",
+        ))
+
+    def _node_core_diatonic_triad_nodes(self) -> None:
+        tonic, mode = self.ctx.key, self.ctx.mode
+        lay = self.t.layout_for("diatonic_triad")
+        vc = self.t.node_class("diatonic_triad").visual_class
+        triads = generate_diatonic_triads(tonic, mode)
+        for t in triads:
+            deg = t.degree_index
+            x, y = _spoke_xy(deg, 7, lay.radius, lay.angle_offset)
+            triad_ref = _resolve_triad_ref(self.atlas, tonic, mode, deg)
+            node_id = f"hn:triad:{tonic}:{mode}:{deg}"
+            self.core_triad_by_deg[deg] = node_id
+            self.core_triad_family[deg] = BROAD_FUNCTION.get(t.function_label, "tonic")
+            spec = function_spec([t.roman], t.chord_symbol, mode, [tonic])
+            self._add_node(NetNode(
+                id=node_id,
+                label=t.chord_symbol,
+                kind="diatonic_triad",
+                pitch_class=note_pc(t.root),
+                spelling=t.root,
+                quality=t.chord_quality,
+                key_contexts=[t.key],
+                atlas_refs=self._triad_atlas_refs(t, tonic, mode),
+                trainer_specs=[_launch_entry(spec, f"Play {t.chord_symbol} ({t.roman})")],
+                x=x, y=y, radius=lay.node_radius,
+                visual_class=vc,
+                explanation=t.explanation_text,
+                data={
+                    "key": tonic, "mode": mode, "roman": t.roman, "sublabel": t.roman,
+                    "degreeIndex": deg, "degreeNumber": t.degree_number, "root": t.root,
+                    "chordSymbol": t.chord_symbol, "quality": t.chord_quality,
+                    "functionLabel": t.function_label,
+                    "functionFamily": self.core_triad_family[deg],
+                    "intervalLayer": t.interval_layer,
+                    "chordTones": list(t.pitches),
+                },
+                semantic_level="chord", entity_role="instance",
+                canonical_ref=(triad_ref or triad_id(tonic, mode, deg)),
+            ))
+
+    def _node_core_function_family_nodes(self) -> None:
+        tonic, mode = self.ctx.key, self.ctx.mode
+        lay = self.t.layout_for("function_family")
+        vc = self.t.node_class("function_family").visual_class
+        triads = generate_diatonic_triads(tonic, mode)
+        members: "OrderedDict[str, List[DiatonicTriad]]" = OrderedDict(
+            (fam, []) for fam in FUNCTION_LAYOUT_ORDER)
+        for t in triads:
+            members[BROAD_FUNCTION.get(t.function_label, "tonic")].append(t)
+        for i, fam in enumerate(FUNCTION_LAYOUT_ORDER):
+            fam_triads = members[fam]
+            x, y = _spoke_xy(i, len(FUNCTION_LAYOUT_ORDER), lay.radius, lay.angle_offset)
+            node_id = f"hn:function:{mode}:{fam}"
+            self.core_function_by_label[fam] = node_id
+            fam_ref = _present(self.atlas, function_id(mode, fam))
+            romans = [t.roman for t in fam_triads]
+            entries: List[Dict] = []
+            if romans:
+                spec = function_spec(romans, f"{fam.title()} family", mode, [tonic])
+                entries = [_launch_entry(spec, f"{fam.title()} family — enumerate "
+                                               f"{', '.join(romans)}")]
+            self._add_node(NetNode(
+                id=node_id,
+                label=f"{fam.title()} function",
+                kind="function_family",
+                pitch_class=-1,
+                spelling="",
+                quality="",
+                key_contexts=[triads[0].key],
+                atlas_refs=[fam_ref] if fam_ref else [],
+                trainer_specs=entries,
+                x=x, y=y, radius=lay.node_radius,
+                visual_class=vc,
+                explanation=(f"The {fam} function in {triads[0].key}: "
+                             f"{', '.join(romans)}. Family membership is a grouping, "
+                             f"not a progression."),
+                data={"mode": mode, "functionLabel": fam,
+                      "members": romans, "sublabel": ", ".join(romans)},
+                semantic_level="function", entity_role="family",
+                canonical_ref=fam_ref or "",
+            ))
+
+    # -- inversion template node rules -----------------------------------
+    def _ctx_degree_index(self) -> int:
+        if self.ctx.degree:
+            try:
+                return roman_token_to_index(self.ctx.degree)
+            except Exception:
+                return 0
+        return 0
+
+    def _node_inversion_identity_node(self) -> None:
+        tonic, mode = self.ctx.key, self.ctx.mode
+        deg = self._ctx_degree_index()
+        triads = generate_diatonic_triads(tonic, mode)
+        t = triads[deg]
+        lay = self.t.layout_for("diatonic_triad")
+        vc = self.t.node_class("diatonic_triad").visual_class
+        triad_ref = _resolve_triad_ref(self.atlas, tonic, mode, deg)
+        anchor_id = f"hn:inv:{tonic}:{mode}:{deg}:identity"
+        self.inv_anchor_id = anchor_id
+        self._add_node(NetNode(
+            id=anchor_id, label=t.chord_symbol, kind="diatonic_triad",
+            pitch_class=note_pc(t.root), spelling=t.root, quality=t.chord_quality,
+            key_contexts=[t.key], atlas_refs=self._triad_atlas_refs(t, tonic, mode),
+            x=0.0, y=0.0, radius=lay.node_radius, visual_class=vc,
+            explanation=(f"{t.chord_symbol} ({t.roman} in {t.key}) — the invariant chord "
+                         f"identity. Its function does not change across inversions."),
+            data={"key": tonic, "mode": mode, "roman": t.roman, "degreeIndex": deg,
+                  "chordSymbol": t.chord_symbol, "chordTones": list(t.pitches),
+                  "sublabel": t.roman},
+            semantic_level="chord", entity_role="reference",
+            canonical_ref=(triad_ref or triad_id(tonic, mode, deg)),
+        ))
+
+    def _node_inversion_state_nodes(self) -> None:
+        tonic, mode = self.ctx.key, self.ctx.mode
+        deg = self._ctx_degree_index()
+        triads = generate_diatonic_triads(tonic, mode)
+        t = triads[deg]
+        lay = self.t.layout_for("inversion_state")
+        vc = self.t.node_class("inversion_state").visual_class
+        triad_ref = _resolve_triad_ref(self.atlas, tonic, mode, deg)
+        figured = {0: "5/3", 1: "6", 2: "6/4"}
+        labels = {0: "root position", 1: "first inversion", 2: "second inversion"}
+        self.inv_state_ids = []
+        for inv in (0, 1, 2):
+            x, y = _spoke_xy(inv, 3, lay.radius, lay.angle_offset)
+            bass = t.pitches[inv]                      # [root, third, fifth][inv]
+            slash = t.chord_symbol if inv == 0 else f"{t.chord_symbol}/{bass}"
+            sid = f"hn:inv:{tonic}:{mode}:{deg}:{inv}"
+            self.inv_state_ids.append(sid)
+            self._add_node(NetNode(
+                id=sid, label=slash, kind="inversion_state",
+                pitch_class=note_pc(t.root), spelling=t.root, quality=t.chord_quality,
+                key_contexts=[t.key], atlas_refs=self._triad_atlas_refs(t, tonic, mode),
+                x=x, y=y, radius=lay.node_radius, visual_class=vc,
+                explanation=(f"{labels[inv]}: bass {bass}, figured bass {figured[inv]}. "
+                             f"Same chord identity as {t.chord_symbol}."),
+                data={"inversion": inv, "figuredBass": figured[inv],
+                      "inversionLabel": labels[inv], "bassNote": bass,
+                      "bassPitchClass": note_pc(bass), "roman": t.roman,
+                      "chordSymbol": t.chord_symbol, "sublabel": figured[inv],
+                      "key": tonic, "mode": mode, "degreeIndex": deg},
+                semantic_level="voicing", entity_role="state",
+                canonical_ref=(triad_ref or triad_id(tonic, mode, deg)),
+            ))
+
     # -- edge construction (one method per generation rule) --------------
     def run_rule(self, rule: str) -> None:
-        getattr(self, f"_rule_{rule}")()
+        method = getattr(self, f"_rule_{rule}", None)
+        if method is None:
+            raise ValueError(
+                f"template lists generation rule {rule!r} with no builder method _rule_{rule}")
+        method()
+
+    def _rule_inversion_adjacency_edges(self) -> None:
+        anchor = self.inv_anchor_id
+        if anchor:
+            for sid in self.inv_state_ids:
+                self._add_edge(sid, anchor, "inversion_of",
+                               explanation="A voicing of the same chord identity.",
+                               strength=0.6)
+        for a, b in zip(self.inv_state_ids, self.inv_state_ids[1:]):
+            self._add_edge(a, b, "voice_leads_to",
+                           explanation="Smooth voice-leading to the next inversion.",
+                           strength=0.5)
+
+    def _rule_diatonic_membership_edges(self) -> None:
+        """Each triad belongs_to_key its key centre and is member_of_function its family."""
+        key_id = self.core_key_center_id
+        for deg, tid in self.core_triad_by_deg.items():
+            if key_id:
+                self._add_edge(tid, key_id, "belongs_to_key",
+                               explanation="This triad is diatonic to the key.",
+                               strength=0.5)
+            fam = self.core_triad_family.get(deg)
+            fam_id = self.core_function_by_label.get(fam)
+            if fam_id:
+                self._add_edge(tid, fam_id, "member_of_function",
+                               explanation=f"Member of the {fam} function family.",
+                               strength=0.5)
+
+    def _rule_core_function_motion_edges(self) -> None:
+        """The supported functional motions between triad nodes (never enumeration).
+
+        Degree-indexed so it works in both modes: predominants (ii/IV) prepare the dominant
+        (V), the dominant resolves to the tonic (V->I), the leading-tone triad resolves up
+        (vii°->I), plus the plagal IV->I and deceptive V->vi. In natural minor the analogous
+        degrees apply (VII->i is a subtonic resolution, not a leading-tone one).
+        """
+        d = self.core_triad_by_deg
+        mode = self.ctx.mode
+
+        def link(src_deg, dst_deg, relation, why, strength):
+            a, b = d.get(src_deg), d.get(dst_deg)
+            if a and b:
+                self._add_edge(a, b, relation, explanation=why, strength=strength)
+
+        # predominant -> dominant
+        link(1, 4, "prepares", "ii prepares the dominant.", 0.7)
+        link(3, 4, "prepares", "IV prepares the dominant.", 0.7)
+        # dominant -> tonic
+        link(4, 0, "resolves_to", "The dominant resolves to the tonic.", 1.0)
+        # leading-tone / subtonic -> tonic
+        if mode == "major":
+            link(6, 0, "leading_tone_to", "The leading-tone triad resolves up to the tonic.", 0.9)
+            link(6, 0, "resolves_to", "vii° resolves to the tonic.", 0.9)
+        else:
+            link(6, 0, "resolves_to", "The subtonic resolves to the tonic (minor).", 0.8)
+        # plagal + deceptive
+        link(3, 0, "resolves_to", "Plagal motion (IV -> I).", 0.6)
+        link(4, 5, "resolves_to", "Deceptive motion (V -> vi).", 0.6)
 
     def _rule_major_circle_by_fifths(self) -> None:
         for i in range(self.n):
@@ -834,18 +1222,72 @@ class _NetworkBuilder:
 
 
 def build_network(template: Optional[HarmonicNetworkTemplate] = None,
-                  atlas: Optional[Atlas] = None) -> HarmonicNetwork:
+                  atlas: Optional[Atlas] = None,
+                  context: Optional[NetworkBuildContext] = None) -> HarmonicNetwork:
     """Build a :class:`HarmonicNetwork` from a template (default: the v1 reference).
 
-    Pure & deterministic: the same template always yields the same nodes/edges.
+    Pure & deterministic: the same template + context always yields the same nodes/edges.
+    ``context`` parameterises key-local templates (core / cadence / inversion); the circle
+    template ignores it.  A template with no ``node_generation_rules`` uses the legacy 4-kind
+    builder for backward compatibility.
     """
     tpl = template or get_template()
     tpl.validate()
-    builder = _NetworkBuilder(tpl, atlas or build_atlas())
-    builder.build_nodes()
+    builder = _NetworkBuilder(tpl, atlas or build_atlas(), context)
+    if tpl.node_generation_rules:
+        for rule in tpl.node_generation_rules:
+            builder.run_node_rule(rule)
+        ctx_out = builder.ctx           # key-local templates carry their context
+    else:
+        builder.build_nodes()           # legacy default (reference template)
+        ctx_out = None                  # the circle template is not key-local
     for rule in tpl.generation_rules:
         builder.run_rule(rule)
-    return HarmonicNetwork(template=tpl, nodes=builder.nodes, edges=builder.edges)
+    paths = _build_paths(builder, tpl)
+    return HarmonicNetwork(template=tpl, nodes=builder.nodes, edges=builder.edges,
+                           context=ctx_out, paths=paths)
+
+
+def _build_paths(builder: "_NetworkBuilder", tpl: HarmonicNetworkTemplate) -> List:
+    """Build first-class :class:`HarmonicPath` arcs for a path-carrying template.
+
+    The cadence template reuses the core triad nodes; each catalogue entry becomes an ordered
+    path over those nodes, recording only the canonical theory edges that independently exist
+    along the route (so the path never asserts an unsupported resolution).
+    """
+    if tpl.launch_rules.get("path_catalogue") != "cadence":
+        return []
+    ctx = builder.ctx
+    catalogue = CADENCE_CATALOGUE.get(ctx.mode, [])
+    if not catalogue or not builder.core_triad_by_deg:
+        return []
+    triads = generate_diatonic_triads(ctx.key, ctx.mode)
+    key_label = triads[0].key
+    edge_by_pair = {(e.source, e.target): e for e in builder.edges}
+
+    paths: List[HarmonicPath] = []
+    for romans, label, cadence_type in catalogue:
+        try:
+            degs = [roman_token_to_index(r) for r in romans]
+        except Exception:
+            continue
+        node_ids = [builder.core_triad_by_deg.get(d) for d in degs]
+        if any(n is None for n in node_ids):
+            continue
+        edge_ids: List[str] = []
+        for a, b in zip(node_ids, node_ids[1:]):
+            e = edge_by_pair.get((a, b))
+            if e and e.relation in _PATH_MOTION_RELATIONS:
+                edge_ids.append(e.id)
+        pid = f"path:{_path_slug(label)}:{ctx.key}:{ctx.mode}"
+        paths.append(HarmonicPath(
+            id=pid, label=label, key_context=key_label, mode=ctx.mode,
+            node_ids=tuple(node_ids), edge_ids=tuple(edge_ids), romans=tuple(romans),
+            cadence_type=cadence_type, semantic_group="functional_path",
+            launch_action_ids=(f"act:path:{pid}:block", f"act:path:{pid}:arp",
+                               f"act:path:{pid}:lab"),
+        ))
+    return paths
 
 
 def build_network_payload(template_id: Optional[str] = None) -> Dict:
