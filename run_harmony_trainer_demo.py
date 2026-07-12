@@ -399,6 +399,20 @@ class HarmonyTrainerWindow(QWidget):
         except Exception:
             pass
 
+    def current_spec(self) -> "Optional[HarmonyExerciseSpec]":
+        """The active :class:`HarmonyExerciseSpec` (the exercise combo's selection), or ``None``.
+
+        Additive, read-only. Lets a host (e.g. the Harmonic Network scene launcher) detect when
+        the user switches drills so it can re-route the graph scene per exercise. The trainer
+        itself is unchanged."""
+        try:
+            i = self.cmb.currentIndex()
+            if 0 <= i < len(self._specs):
+                return self._specs[i]
+        except Exception:
+            pass
+        return None
+
     # ------------------------------------------------------------------
     def _remove_current_score(self):
         if self._score_widget is None:

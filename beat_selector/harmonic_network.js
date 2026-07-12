@@ -1208,8 +1208,374 @@
     return { ok: true, nodes: (data.nodes || []).length, edges: (data.edges || []).length };
   }
 
+  // ======================================================================
+  // Scene mode (GraphScene / graph_scene_router) -- the PRIMARY runtime path.
+  //
+  // The host routes the active exercise to a bounded, topic-specific
+  // GraphScene and pushes it with setScene(); the legacy init/setProjection
+  // API above stays for the standalone tonal-graph demo + its Node test.
+  //
+  // A scene is self-contained: nodes carry x/y + visualClass + entityType,
+  // edges carry a LAYER (structure/theory/sequence/voice_leading/context),
+  // occurrenceMap carries the running drill, layerDefinitions drive the
+  // toggles. Rendered scene-natively with its OWN isolated state (so no legacy
+  // pitch-class highlight can run in parallel), reusing the low-level helpers.
+  // ======================================================================
+  var SCENE_VC_COLOR = {
+    slate: "#64748b", teal: "#14b8a6", amber: "#f59e0b", green: "#22c55e",
+    rose: "#f43f5e", purple: "#a855f7", pink: "#ec4899", blue: "#38bdf8", yellow: "#facc15",
+  };
+  var SCENE_ENTITY_LABEL = {
+    key: "Key context", triad: "Diatonic triad", seventh: "Dominant seventh",
+    diminished: "Diminished", degree: "Abstract degree", function: "Function family",
+    quality: "Quality class", inversion: "Inversion voicing", occurrence: "Overlay chord",
+    score_slice: "Score chord",
+  };
+  // Entity types that are persistent CONTEXT anchors: a secondary style, never the current chord.
+  var SCENE_CONTEXT_TYPES = { key: 1, function: 1, degree: 1, quality: 1 };
+
+  var scene = null;                 // the active GraphScene dict (null in legacy/explore)
+  var sceneNodeById = {};
+  var sceneOccByNode = {};          // nodeId -> [occurrence]
+  var sceneOccByIndex = {};         // sequenceIndex -> occurrence
+  var sceneLayerVisible = {};       // layerId -> bool
+  var sceneCurrentIdx = null;       // running trainer position (sequence index)
+  var sceneVisitedIdx = new Set();
+  var sceneCorrectByIdx = {};       // sequenceIndex -> "correct" | "incorrect"
+  var sceneSelectedNodeId = null;
+
+  function sceneNextIdx() { return sceneCurrentIdx == null ? 0 : sceneCurrentIdx + 1; }
+  function sceneNodeColor(n) { return SCENE_VC_COLOR[n.visualClass] || "#64748b"; }
+
+  function indexScene() {
+    sceneNodeById = {}; sceneOccByNode = {}; sceneOccByIndex = {};
+    if (!scene) return;
+    (scene.nodes || []).forEach(function (n) { sceneNodeById[n.id] = n; });
+    (scene.occurrenceMap || []).forEach(function (o) {
+      (sceneOccByNode[o.nodeId] = sceneOccByNode[o.nodeId] || []).push(o);
+      sceneOccByIndex[o.sequenceIndex] = o;
+    });
+  }
+
+  // Replace whatever scene is showing. Clears any legacy projection/sync state so no stale
+  // highlight (or the old pitch-class sync) can run in parallel with the active scene.
+  function setScene(payload) {
+    scene = payload || null;
+    sceneSelectedNodeId = null; sceneCurrentIdx = null;
+    sceneVisitedIdx = new Set(); sceneCorrectByIdx = {};
+    projection = null; previewProjection = null; syncNodeIds = []; syncPrimaryId = null;
+    selectedNodeId = null; selectedEdgeId = null;
+    mode = "scene";
+    if (!scene) return clearScene("no scene");
+    indexScene();
+    // an honest fail-closed scene: prominent "no graph" view, trainer keeps running
+    if (scene.sceneType === "unsupported" || !(scene.nodes || []).length) {
+      return renderSceneUnsupportedView(scene.title, (scene.warnings || []).join(" ")
+        || scene.subtitle || "");
+    }
+    sceneLayerVisible = {};
+    (scene.layerDefinitions || []).forEach(function (l) {
+      sceneLayerVisible[l.id] = !!l.defaultVisible;
+    });
+    renderSceneHeader(scene);
+    renderSceneControls();
+    renderSceneGraph();
+    renderSceneTimeline();
+    renderSceneInfoPlaceholder();
+    return sceneExportState();
+  }
+
+  function clearScene(reason) {
+    scene = null; sceneNodeById = {}; sceneOccByNode = {}; sceneOccByIndex = {};
+    sceneCurrentIdx = null; sceneVisitedIdx = new Set(); sceneCorrectByIdx = {};
+    sceneSelectedNodeId = null; mode = "scene";
+    return renderSceneUnsupportedView("No harmonic graph for this exercise", reason || "");
+  }
+
+  // The honest fail-closed view: a prominent "no graph" message; the trainer keeps running.
+  function renderSceneUnsupportedView(title, why) {
+    renderSceneHeader({ title: title || "No harmonic graph for this exercise", subtitle: "",
+      sceneType: "unsupported", pedagogicalGoal: "", warnings: why ? [why] : [] });
+    var center = byId("hnCenter");
+    if (center) {
+      clear(center);
+      center.appendChild(el("div", { class: "hnUnsupported" }, [
+        el("div", { class: "hnUnsupportedTitle",
+          text: "No suitable harmonic graph is available for this exercise yet." }),
+        el("div", { class: "hnUnsupportedWhy", text: why || "" }),
+      ]));
+    }
+    var left = byId("hnLeft"); if (left) clear(left);
+    var tl = byId("hnTimeline"); if (tl) clear(tl);
+    var sum = byId("hnSummary"); if (sum) clear(sum);
+    var right = byId("hnRight");
+    if (right) {
+      clear(right);
+      right.appendChild(el("div", { class: "placeholder",
+        text: "The trainer keeps running — there is just no honest harmonic graph for this "
+            + "exercise type yet." }));
+    }
+    return sceneExportState();
+  }
+
+  // The host pushes the running trainer position each poll (does NOT rebuild the scene).
+  function updateOccurrenceState(state) {
+    if (!scene || !state) return sceneExportState();
+    var idx = state.sequenceIndex;
+    if (idx == null && state.occurrenceId != null) {
+      (scene.occurrenceMap || []).forEach(function (o) {
+        if (o.occurrenceId === state.occurrenceId) idx = o.sequenceIndex;
+      });
+    }
+    if (idx != null && sceneOccByIndex[idx]) {
+      if (sceneCurrentIdx != null && sceneCurrentIdx !== idx) sceneVisitedIdx.add(sceneCurrentIdx);
+      sceneCurrentIdx = idx;
+      if (state.correct === true) sceneCorrectByIdx[idx] = "correct";
+      else if (state.correct === false) sceneCorrectByIdx[idx] = "incorrect";
+    }
+    renderSceneGraph();
+    renderSceneTimeline();
+    return sceneExportState();
+  }
+
+  function requestSceneSeek(sequenceIndex) {
+    var o = sceneOccByIndex[sequenceIndex];
+    return enqueueHostRequest({ type: "seek", sequenceIndex: sequenceIndex,
+      occurrenceId: o ? o.occurrenceId : null });
+  }
+
+  function renderSceneHeader(s) {
+    var t = byId("hnTitle"), sub = byId("hnSubtitle"), meta = byId("hnSceneMeta");
+    if (t) t.textContent = (s && s.title) || "Harmonic scene";
+    if (sub) sub.textContent = (s && s.subtitle) || "";
+    if (!meta) return;
+    clear(meta);
+    if (!s) return;
+    meta.appendChild(el("span", { class: "sceneChip sceneChip--" + (s.sceneType || ""),
+      text: String(s.sceneType || "").replace(/_/g, " ") }));
+    if (s.pedagogicalGoal) meta.appendChild(el("span", { class: "sceneGoal", text: s.pedagogicalGoal }));
+    (s.warnings || []).forEach(function (w) {
+      meta.appendChild(el("div", { class: "sceneWarn", text: w }));
+    });
+  }
+
+  function sceneEntityColorByType(et) {
+    var ns = scene ? (scene.nodes || []) : [];
+    for (var i = 0; i < ns.length; i++) if (ns[i].entityType === et) return sceneNodeColor(ns[i]);
+    return "#64748b";
+  }
+
+  function renderSceneControls() {
+    var root = byId("hnLeft"); if (!root) return; clear(root);
+    if (!scene) return;
+    var lg = el("div", { class: "ctlGroup" }, [el("h2", { text: "Layers" })]);
+    (scene.layerDefinitions || []).forEach(function (l) {
+      var cb = el("input", { type: "checkbox" });
+      cb.checked = !!sceneLayerVisible[l.id];
+      cb.addEventListener("change", function () {
+        sceneLayerVisible[l.id] = !!cb.checked; renderSceneGraph();
+      });
+      lg.appendChild(el("label", { class: "toggleRow" }, [cb,
+        el("span", { class: "relLabel" }, [el("span", { text: l.label }),
+          el("small", { text: l.description || l.id })])]));
+    });
+    root.appendChild(lg);
+    var counts = (scene.counts && scene.counts.nodesByType) || {};
+    var eg = el("div", { class: "ctlGroup" }, [el("h2", { text: "Node types" })]);
+    Object.keys(counts).forEach(function (et) {
+      eg.appendChild(el("div", { class: "toggleRow" }, [
+        el("span", { class: "swatch", style: "background:" + sceneEntityColorByType(et) }),
+        el("span", { class: "relLabel" },
+          [(SCENE_ENTITY_LABEL[et] || et) + " (" + counts[et] + ")"])]));
+    });
+    root.appendChild(eg);
+  }
+
+  function sceneVisibleEdges() {
+    if (!scene) return [];
+    return (scene.edges || []).filter(function (e) {
+      return sceneLayerVisible[e.layer] !== false
+        && sceneNodeById[e.source] && sceneNodeById[e.target];
+    });
+  }
+
+  function sceneNodeStateClass(n) {
+    var c = "";
+    var occs = sceneOccByNode[n.id] || [];
+    if (occs.length) c += " in-projection";
+    if (SCENE_CONTEXT_TYPES[n.entityType]) c += " is-anchor";   // persistent secondary context
+    if (occs.length) {
+      var cur = sceneCurrentIdx, nxt = sceneNextIdx();
+      var isCurrent = cur != null && occs.some(function (o) { return o.sequenceIndex === cur; });
+      var isNext = occs.some(function (o) { return o.sequenceIndex === nxt; });
+      var isVisited = occs.some(function (o) { return sceneVisitedIdx.has(o.sequenceIndex); });
+      if (isCurrent) c += " is-current";
+      else if (isNext) c += " is-next";
+      else if (isVisited) c += " is-visited";
+      var corr = cur != null ? sceneCorrectByIdx[cur] : null;
+      if (isCurrent && corr === "correct") c += " is-correct";
+      else if (isCurrent && corr === "incorrect") c += " is-incorrect";
+      c += mappingStatusClass(occs[0].mappingStatus);
+    }
+    if (n.entityType === "occurrence") c += " is-proxy";
+    if (n.id === sceneSelectedNodeId) c += " sel";
+    return c;
+  }
+
+  function renderSceneGraph() {
+    var root = byId("hnCenter"); if (!root) return; clear(root);
+    if (!scene) return;
+    if (!document.createElementNS) {                 // headless summary (Node test)
+      root.appendChild(el("div", { class: "hnFallback", dataset: { scene: scene.sceneType },
+        text: (scene.nodes || []).length + " nodes, " + (scene.edges || []).length + " edges, " +
+              (scene.occurrenceMap || []).length + " occurrences" +
+              (sceneCurrentIdx != null ? " @" + sceneCurrentIdx : "") }));
+      return;
+    }
+    var s = svg("svg", { id: "hnSvg", viewBox: sceneViewBox() });
+    var defs = svg("defs", {}); var used = {};
+    sceneVisibleEdges().forEach(function (e) { used[e.visualClass] = edgeColor(e.visualClass); });
+    Object.keys(used).forEach(function (vc) {
+      var m = svg("marker", { id: "sarw-" + vc, viewBox: "0 0 10 10", refX: "9", refY: "5",
+        markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse" });
+      m.appendChild(svg("path", { d: "M0,0 L10,5 L0,10 z", fill: used[vc] }));
+      defs.appendChild(m);
+    });
+    s.appendChild(defs);
+    sceneVisibleEdges().forEach(function (e) {
+      var a = sceneNodeById[e.source], b = sceneNodeById[e.target];
+      var p = svg("path", {
+        class: "hnEdge edge edge--" + e.visualClass + " scene-layer--" + e.layer,
+        d: edgePath(a, b), stroke: edgeColor(e.visualClass) });
+      if (e.directed) p.setAttribute("marker-end", "url(#sarw-" + e.visualClass + ")");
+      p.addEventListener("click", function () { selectSceneNode(e.source); });
+      s.appendChild(p);
+    });
+    (scene.nodes || []).forEach(function (n) {
+      var g = svg("g", { class: "hnNode" + sceneNodeStateClass(n), "data-id": n.id,
+        transform: "translate(" + n.x + "," + n.y + ")" });
+      g.appendChild(svg("circle", { r: n.radius || 18, fill: sceneNodeColor(n) }));
+      var tx = svg("text", n.sublabel ? { dy: "-3" } : {});
+      tx.textContent = n.label; g.appendChild(tx);
+      if (n.sublabel) {
+        var ts = svg("text", { class: "sub", dy: "9" });
+        ts.textContent = n.sublabel; g.appendChild(ts);
+      }
+      g.addEventListener("click", function () {
+        selectSceneNode(n.id);
+        var occs = sceneOccByNode[n.id];
+        if (occs && occs.length) requestSceneSeek(occs[0].sequenceIndex);
+      });
+      s.appendChild(g);
+    });
+    root.appendChild(s);
+  }
+
+  function renderSceneTimeline() {
+    var root = byId("hnTimeline"); if (!root) return; clear(root);
+    if (!scene || !(scene.occurrenceMap || []).length) return;
+    var nxt = sceneNextIdx();
+    scene.occurrenceMap.forEach(function (o) {
+      var cls = "occChip";
+      if (o.sequenceIndex === sceneCurrentIdx) cls += " is-current";
+      else if (o.sequenceIndex === nxt) cls += " is-next";
+      else if (sceneVisitedIdx.has(o.sequenceIndex)) cls += " is-visited";
+      cls += mappingStatusClass(o.mappingStatus);
+      var corr = sceneCorrectByIdx[o.sequenceIndex];
+      if (corr) cls += (corr === "correct" ? " is-correct" : " is-incorrect");
+      root.appendChild(el("div", { class: cls, dataset: { idx: String(o.sequenceIndex) },
+        onClick: (function (i) { return function () { requestSceneSeek(i); }; })(o.sequenceIndex) },
+        [
+          el("span", { class: "occIdx", text: String(o.sequenceIndex + 1) }),
+          el("span", { class: "occRoman", text: o.roman || "" }),
+          el("span", { class: "occChord", text: o.chordSymbol || "" }),
+          el("span", { class: "occKey", text: o.keyContext || "" }),
+          el("span", { class: "occStatus occStatus--" + o.mappingStatus, text: o.mappingStatus }),
+        ]));
+    });
+  }
+
+  function renderSceneInfoPlaceholder() {
+    var root = byId("hnRight"); if (!root) return; clear(root);
+    if (!scene) return;
+    root.appendChild(el("div", { class: "placeholder",
+      text: "Click a node to see its role in this scene, or a timeline chip to seek the drill." }));
+  }
+
+  function selectSceneNode(id) {
+    var n = sceneNodeById[id]; if (!n) return null;
+    sceneSelectedNodeId = id;
+    renderSceneGraph();
+    renderSceneNodeInfo(n);
+    return id;
+  }
+
+  function renderSceneNodeInfo(n) {
+    var root = byId("hnRight"); if (!root) return; clear(root);
+    root.appendChild(el("span", { class: "kind k-" + ((n.data && n.data.kind) || n.entityType),
+      text: SCENE_ENTITY_LABEL[n.entityType] || n.entityType }));
+    root.appendChild(el("h2", { text: n.label }));
+    if (n.explanation) root.appendChild(el("div", { class: "expl", text: n.explanation }));
+    (sceneOccByNode[n.id] || []).forEach(function (o) {
+      var d = o.detail || {};
+      var sect = el("div", { class: "sect" },
+        [el("h3", { text: "Occurrence " + (o.sequenceIndex + 1) })]);
+      [["key context", d.keyContext], ["Roman", d.roman], ["chord", d.chordSymbol],
+       ["chord tones", (d.chordTones || []).join(" ")], ["quality", d.quality],
+       ["interval layer", d.intervalLayer], ["broad function", d.broadFunction],
+       ["function", d.functionLabel], ["why here", d.whyBelongs],
+       ["→ next", d.relationToNext], ["edge type", d.edgeType]].forEach(function (kv) {
+        if (kv[1]) sect.appendChild(el("div", { class: "detailRow",
+          html: "<b>" + esc(kv[0]) + ":</b> " + esc(kv[1]) }));
+      });
+      root.appendChild(sect);
+    });
+  }
+
+  function sceneViewBox() {
+    var pad = 46, ns = scene ? (scene.nodes || []) : [];
+    if (!ns.length) return "-360 -360 720 720";
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    ns.forEach(function (n) {
+      var r = (n.radius || 18) + 16;
+      minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r);
+      minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r);
+    });
+    return (minX - pad) + " " + (minY - pad) + " " +
+           (maxX - minX + 2 * pad) + " " + (maxY - minY + 2 * pad);
+  }
+
+  function sceneExportState() {
+    return {
+      mode: mode,
+      sceneId: scene && scene.sceneId,
+      sceneType: scene && scene.sceneType,
+      title: scene && scene.title,
+      nodes: scene ? (scene.nodes || []).length : 0,
+      edges: scene ? (scene.edges || []).length : 0,
+      visibleEdges: sceneVisibleEdges().length,
+      occurrences: scene ? (scene.occurrenceMap || []).length : 0,
+      currentIndex: sceneCurrentIdx,
+      nextIndex: scene ? sceneNextIdx() : null,
+      visited: sceneVisitedIdx.size,
+      selectedNode: sceneSelectedNodeId,
+      layers: Object.assign({}, sceneLayerVisible),
+      hostRequests: hostRequestQueue.length,
+      warnings: scene ? (scene.warnings || []).slice() : [],
+    };
+  }
+
   var HarmonicNetwork = {
     init: init,
+    // -- scene mode (primary runtime path) --
+    setScene: setScene,
+    clearScene: clearScene,
+    updateOccurrenceState: updateOccurrenceState,
+    requestSceneSeek: requestSceneSeek,
+    selectSceneNode: selectSceneNode,
+    sceneState: sceneExportState,
+    sceneNodeIds: function () { return Object.keys(sceneNodeById); },
+    sceneNodeById: function (id) { return sceneNodeById[id]; },
     selectNode: selectNode,
     selectEdge: selectEdge,
     setFilter: setFilter,

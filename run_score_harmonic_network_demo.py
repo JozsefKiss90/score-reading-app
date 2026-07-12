@@ -56,20 +56,20 @@ def build_demo_payloads(score_id: str = _DEFAULT_SCORE_ID) -> Dict:
 
     Returns ``{analysis, graph, network, atlas, scoreFile}`` -- no Qt involved.
     """
-    from harmony.harmonic_network import build_network
-    from harmony.network_template import get_template
     from harmony.atlas import build_atlas
+    from harmony.graph_scene_generators import build_score_scene
 
     result = build_analysis(score_id)
     graph = build_score_graph(result)
-    network = build_network(
-        get_template("dominant_diminished_relative_network_v1")).to_payload()
+    # The network pane now shows a score-specific GraphScene generated FROM the score itself
+    # (score_harmonic_path) -- not the legacy graph with score slices forced onto it (plan 5.J / 8).
+    score_scene = build_score_scene(result)
     atlas = build_atlas().to_json()
     score_file = score_file_path(score_id)
     return {
         "analysis": result.to_dict(),
         "graph": graph.to_payload(),
-        "network": network,
+        "scoreScene": score_scene.to_dict(),
         "atlas": atlas,
         "scoreFile": str(score_file) if score_file else None,
         "result": result,            # the live object (for the host)
@@ -246,6 +246,10 @@ def _build_qt():  # imported lazily so the module is importable without a displa
             self._atlas = build_atlas()
             self._measures = sorted(s.measure for s in self._result.slices)
             self._current = self._measures[0] if self._measures else 1
+            # measure -> the score scene's occurrence index (same slice order as build_score_scene)
+            self._slice_index = {
+                sl.measure: i for i, sl in
+                enumerate(sorted(self._result.slices, key=lambda s: s.measure))}
 
             soul_payload = {"analysis": payloads["analysis"],
                             "graph": payloads["graph"]}
@@ -256,7 +260,7 @@ def _build_qt():  # imported lazily so the module is importable without a displa
                 mxl = str(ensure_local_bwv846() or "")
             self.center = ScoreCenterWidget(mxl or None, midi_service=midi_service)
 
-            self.net = HarmonicNetworkView(payloads["network"])
+            self.net = HarmonicNetworkView(initial_scene=payloads["scoreScene"])
             self.atlas_view = AtlasView(payloads["atlas"])
 
             right = QSplitter(Qt.Orientation.Vertical)
@@ -282,7 +286,6 @@ def _build_qt():  # imported lazily so the module is importable without a displa
             self.center.prevRequested.connect(self._prev)
             self.center.nextRequested.connect(self._next)
             self.center.playToggled.connect(self._toggle_play)
-            self.net.launchRequested.connect(self._on_launch_ignored)
             self.atlas_view.launchRequested.connect(self._on_launch_ignored)
 
             self._play_timer = QTimer(self)
@@ -302,7 +305,9 @@ def _build_qt():  # imported lazily so the module is importable without a displa
             if sl is None:
                 return
             try:
-                self.net.highlight_from_trainer(sl.network_target())
+                idx = self._slice_index.get(measure)
+                if idx is not None:
+                    self.net.update_occurrence_state({"sequenceIndex": idx})
             except Exception:
                 pass
             try:

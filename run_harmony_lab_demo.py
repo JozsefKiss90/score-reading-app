@@ -59,8 +59,13 @@ from harmony.exercise_spec import HarmonyExerciseSpec
 from harmony.curriculum import get_curriculum
 from harmony.curriculum_explanations import build_curriculum_payload
 from harmony.curriculum_progress import ProgressStore
+from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene
+from harmony.graph_scene_generators import (
+    build_legacy_scene, build_functional_progression_scene, progression_group_map,
+)
 from run_harmony_trainer_demo import HarmonyTrainerWindow, MidiService, CircleView
 from run_harmony_atlas_demo import AtlasView
+from run_harmonic_network_demo import HarmonicNetworkView
 
 _BEAT = Path(__file__).resolve().parent / "beat_selector"
 _LAB_HTML = _BEAT / "harmony_lab.html"               # legacy flat catalogue (kept)
@@ -445,6 +450,14 @@ class HarmonyLabWindow(QWidget):
         self._current_node_id: Optional[str] = None   # the playing curriculum leaf
         self._completed_nodes: set = set()            # leaves recorded this session
 
+        # Harmonic Scene state: the routed scene + its running occurrence position (with cross-key
+        # functional-progression group switching, mirroring the standalone network window).
+        self._scene_active = None
+        self._scene_active_ex = None                  # the HarmonyExerciseSpec driving the scene
+        self._scene_last_idx: Optional[int] = None
+        self._scene_prog_groups = None                # cross-key progression group map, or None
+        self._scene_shown_group = 0
+
         # Semantic index: a trainer drill's signature -> the owning curriculum
         # leaf id, so an Atlas / Circle click filters the curriculum even though
         # those panels synthesise their own exercise ids.
@@ -468,9 +481,13 @@ class HarmonyLabWindow(QWidget):
         self.circle_view = LabCircleView(circle_payload)
         self.cheatsheet_view = LabCheatsheetView(circle_payload.get("cheatsheet", {}))
         self.mapping_view = LabMappingView()
+        # The curriculum-driven Harmonic Scene pane: the graph is routed + rebuilt per selected
+        # exercise (setScene), not one fixed graph. Starts on the Explore key-relation scene.
+        self.scene_view = HarmonicNetworkView(initial_scene=build_legacy_scene().to_dict())
 
         self.right_tabs = QTabWidget()
         self.right_tabs.addTab(self.atlas_view, "Atlas")
+        self.right_tabs.addTab(self.scene_view, "Harmonic Scene")
         self.right_tabs.addTab(self.circle_view, "Circle of Fifths")
         self.right_tabs.addTab(self.cheatsheet_view, "Cheatsheet")
         self.right_tabs.addTab(self.mapping_view, "Current Mapping")
@@ -568,6 +585,8 @@ class HarmonyLabWindow(QWidget):
             self._launch_drill(node_id, spec)
         else:
             self._launch_experiment(node_id, spec)
+        # Route the selected exercise to its bounded harmonic scene + push it to the graph pane.
+        self._load_scene(node_id, spec)
         # Mark the exercise as started + refresh the progress overlay.
         self._current_node_id = node_id
         self._completed_nodes.discard(node_id)
@@ -606,6 +625,80 @@ class HarmonyLabWindow(QWidget):
             tokens = normalise_pattern(list(spec.parameters.get("pattern", [])))
             self._cadence_node_id = self._atlas.cadence_node_id(tokens, spec.mode)
         self.trainer.load_external_lab(musicxml, payload)
+
+    # -- curriculum -> Harmonic Scene routing ----------------------------
+    def _load_scene(self, node_id: str, spec: LabExperimentSpec):
+        """Route the selected curriculum exercise to a bounded scene and push it to the pane."""
+        node = self._curriculum.find(node_id)
+        meta = {}
+        if node is not None and getattr(node, "graph_scene_type", None):
+            meta["graph_scene_type"] = node.graph_scene_type
+        inner = None
+        if spec.concept == "drill":
+            try:
+                inner = HarmonyExerciseSpec.from_dict(spec.parameters["exercise"])
+            except Exception:
+                inner = None
+            req = GraphSceneRequest(curriculum_node_id=node_id, exercise_spec=inner,
+                                    source_metadata=meta)
+        else:
+            req = GraphSceneRequest(curriculum_node_id=node_id, lab_spec=spec, source_metadata=meta)
+        try:
+            scene = build_graph_scene(req)
+        except Exception as exc:  # never let scene routing disturb the trainer
+            print("[LAB] scene routing failed (trainer keeps running):", exc)
+            self.scene_view.clear_scene("scene routing failed")
+            self._scene_active = None
+            return
+        self._scene_active = scene
+        self._scene_active_ex = inner
+        self._scene_last_idx = None
+        self._scene_shown_group = 0
+        self._scene_prog_groups = None
+        if (scene.scene_type == "functional_progression"
+                and scene.metadata.get("totalGroups", 1) > 1 and inner is not None):
+            try:
+                self._scene_prog_groups = progression_group_map(inner)
+            except Exception:
+                self._scene_prog_groups = None
+        self.scene_view.set_scene(scene.to_dict())
+
+    def _scene_group_of(self, idx: int):
+        for g in (self._scene_prog_groups or []):
+            if g["globalStart"] <= idx < g["globalStart"] + g["count"]:
+                return g["groupIndex"]
+        return None
+
+    def _drive_scene(self, state: dict):
+        """Push the trainer's running position onto the active scene (cross-key aware)."""
+        if self._scene_active is None or not state:
+            return
+        idx = state.get("idx")
+        if idx is None:
+            return
+        local = idx
+        if self._scene_prog_groups:
+            gi = self._scene_group_of(idx)
+            if gi is not None:
+                if gi != self._scene_shown_group and self._scene_active_ex is not None:
+                    self._scene_shown_group = gi
+                    self._scene_last_idx = None
+                    try:
+                        sc = build_functional_progression_scene(
+                            self._scene_active_ex, group_index=gi)
+                        self._scene_active = sc
+                        self.scene_view.set_scene(sc.to_dict())
+                    except Exception as exc:
+                        print("[LAB] local-key scene switch failed:", exc)
+                local = idx - self._scene_prog_groups[gi]["globalStart"]
+        completed = bool(state.get("completed"))
+        if local == self._scene_last_idx and not completed:
+            return
+        self._scene_last_idx = local
+        payload = {"sequenceIndex": local}
+        if completed:
+            payload["correct"] = True
+        self.scene_view.update_occurrence_state(payload)
 
     # -- semantic spec <-> curriculum-leaf index -------------------------
     @staticmethod
@@ -710,8 +803,11 @@ class HarmonyLabWindow(QWidget):
             self.mapping_view.update(self._mapping_for(target))
 
         def on_state(state):
-            if state and state.get("finished"):
+            if not state:
+                return
+            if state.get("finished"):
                 self._record_completion()
+            self._drive_scene(state)          # push the running position onto the Harmonic Scene
 
         try:
             self.trainer.query_current_target(on_target)

@@ -121,6 +121,15 @@ class CurriculumNode:
     children: List["CurriculumNode"] = field(default_factory=list)
     lab_spec: Optional[LabExperimentSpec] = None
 
+    #: Additive graph-scene metadata (plan section 4). Optional per-node hint/override the
+    #: GraphSceneRouter honours *before* falling back to drill-family routing. Left unset on
+    #: almost every node -- the router derives the scene from the compiled spec by default; a node
+    #: sets ``graph_scene_type`` only to pin/override a scene, and ``graph_required`` to demand one.
+    graph_scene_type: Optional[str] = None       # a harmony.graph_scene SCENE_TYPES value
+    graph_scene_scope: Optional[str] = None       # a SEMANTIC_SCOPES value (advisory)
+    graph_scene_options: Dict = field(default_factory=dict)
+    graph_required: bool = False
+
     # -- traversal -------------------------------------------------------
     def walk(self):
         """Yield this node then every descendant (pre-order, deterministic)."""
@@ -165,9 +174,27 @@ class CurriculumNode:
         if self.lab_spec is not None:
             d["labSpec"] = self.lab_spec.to_dict()
             d["exerciseSpecs"] = [s.to_dict() for s in self.lab_spec.to_exercise_specs()]
+        gs = self.graph_scene_metadata()
+        if gs:
+            d["graphScene"] = gs
         if include_children:
             d["children"] = [c.to_payload() for c in self.children]
         return d
+
+    def graph_scene_metadata(self) -> Dict:
+        """The additive ``graphScene`` payload block, or ``{}`` when the node pins no scene.
+
+        Emitted into the node payload only when set, so nodes that rely on default drill-family
+        routing keep an unchanged payload. The host passes this into the router's
+        ``source_metadata`` (``graph_scene_type`` is routing precedence 1, plan section 4)."""
+        if not self.graph_scene_type:
+            return {}
+        return {
+            "type": self.graph_scene_type,
+            "scope": self.graph_scene_scope,
+            "options": dict(self.graph_scene_options),
+            "required": bool(self.graph_required),
+        }
 
 
 # ---------------------------------------------------------------------------
