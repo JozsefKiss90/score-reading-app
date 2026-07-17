@@ -29,7 +29,7 @@ function loadScenes() {
   ];
   const code = [
     "import json",
-    "from harmony.atlas import full_key_spec, degree_spec",
+    "from harmony.atlas import full_key_spec, degree_spec, function_spec",
     "from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene",
     "from harmony.graph_scene_generators import build_unsupported",
     "def scene(spec): return build_graph_scene(GraphSceneRequest(exercise_spec=spec)).to_dict()",
@@ -37,6 +37,7 @@ function loadScenes() {
     "  'field': scene(full_key_spec('C','major')),",
     "  'fieldG': scene(full_key_spec('G','major')),",
     "  'degree': scene(degree_spec('V','major')),",
+    "  'prog': scene(function_spec(['I','IV','V','I'],'I-IV-V-I','major',['C'])),",
     "  'unsupported': build_unsupported(source_kind='lab', source_id='mot',"
       + " reason='melodic motive has no harmonic graph yet').to_dict(),",
     "}",
@@ -170,6 +171,84 @@ ok(HN.sceneState().sceneType == null, "F: scene cleared");
 ok(deepText(doc.getElementById("hnCenter")).indexOf("No suitable harmonic graph") !== -1,
    "F: cleared view shown");
 console.log("Test F (clearScene): " + (failures > before ? "FAIL" : "PASS"));
+
+// --- Test G: playback activation classes on the C-major field (plan section 11.2) ----------
+before = failures;
+HN.setScene(S.field);
+HN.updateOccurrenceState({ sequenceIndex: 2 });     // Em = iii
+ok(HN.sceneNodeClass("hn:triad:C:major:2").indexOf("is-current-occurrence") >= 0,
+   "G: current chord Em has is-current-occurrence");
+ok(HN.sceneNodeClass("hn:function:major:tonic").indexOf("is-current-family") >= 0,
+   "G: Tonic-related family lights while Em plays");
+ok(HN.sceneNodeClass("hn:function:major:tonic").indexOf("is-current-occurrence") < 0,
+   "G: the family node is NOT styled as the current chord");
+ok(HN.sceneNodeClass("hn:key:C").indexOf("is-current-context") >= 0,
+   "G: key anchor is current-context");
+ok(HN.sceneEdgeClass("hn:triad:C:major:2|member_of_function|hn:function:major:tonic")
+     .indexOf("is-current-structure-edge") >= 0,
+   "G: member_of_function edge lights as structure");
+ok(HN.sceneNodeSeekIndex("hn:function:major:tonic") === null,
+   "G: clicking a family node issues no seek");
+ok(HN.sceneNodeSeekIndex("hn:triad:C:major:2") === 2,
+   "G: clicking the chord node seeks to its index");
+// the family that DOESN'T own iii must not light
+ok(HN.sceneNodeClass("hn:function:major:dominant").indexOf("is-current-family") < 0,
+   "G: the dominant family does not light for iii");
+console.log("Test G (playback activation classes): " + (failures > before ? "FAIL" : "PASS"));
+
+// --- Test H: the detail panel FOLLOWS playback automatically (plan section 11.4) ------------
+before = failures;
+HN.setScene(S.field);
+HN.updateOccurrenceState({ sequenceIndex: 2 });     // Em, no click
+let rt = deepText(doc.getElementById("hnRight"));
+ok(rt.indexOf("NOW PLAYING") >= 0, "H: panel shows NOW PLAYING without any click");
+ok(rt.indexOf("mediant") >= 0, "H: Em detail names the specific role 'mediant'");
+ok(rt.indexOf("Tonic-related family") >= 0, "H: Em detail names the broad 'Tonic-related family'");
+ok(rt.indexOf("Function: tonic") < 0 && rt.indexOf("function: tonic") < 0,
+   "H: Em is NOT labelled simply 'tonic'");
+HN.updateOccurrenceState({ sequenceIndex: 3 });     // F = IV, panel auto-updates
+let rt2 = deepText(doc.getElementById("hnRight"));
+ok(rt2.indexOf("subdominant") >= 0, "H: F detail names the specific role 'subdominant'");
+ok(rt2.indexOf("Predominant family") >= 0, "H: F detail names the broad 'Predominant family'");
+// I-IV-V-I: on G the relation to next is resolves_to
+HN.setScene(S.prog);
+let gIdx = null;
+S.prog.occurrenceMap.forEach(function (o) { if (o.roman === "V") gIdx = o.sequenceIndex; });
+HN.updateOccurrenceState({ sequenceIndex: gIdx });
+let rg = deepText(doc.getElementById("hnRight"));
+ok(rg.indexOf("resolves_to") >= 0, "H: G in I-IV-V-I shows relationToNext resolves_to");
+console.log("Test H (detail follows playback): " + (failures > before ? "FAIL" : "PASS"));
+
+// --- Test I: follow / pin detail-panel modes (plan section 11.5) ----------------------------
+before = failures;
+HN.setScene(S.field);
+ok(HN.sceneState().detailMode === "follow", "I: default detail mode is follow");
+HN.updateOccurrenceState({ sequenceIndex: 4 });     // G
+HN.selectSceneNode("hn:function:major:tonic");      // click a node -> selected concept
+ok(deepText(doc.getElementById("hnRight")).indexOf("SELECTED CONCEPT") >= 0,
+   "I: clicking a node shows the selected concept");
+HN.scenePinSelected();
+ok(HN.sceneState().detailMode === "pinned", "I: pin freezes the panel");
+ok(HN.sceneState().pinnedNode === "hn:function:major:tonic", "I: pinned node recorded");
+ok(deepText(doc.getElementById("hnRight")).indexOf("PINNED SELECTION") >= 0,
+   "I: panel shows the pinned selection");
+HN.updateOccurrenceState({ sequenceIndex: 6 });     // playback continues while pinned
+ok(HN.sceneState().currentIndex === 6, "I: playback advances while pinned");
+ok(HN.sceneNodeClass("hn:triad:C:major:6").indexOf("is-current-occurrence") >= 0,
+   "I: graph highlights keep updating while pinned");
+ok(deepText(doc.getElementById("hnRight")).indexOf("PINNED SELECTION") >= 0,
+   "I: the detail panel stays frozen on the pin");
+HN.sceneFollowCurrent();
+ok(HN.sceneState().detailMode === "follow" && HN.sceneState().pinnedNode == null,
+   "I: Follow current resumes automatic updates");
+ok(deepText(doc.getElementById("hnRight")).indexOf("NOW PLAYING") >= 0,
+   "I: following again shows NOW PLAYING for the current chord");
+// a scene replacement clears a stale pin
+HN.selectSceneNode("hn:function:major:tonic"); HN.scenePinSelected();
+HN.setScene(S.degree);
+ok(HN.sceneState().detailMode === "follow" && HN.sceneState().pinnedNode == null,
+   "I: switching scenes clears the stale pin");
+console.log("Test I (follow / pin modes): " + (failures > before ? "FAIL" : "PASS"));
 
 if (failures) { console.error("\n" + failures + " scene assertion(s) FAILED."); process.exit(1); }
 console.log("\nAll harmonic_network.js SCENE-mode checks passed.");

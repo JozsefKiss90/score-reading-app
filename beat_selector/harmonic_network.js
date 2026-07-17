@@ -1243,9 +1243,23 @@
   var sceneVisitedIdx = new Set();
   var sceneCorrectByIdx = {};       // sequenceIndex -> "correct" | "incorrect"
   var sceneSelectedNodeId = null;
+  // Detail-panel follow/pin model (plan section 7.2): the panel follows playback by default; a
+  // pin freezes the SELECTED CONCEPT on one node while playback keeps updating graph highlights.
+  var sceneDetailMode = "follow";   // "follow" | "pinned"
+  var scenePinnedNodeId = null;
 
   function sceneNextIdx() { return sceneCurrentIdx == null ? 0 : sceneCurrentIdx + 1; }
   function sceneNodeColor(n) { return SCENE_VC_COLOR[n.visualClass] || "#64748b"; }
+  function sceneCurrentOccurrence() {
+    return sceneCurrentIdx == null ? null : (sceneOccByIndex[sceneCurrentIdx] || null);
+  }
+  // The honest "what lights up now" map for the current occurrence (family/context/edges),
+  // derived server-side from the edge graph (plan section 4.2) -- never inferred from colour.
+  function sceneCurrentActivation() {
+    var o = sceneCurrentOccurrence();
+    return o ? (o.activation || null) : null;
+  }
+  function _inList(list, id) { return !!list && list.indexOf(id) >= 0; }
 
   function indexScene() {
     sceneNodeById = {}; sceneOccByNode = {}; sceneOccByIndex = {};
@@ -1262,6 +1276,7 @@
   function setScene(payload) {
     scene = payload || null;
     sceneSelectedNodeId = null; sceneCurrentIdx = null;
+    sceneDetailMode = "follow"; scenePinnedNodeId = null;   // a new scene clears any stale pin
     sceneVisitedIdx = new Set(); sceneCorrectByIdx = {};
     projection = null; previewProjection = null; syncNodeIds = []; syncPrimaryId = null;
     selectedNodeId = null; selectedEdgeId = null;
@@ -1281,14 +1296,14 @@
     renderSceneControls();
     renderSceneGraph();
     renderSceneTimeline();
-    renderSceneInfoPlaceholder();
+    renderSceneDetail();
     return sceneExportState();
   }
 
   function clearScene(reason) {
     scene = null; sceneNodeById = {}; sceneOccByNode = {}; sceneOccByIndex = {};
     sceneCurrentIdx = null; sceneVisitedIdx = new Set(); sceneCorrectByIdx = {};
-    sceneSelectedNodeId = null; mode = "scene";
+    sceneSelectedNodeId = null; sceneDetailMode = "follow"; scenePinnedNodeId = null; mode = "scene";
     return renderSceneUnsupportedView("No harmonic graph for this exercise", reason || "");
   }
 
@@ -1335,6 +1350,9 @@
     }
     renderSceneGraph();
     renderSceneTimeline();
+    // The detail panel follows playback automatically (plan section 7.1); a pin freezes it while
+    // the graph highlights above keep updating (plan section 7.2).
+    if (sceneDetailMode !== "pinned") renderSceneDetail();
     return sceneExportState();
   }
 
@@ -1342,6 +1360,16 @@
     var o = sceneOccByIndex[sequenceIndex];
     return enqueueHostRequest({ type: "seek", sequenceIndex: sequenceIndex,
       occurrenceId: o ? o.occurrenceId : null });
+  }
+
+  // The sequence index a click on this node should seek to, or null when it must not seek: a
+  // family / key-context anchor inspects only (plan section 5) -- an explicit entity-type gate,
+  // not a side effect of the occurrence map being empty for anchors.
+  function sceneNodeSeekIndex(id) {
+    var n = sceneNodeById[id];
+    if (!n || SCENE_CONTEXT_TYPES[n.entityType]) return null;
+    var occs = sceneOccByNode[id];
+    return (occs && occs.length) ? occs[0].sequenceIndex : null;
   }
 
   function renderSceneHeader(s) {
@@ -1402,14 +1430,23 @@
   function sceneNodeStateClass(n) {
     var c = "";
     var occs = sceneOccByNode[n.id] || [];
+    var act = sceneCurrentActivation();
     if (occs.length) c += " in-projection";
     if (SCENE_CONTEXT_TYPES[n.entityType]) c += " is-anchor";   // persistent secondary context
+    // --- secondary playback context, from the honest activation map (plan sections 4, 5) ---
+    // A broad-function-family node haloes while one of its members plays; the key anchor stays a
+    // low-intensity context. These are distinct from the current CHORD's own strong state below.
+    if (act) {
+      if (_inList(act.familyNodeIds, n.id)) c += " is-current-family";
+      if (_inList(act.contextNodeIds, n.id)) c += " is-current-context";
+    }
     if (occs.length) {
       var cur = sceneCurrentIdx, nxt = sceneNextIdx();
       var isCurrent = cur != null && occs.some(function (o) { return o.sequenceIndex === cur; });
       var isNext = occs.some(function (o) { return o.sequenceIndex === nxt; });
       var isVisited = occs.some(function (o) { return sceneVisitedIdx.has(o.sequenceIndex); });
-      if (isCurrent) c += " is-current";
+      // the current CONCRETE chord: strongest state (is-current kept for back-compat/tests).
+      if (isCurrent) c += " is-current is-current-occurrence";
       else if (isNext) c += " is-next";
       else if (isVisited) c += " is-visited";
       var corr = cur != null ? sceneCorrectByIdx[cur] : null;
@@ -1420,6 +1457,18 @@
     if (n.entityType === "occurrence") c += " is-proxy";
     if (n.id === sceneSelectedNodeId) c += " sel";
     return c;
+  }
+
+  // The membership / sequence / theory edge that is active for the current occurrence gets a
+  // distinct state class each (plan section 4/6): a membership edge lights as STRUCTURE, never as
+  // harmonic motion.  Derived from the occurrence's activation edge-id lists.
+  function sceneEdgeStateClass(e) {
+    var act = sceneCurrentActivation();
+    if (!act) return "";
+    if (_inList(act.structureEdgeIds, e.id)) return " is-current-structure-edge";
+    if (_inList(act.sequenceEdgeIds, e.id)) return " is-current-sequence-edge";
+    if (_inList(act.theoryEdgeIds, e.id)) return " is-current-theory-edge";
+    return "";
   }
 
   function renderSceneGraph() {
@@ -1445,7 +1494,8 @@
     sceneVisibleEdges().forEach(function (e) {
       var a = sceneNodeById[e.source], b = sceneNodeById[e.target];
       var p = svg("path", {
-        class: "hnEdge edge edge--" + e.visualClass + " scene-layer--" + e.layer,
+        class: "hnEdge edge edge--" + e.visualClass + " scene-layer--" + e.layer
+          + sceneEdgeStateClass(e),
         d: edgePath(a, b), stroke: edgeColor(e.visualClass) });
       if (e.directed) p.setAttribute("marker-end", "url(#sarw-" + e.visualClass + ")");
       p.addEventListener("click", function () { selectSceneNode(e.source); });
@@ -1463,8 +1513,8 @@
       }
       g.addEventListener("click", function () {
         selectSceneNode(n.id);
-        var occs = sceneOccByNode[n.id];
-        if (occs && occs.length) requestSceneSeek(occs[0].sequenceIndex);
+        var si = sceneNodeSeekIndex(n.id);
+        if (si != null) requestSceneSeek(si);
       });
       s.appendChild(g);
     });
@@ -1495,41 +1545,140 @@
     });
   }
 
-  function renderSceneInfoPlaceholder() {
+  // Retained name (called nowhere critical now) -> the follow/pin renderer.
+  function renderSceneInfoPlaceholder() { renderSceneDetail(); }
+
+  function _detailRows(pairs, into) {
+    pairs.forEach(function (kv) {
+      if (kv[1] == null || kv[1] === "") return;
+      into.appendChild(el("div", { class: "detailRow" },
+        [el("b", { text: kv[0] + ": " }), el("span", { text: String(kv[1]) })]));
+    });
+  }
+
+  // The abstraction hierarchy (plan section 1), compact, for a chord occurrence:
+  //   Em  ->  iii in C major  ->  mediant (specific role)  ->  Tonic-related family (broad)
+  function sceneHierarchyRow(d, o) {
+    var steps = [];
+    if (o && (o.chordSymbol || o.roman)) steps.push(o.chordSymbol || o.roman);
+    if (o && o.roman && o.keyContext) steps.push(o.roman + " in " + o.keyContext);
+    if (d.specificRole) steps.push((d.specificRoleLabel || d.specificRole) + " (specific role)");
+    if (d.broadFamilyLabel || d.broadFamily) {
+      steps.push((d.broadFamilyLabel || d.broadFamily) + " (broad family)");
+    }
+    return steps.length >= 2 ? el("div", { class: "hierRow", text: steps.join("  →  ") }) : null;
+  }
+
+  // NOW PLAYING: the current occurrence, auto-updated on every playback tick (plan sections 7.1, 8).
+  function sceneNowPlayingSection(o) {
+    var d = o.detail || {};
+    var sect = el("div", { class: "sect nowPlaying" });
+    sect.appendChild(el("div", { class: "sectTag", text: "NOW PLAYING" }));
+    sect.appendChild(el("h2", { text: (d.chordSymbol || o.chordSymbol || o.roman || "")
+      + (o.roman ? "  ·  " + o.roman : "") }));
+    if (o.keyContext) sect.appendChild(el("div", { class: "keyline", text: o.keyContext
+      + (o.occurrenceRole ? "  ·  " + o.occurrenceRole + " chord" : "") }));
+    var h = sceneHierarchyRow(d, o); if (h) sect.appendChild(h);
+    // the two-level identity kept explicitly separate (plan sections 1, 8): specific role vs family
+    _detailRows([
+      ["Chord tones", (d.chordTones || []).join(" ")],
+      ["Quality", d.quality],
+      ["Interval layer", d.intervalLayer],
+      ["Scale-degree name", d.scaleDegreeName],
+      ["Specific role", d.specificRoleLabel || d.specificRole],
+      ["Broad family", d.broadFamilyLabel || d.broadFamily],
+      ["Family membership", d.familyMembershipType],
+    ], sect);
+    if (d.familyMembershipExplanation) {
+      sect.appendChild(el("div", { class: "expl", text: d.familyMembershipExplanation }));
+    }
+    var prev = sceneOccByIndex[o.sequenceIndex - 1];
+    if (prev) _detailRows([["From previous", prev.nextExplanation]], sect);
+    _detailRows([
+      ["To next", o.nextExplanation || d.relationToNext],
+      ["Sequence edge", o.nextSequenceRelation],
+      ["Theory edge", o.nextTheoryRelation],
+    ], sect);
+    return sect;
+  }
+
+  // SELECTED / PINNED CONCEPT: inspect one node (chord, family, key, ...) (plan sections 7.2, 7.3).
+  function sceneConceptSection(title, n) {
+    var sect = el("div", { class: "sect selectedConcept" });
+    sect.appendChild(el("div", { class: "sectTag", text: title }));
+    sect.appendChild(el("span", { class: "kind k-" + n.entityType,
+      text: SCENE_ENTITY_LABEL[n.entityType] || n.entityType }));
+    sect.appendChild(el("h2", { text: n.label }));
+    if (n.entityType === "function") {
+      // a broad-function-family node names its members' SPECIFIC roles (plan section 2.1)
+      if (n.broadFunctionFamilyLabel) {
+        sect.appendChild(el("div", { class: "familyLine", text: n.broadFunctionFamilyLabel }));
+      }
+      ((n.data && n.data.memberRoles) || []).forEach(function (m) {
+        sect.appendChild(el("div", { class: "detailRow" }, [
+          el("b", { text: m.roman + ": " }),
+          el("span", { text: (m.specificRoleLabel || m.specificRole || "")
+            + (m.contextual ? " (context-dependent)" : "") })]));
+      });
+    } else {
+      _detailRows([
+        ["Roman", n.roman], ["Key", n.keyContext], ["Quality", n.quality],
+        ["Chord tones", (n.chordTones || []).join(" ")],
+        ["Scale-degree name", n.scaleDegreeName],
+        ["Specific role", n.specificRoleLabel || n.specificRole],
+        ["Broad family", n.broadFunctionFamilyLabel || n.broadFunctionFamily],
+      ], sect);
+    }
+    if (n.explanation) sect.appendChild(el("div", { class: "expl", text: n.explanation }));
+    return sect;
+  }
+
+  function renderSceneDetailControls() {
+    var bar = el("div", { class: "detailModeBar" });
+    var follow = el("button", { class: "modeBtn" + (sceneDetailMode === "follow" ? " is-active" : ""),
+      text: "Follow current" });
+    follow.addEventListener("click", function () {
+      sceneDetailMode = "follow"; scenePinnedNodeId = null; renderSceneDetail(); renderSceneGraph();
+    });
+    var pin = el("button", { class: "modeBtn" + (sceneDetailMode === "pinned" ? " is-active" : ""),
+      text: "Pin selected" });
+    pin.addEventListener("click", function () {
+      if (sceneSelectedNodeId) { sceneDetailMode = "pinned"; scenePinnedNodeId = sceneSelectedNodeId; }
+      renderSceneDetail(); renderSceneGraph();
+    });
+    bar.appendChild(follow); bar.appendChild(pin);
+    bar.appendChild(el("span", { class: "detailModeStatus",
+      text: sceneDetailMode === "pinned" ? "Pinned selection" : "Following current chord" }));
+    return bar;
+  }
+
+  // The follow/pin detail panel (plan section 7). Follow: NOW PLAYING auto-updates + an optional
+  // SELECTED CONCEPT for a clicked node. Pinned: a frozen PINNED SELECTION (graph still updates).
+  function renderSceneDetail() {
     var root = byId("hnRight"); if (!root) return; clear(root);
     if (!scene) return;
-    root.appendChild(el("div", { class: "placeholder",
-      text: "Click a node to see its role in this scene, or a timeline chip to seek the drill." }));
+    root.appendChild(renderSceneDetailControls());
+    if (sceneDetailMode === "pinned" && scenePinnedNodeId && sceneNodeById[scenePinnedNodeId]) {
+      root.appendChild(sceneConceptSection("PINNED SELECTION", sceneNodeById[scenePinnedNodeId]));
+      return;
+    }
+    var cur = sceneCurrentOccurrence();
+    if (cur) root.appendChild(sceneNowPlayingSection(cur));
+    else root.appendChild(el("div", { class: "placeholder",
+      text: "Following current chord — the panel updates as the trainer plays. "
+          + "Click a node to inspect a concept." }));
+    if (sceneSelectedNodeId && sceneNodeById[sceneSelectedNodeId]
+        && (!cur || sceneSelectedNodeId !== cur.nodeId)) {
+      root.appendChild(sceneConceptSection("SELECTED CONCEPT", sceneNodeById[sceneSelectedNodeId]));
+    }
   }
 
   function selectSceneNode(id) {
     var n = sceneNodeById[id]; if (!n) return null;
     sceneSelectedNodeId = id;
     renderSceneGraph();
-    renderSceneNodeInfo(n);
+    renderSceneDetail();
     return id;
-  }
-
-  function renderSceneNodeInfo(n) {
-    var root = byId("hnRight"); if (!root) return; clear(root);
-    root.appendChild(el("span", { class: "kind k-" + ((n.data && n.data.kind) || n.entityType),
-      text: SCENE_ENTITY_LABEL[n.entityType] || n.entityType }));
-    root.appendChild(el("h2", { text: n.label }));
-    if (n.explanation) root.appendChild(el("div", { class: "expl", text: n.explanation }));
-    (sceneOccByNode[n.id] || []).forEach(function (o) {
-      var d = o.detail || {};
-      var sect = el("div", { class: "sect" },
-        [el("h3", { text: "Occurrence " + (o.sequenceIndex + 1) })]);
-      [["key context", d.keyContext], ["Roman", d.roman], ["chord", d.chordSymbol],
-       ["chord tones", (d.chordTones || []).join(" ")], ["quality", d.quality],
-       ["interval layer", d.intervalLayer], ["broad function", d.broadFunction],
-       ["function", d.functionLabel], ["why here", d.whyBelongs],
-       ["→ next", d.relationToNext], ["edge type", d.edgeType]].forEach(function (kv) {
-        if (kv[1]) sect.appendChild(el("div", { class: "detailRow",
-          html: "<b>" + esc(kv[0]) + ":</b> " + esc(kv[1]) }));
-      });
-      root.appendChild(sect);
-    });
   }
 
   function sceneViewBox() {
@@ -1559,6 +1708,8 @@
       nextIndex: scene ? sceneNextIdx() : null,
       visited: sceneVisitedIdx.size,
       selectedNode: sceneSelectedNodeId,
+      detailMode: sceneDetailMode,
+      pinnedNode: scenePinnedNodeId,
       layers: Object.assign({}, sceneLayerVisible),
       hostRequests: hostRequestQueue.length,
       warnings: scene ? (scene.warnings || []).slice() : [],
@@ -1573,9 +1724,27 @@
     updateOccurrenceState: updateOccurrenceState,
     requestSceneSeek: requestSceneSeek,
     selectSceneNode: selectSceneNode,
+    // follow/pin detail-panel controls (plan section 7.2)
+    sceneFollowCurrent: function () {
+      sceneDetailMode = "follow"; scenePinnedNodeId = null;
+      renderSceneDetail(); renderSceneGraph(); return sceneExportState();
+    },
+    scenePinSelected: function () {
+      if (sceneSelectedNodeId) { sceneDetailMode = "pinned"; scenePinnedNodeId = sceneSelectedNodeId; }
+      renderSceneDetail(); renderSceneGraph(); return sceneExportState();
+    },
     sceneState: sceneExportState,
     sceneNodeIds: function () { return Object.keys(sceneNodeById); },
     sceneNodeById: function (id) { return sceneNodeById[id]; },
+    // introspection seams (used by the headless scene test, where the SVG isn't rendered):
+    sceneNodeClass: function (id) {
+      var n = sceneNodeById[id]; return n ? sceneNodeStateClass(n) : null;
+    },
+    sceneEdgeClass: function (id) {
+      var e = (scene && (scene.edges || []).filter(function (x) { return x.id === id; })[0]);
+      return e ? sceneEdgeStateClass(e) : null;
+    },
+    sceneNodeSeekIndex: sceneNodeSeekIndex,
     selectNode: selectNode,
     selectEdge: selectEdge,
     setFilter: setFilter,

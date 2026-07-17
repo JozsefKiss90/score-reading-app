@@ -251,7 +251,11 @@ _DRILL_THEORY = {
     "full_key": (
         "A key's seven diatonic triads, in order, spell the harmonic palette of "
         "that key: I ii iii IV V vi vii° in major, i ii° III iv v VI VII in minor. "
-        "Playing them in a row fixes the sound of each scale degree's chord."),
+        "Playing them in a row fixes the sound of each scale degree's chord. Each chord "
+        "has a SPECIFIC role (I the tonic, iii the mediant, IV the subdominant, vi the "
+        "submediant, vii° the leading-tone diminished) AND belongs to a BROAD family — "
+        "tonic-related (I, iii, vi), predominant (ii, IV) or dominant (V, vii°). The "
+        "family is a grouping, not the chord's complete identity."),
     "horizontal_degree": (
         "A degree drill fixes one Roman numeral and transposes it through all 12 "
         "keys. The spelling and absolute pitches change, but the chord's quality "

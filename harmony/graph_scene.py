@@ -30,7 +30,7 @@ V7, an ``Am`` chord is not the A-minor key, a ``C`` major key is not the C major
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional, Tuple
 
 from harmony.harmonic_flow import LaunchAction, is_proxy_node_id
@@ -151,7 +151,20 @@ class GraphSceneNode:
     chord_symbol: str = ""
     chord_tones: Tuple[str, ...] = ()
     quality: str = ""
+    #: LEGACY fine label from the theory engine (tonic/mediant/predominant/subdominant/dominant).
+    #: Kept for backward compatibility; the explicit two-level role fields below supersede it for
+    #: display (plan sections 3.2, 4.1). Do NOT present this as the chord's complete identity.
     function_label: str = ""
+    # -- explicit two-level role model (plan sections 1-4): SPECIFIC scale-degree role vs. BROAD
+    #    function family. Additive; ``function_label`` above is retained unchanged. --
+    scale_degree_name: str = ""            # tonic / supertonic / mediant / ... (specific level)
+    specific_role: str = ""               # e.g. mediant / subdominant / leading-tone diminished
+    specific_role_label: str = ""
+    broad_function_family: str = ""       # tonic_related / predominant / dominant / modal_or_contextual
+    broad_function_family_label: str = ""
+    family_membership_type: str = ""      # primary / related / substitute / preparatory / ...
+    family_membership_strength: str = ""  # strong / medium / weak / context_dependent
+    family_membership_explanation: str = ""
     degree_index: Optional[int] = None
     x: float = 0.0
     y: float = 0.0
@@ -187,6 +200,14 @@ class GraphSceneNode:
             "chordTones": list(self.chord_tones),
             "quality": self.quality,
             "functionLabel": self.function_label,
+            "scaleDegreeName": self.scale_degree_name,
+            "specificRole": self.specific_role,
+            "specificRoleLabel": self.specific_role_label,
+            "broadFunctionFamily": self.broad_function_family,
+            "broadFunctionFamilyLabel": self.broad_function_family_label,
+            "familyMembershipType": self.family_membership_type,
+            "familyMembershipStrength": self.family_membership_strength,
+            "familyMembershipExplanation": self.family_membership_explanation,
             "degreeIndex": self.degree_index,
             "x": round(self.x, 2),
             "y": round(self.y, 2),
@@ -212,6 +233,14 @@ class GraphSceneNode:
             chord_tones=tuple(d.get("chordTones", ()) or ()),
             quality=d.get("quality", ""),
             function_label=d.get("functionLabel", ""),
+            scale_degree_name=d.get("scaleDegreeName", ""),
+            specific_role=d.get("specificRole", ""),
+            specific_role_label=d.get("specificRoleLabel", ""),
+            broad_function_family=d.get("broadFunctionFamily", ""),
+            broad_function_family_label=d.get("broadFunctionFamilyLabel", ""),
+            family_membership_type=d.get("familyMembershipType", ""),
+            family_membership_strength=d.get("familyMembershipStrength", ""),
+            family_membership_explanation=d.get("familyMembershipExplanation", ""),
             degree_index=d.get("degreeIndex"),
             x=round(float(d.get("x", 0.0)), 2),
             y=round(float(d.get("y", 0.0)), 2),
@@ -316,6 +345,55 @@ class GraphScenePath:
 
 
 # --------------------------------------------------------------------------------------------- #
+# SceneActivation -- the explicit "what lights up right now" map for one occurrence (plan §4.2)
+# --------------------------------------------------------------------------------------------- #
+
+@dataclass(frozen=True)
+class SceneActivation:
+    """Everything that should visually respond when this occurrence is the current drill step.
+
+    The runtime must NOT infer family context from node colour or label (plan section 4.2): this
+    map is derived from the scene's *edge graph* (membership edges -> family; belongs_to_key ->
+    context; sequence/theory edges -> the motion to the next occurrence) so highlighting is honest
+    and structural.  Ids reference nodes/edges already present in the scene.
+    """
+
+    current_node_id: str
+    family_node_ids: Tuple[str, ...] = ()          # the broad-function family node(s) to halo
+    context_node_ids: Tuple[str, ...] = ()         # the key-context anchor(s) to keep lit low
+    structure_edge_ids: Tuple[str, ...] = ()       # membership edge(s): chord -> family (structure)
+    sequence_edge_ids: Tuple[str, ...] = ()        # drill-order edge to the next occurrence
+    theory_edge_ids: Tuple[str, ...] = ()          # asserted harmonic-motion edge to the next occ
+    previous_occurrence_id: Optional[str] = None
+    next_occurrence_id: Optional[str] = None
+
+    def to_dict(self) -> Dict:
+        return {
+            "currentNodeId": self.current_node_id,
+            "familyNodeIds": list(self.family_node_ids),
+            "contextNodeIds": list(self.context_node_ids),
+            "structureEdgeIds": list(self.structure_edge_ids),
+            "sequenceEdgeIds": list(self.sequence_edge_ids),
+            "theoryEdgeIds": list(self.theory_edge_ids),
+            "previousOccurrenceId": self.previous_occurrence_id,
+            "nextOccurrenceId": self.next_occurrence_id,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "SceneActivation":
+        return cls(
+            current_node_id=d["currentNodeId"],
+            family_node_ids=tuple(d.get("familyNodeIds", ()) or ()),
+            context_node_ids=tuple(d.get("contextNodeIds", ()) or ()),
+            structure_edge_ids=tuple(d.get("structureEdgeIds", ()) or ()),
+            sequence_edge_ids=tuple(d.get("sequenceEdgeIds", ()) or ()),
+            theory_edge_ids=tuple(d.get("theoryEdgeIds", ()) or ()),
+            previous_occurrence_id=d.get("previousOccurrenceId"),
+            next_occurrence_id=d.get("nextOccurrenceId"),
+        )
+
+
+# --------------------------------------------------------------------------------------------- #
 # SceneOccurrence -- one drill occurrence mapped exactly onto a scene node (plan section 3)
 # --------------------------------------------------------------------------------------------- #
 
@@ -349,6 +427,12 @@ class SceneOccurrence:
     next_relation_status: Optional[str] = None
     next_is_group_boundary: bool = False
     next_explanation: str = ""
+    #: opening | intermediate | arrival -- distinguishes e.g. the opening vs. arrival tonic of a
+    #: I-IV-V-I progression (plan section 9). Empty for non-progression (enumeration/class) scenes.
+    occurrence_role: str = ""
+    #: The explicit "what lights up now" map (plan section 4.2). Filled by
+    #: :func:`compute_activations`; ``None`` until then.
+    activation: Optional[SceneActivation] = None
     detail: Dict = field(default_factory=dict, hash=False)
 
     def to_dict(self) -> Dict:
@@ -372,6 +456,8 @@ class SceneOccurrence:
             "nextRelationStatus": self.next_relation_status,
             "nextIsGroupBoundary": self.next_is_group_boundary,
             "nextExplanation": self.next_explanation,
+            "occurrenceRole": self.occurrence_role,
+            "activation": (self.activation.to_dict() if self.activation else None),
             "detail": dict(self.detail),
         }
 
@@ -397,6 +483,9 @@ class SceneOccurrence:
             next_relation_status=d.get("nextRelationStatus"),
             next_is_group_boundary=bool(d.get("nextIsGroupBoundary", False)),
             next_explanation=d.get("nextExplanation", ""),
+            occurrence_role=d.get("occurrenceRole", ""),
+            activation=(SceneActivation.from_dict(d["activation"])
+                        if d.get("activation") else None),
             detail=dict(d.get("detail", {})),
         )
 
@@ -594,6 +683,14 @@ class GraphScene:
                     raise SceneValidationError(
                         f"occurrence {o.occurrence_id}: exact mapping points at a key node")
 
+    # -- activation ---------------------------------------------------------------------------- #
+
+    def attach_activations(self) -> None:
+        """Populate every occurrence's :class:`SceneActivation` from the edge graph (plan §4.2).
+
+        Idempotent; call after nodes/edges/occurrences are built and before :meth:`validate`."""
+        self.occurrence_map = compute_activations(self)
+
     # -- serialisation ------------------------------------------------------------------------ #
 
     def to_dict(self) -> Dict:
@@ -647,6 +744,100 @@ class GraphScene:
         )
 
 
+# --------------------------------------------------------------------------------------------- #
+# Activation derivation (graph-structural, never colour/label) (plan section 4.2)
+# --------------------------------------------------------------------------------------------- #
+
+#: Membership relations that link a chord node to its broad-function-family (or class) node.
+_MEMBERSHIP_RELATIONS = frozenset({
+    "member_of_function", "instance_of", "inversion_of", "same_function", "substitutes_for",
+})
+#: Relations that link a chord node to its key-context anchor.
+_CONTEXT_RELATIONS = frozenset({"belongs_to_key", "atlas_node_available"})
+#: Entity types that count as a "family" node (the secondary halo, not the current chord).
+_FAMILY_ENTITY_TYPES = frozenset({"function", "quality"})
+#: Scene types where opening/intermediate/arrival occurrence roles are meaningful (a route that
+#: goes somewhere), as opposed to a flat enumeration/classification.
+_PROGRESSION_SCENE_TYPES = frozenset({
+    "functional_progression", "cadence_resolution", "voice_leading_path",
+    "polyphonic_harmony_path", "score_harmonic_path",
+})
+
+
+def compute_activations(scene: "GraphScene") -> List[SceneOccurrence]:
+    """Derive each occurrence's :class:`SceneActivation` from the scene's edge graph (plan §4.2).
+
+    Family membership is read from membership edges (plus any function/quality node the occurrence
+    already lists as context); key context from ``belongs_to_key`` edges / listed key anchors; and
+    the active motion from the sequence/theory edges to the *next* occurrence.  Nothing is inferred
+    from node colour or label.  Returns a NEW occurrence list (frozen dataclasses replaced), leaving
+    the input untouched; callers assign it back to ``scene.occurrence_map``.
+    """
+    occs = sorted(scene.occurrence_map, key=lambda o: o.sequence_index)
+    node_by_id = {n.id: n for n in scene.nodes}
+    edges_by_source: Dict[str, List[GraphSceneEdge]] = {}
+    for e in scene.edges:
+        edges_by_source.setdefault(e.source, []).append(e)
+    is_progression = scene.scene_type in _PROGRESSION_SCENE_TYPES
+    n = len(occs)
+    out: List[SceneOccurrence] = []
+    for i, o in enumerate(occs):
+        prev = occs[i - 1] if i > 0 else None
+        nxt = occs[i + 1] if i + 1 < n else None
+        fam_ids: List[str] = []
+        struct_ids: List[str] = []
+        key_ctx: List[str] = []
+        outgoing = edges_by_source.get(o.node_id, ())
+        for e in outgoing:
+            tgt = node_by_id.get(e.target)
+            if tgt is None:
+                continue
+            # membership edge -> a family node lights as STRUCTURE (never as harmonic motion), even
+            # if a generator tagged the edge's own layer 'context' (plan sections 4, 5, 15.4).
+            if e.relation in _MEMBERSHIP_RELATIONS and tgt.entity_type in _FAMILY_ENTITY_TYPES:
+                if e.target not in fam_ids:
+                    fam_ids.append(e.target)
+                if e.id not in struct_ids:
+                    struct_ids.append(e.id)
+            elif e.relation in _CONTEXT_RELATIONS and tgt.entity_type == "key":
+                if e.target not in key_ctx:
+                    key_ctx.append(e.target)
+        # fold in any family / key node the occurrence already names as context
+        for cid in o.context_node_ids:
+            cn = node_by_id.get(cid)
+            if cn is None:
+                continue
+            if cn.entity_type in _FAMILY_ENTITY_TYPES and cid not in fam_ids:
+                fam_ids.append(cid)
+            elif cn.entity_type == "key" and cid not in key_ctx:
+                key_ctx.append(cid)
+        seq_ids: List[str] = []
+        th_ids: List[str] = []
+        if nxt is not None:
+            for e in outgoing:
+                if e.target != nxt.node_id:
+                    continue
+                if e.layer == "sequence" and e.id not in seq_ids:
+                    seq_ids.append(e.id)
+                elif e.layer == "theory" and e.id not in th_ids:
+                    th_ids.append(e.id)
+        activation = SceneActivation(
+            current_node_id=o.node_id,
+            family_node_ids=tuple(fam_ids),
+            context_node_ids=tuple(key_ctx),
+            structure_edge_ids=tuple(struct_ids),
+            sequence_edge_ids=tuple(seq_ids),
+            theory_edge_ids=tuple(th_ids),
+            previous_occurrence_id=(prev.occurrence_id if prev else None),
+            next_occurrence_id=(nxt.occurrence_id if nxt else None),
+        )
+        role = o.occurrence_role
+        if not role and is_progression:
+            role = "opening" if i == 0 else ("arrival" if i == n - 1 else "intermediate")
+        out.append(replace(o, activation=activation, occurrence_role=role))
+    return out
+
+
 def unsupported_scene(*, scene_id: str, title: str, source_kind: str, source_id: str,
                       reason: str, subtitle: str = "",
                       metadata: Optional[Dict] = None) -> GraphScene:
@@ -683,8 +874,10 @@ __all__ = [
     "GraphSceneNode",
     "GraphSceneEdge",
     "GraphScenePath",
+    "SceneActivation",
     "SceneOccurrence",
     "SceneLayer",
     "GraphScene",
+    "compute_activations",
     "unsupported_scene",
 ]

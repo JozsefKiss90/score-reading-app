@@ -695,9 +695,18 @@ class HarmonyLabWindow(QWidget):
         if local == self._scene_last_idx and not completed:
             return
         self._scene_last_idx = local
-        payload = {"sequenceIndex": local}
-        if completed:
-            payload["correct"] = True
+        # Stable per-tick payload (plan section 7.4): sceneId + occurrenceId + groupIndex, not a
+        # bare index (ambiguous across scene switches / repeated occurrences).
+        sc = self._scene_active
+        occ = sc.occurrence_at(local) if sc is not None else None
+        payload = {
+            "sceneId": (sc.scene_id if sc is not None else None),
+            "occurrenceId": (occ.occurrence_id if occ is not None else None),
+            "sequenceIndex": local,
+            "groupIndex": (self._scene_shown_group if self._scene_prog_groups else 0),
+            "completed": completed,
+            "correct": (True if completed else None),
+        }
         self.scene_view.update_occurrence_state(payload)
 
     # -- semantic spec <-> curriculum-leaf index -------------------------

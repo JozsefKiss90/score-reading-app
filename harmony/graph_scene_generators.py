@@ -38,6 +38,12 @@ from harmony.network_projection import project_harmony_exercise, project_lab_exp
 from harmony.harmonic_flow import DrillGraphProjection, occurrence_id
 from harmony.atlas import build_atlas, quality_id
 from harmony.harmonic_network import _resolve_triad_ref, _spoke_xy, _present
+from harmony.harmonic_roles import (
+    role_profile,
+    broad_function_family,
+    internal_family_to_broad,
+    broad_family_label,
+)
 from theory.diatonic_harmony import note_pc
 from harmony.graph_scene import (
     GraphScene,
@@ -152,6 +158,42 @@ _THEORY_DEFAULT_ON = frozenset({
     "functional_progression", "cadence_resolution", "legacy_key_relation", "voice_leading_path",
 })
 
+#: Per-scene-type layer presentation (plan section 6): ``{scene_type: {layer: (label, desc,
+#: default_visible)}}``.  Disambiguates the generic "Theory (harmonic motion)" / "Drill order"
+#: labels that read differently across scene types, and pins the correct defaults (e.g. the full-key
+#: field's theory layer is OFF and named "Possible functional motions"; a progression's is ON and
+#: named "Active harmonic motion").  A layer absent from the scene's edges is simply not emitted, so
+#: the degree/quality scenes never grow an irrelevant theory layer (plan section 6.4).
+_SCENE_LAYER_OVERRIDES: Dict[str, Dict[str, Tuple[str, str, bool]]] = {
+    "diatonic_key_field": {
+        "theory": ("Possible functional motions",
+                   "Common functional relations available inside the key. These are NOT the order "
+                   "of the current full-key drill.", False),
+        "sequence": ("Drill order",
+                     "The pedagogical order in which the trainer enumerates the seven chords. It "
+                     "is not an asserted harmonic progression.", True),
+    },
+    "functional_progression": {
+        "theory": ("Active harmonic motion",
+                   "The functional relation realised by the current progression -- preparation, "
+                   "resolution or deceptive motion.", True),
+    },
+    "cadence_resolution": {
+        "theory": ("Cadential motion",
+                   "The cadential relation from the source chord to its arrival.", True),
+    },
+    "degree_transposition": {
+        "sequence": ("Transposition order",
+                     "The order the drill transposes one scale degree across keys -- a "
+                     "transposition, not a modulation or progression.", True),
+    },
+    "triad_quality_class": {
+        "sequence": ("Classification order",
+                     "The order the drill enumerates same-quality triads -- a classification, not "
+                     "a progression.", True),
+    },
+}
+
 
 # --------------------------------------------------------------------------------------------- #
 # Build-context derivation (from the running spec) -- never from a root pitch class
@@ -210,6 +252,45 @@ def _dedupe(seq) -> Tuple[str, ...]:
     return tuple(out)
 
 
+def _role_node_fields(mode: str, degree_index: Optional[int], roman: str = "",
+                      scale_degree_name: Optional[str] = None) -> Dict:
+    """The two-level role fields (plan section 4.1) for a chord node, or ``{}`` if not diatonic.
+
+    Reuses :func:`harmony.harmonic_roles.role_profile` so the SPECIFIC scale-degree role and the
+    BROAD function family are carried as separate node fields -- never collapsed to one label."""
+    if degree_index is None:
+        return {}
+    p = role_profile(mode or "major", degree_index, roman=roman, scale_degree_name=scale_degree_name)
+    return {
+        "scale_degree_name": p.scale_degree_name,
+        "specific_role": p.specific_role,
+        "specific_role_label": p.specific_role_label,
+        "broad_function_family": p.broad_family,
+        "broad_function_family_label": p.broad_family_label,
+        "family_membership_type": p.family_membership_type,
+        "family_membership_strength": p.family_membership_strength,
+        "family_membership_explanation": p.family_membership_explanation,
+    }
+
+
+def _role_detail(mode: str, degree_index: Optional[int], roman: str = "",
+                 scale_degree_name: Optional[str] = None) -> Dict:
+    """The role fields as camelCase detail-panel keys (plan section 9), or ``{}`` if not diatonic."""
+    if degree_index is None:
+        return {}
+    p = role_profile(mode or "major", degree_index, roman=roman, scale_degree_name=scale_degree_name)
+    return {
+        "scaleDegreeName": p.scale_degree_name,
+        "specificRole": p.specific_role,
+        "specificRoleLabel": p.specific_role_label,
+        "broadFamily": p.broad_family,
+        "broadFamilyLabel": p.broad_family_label,
+        "familyMembershipType": p.family_membership_type,
+        "familyMembershipExplanation": p.family_membership_explanation,
+        "contextual": p.contextual,
+    }
+
+
 def _scene_node_from_netnode(n) -> GraphSceneNode:
     data = dict(n.data or {})
     etype = KIND_TO_ENTITY_TYPE.get(n.kind, "occurrence")
@@ -223,6 +304,21 @@ def _scene_node_from_netnode(n) -> GraphSceneNode:
         visual_class = "purple"
     refs = _dedupe(list(n.atlas_refs or []) + ([n.canonical_ref] if n.canonical_ref else []))
     is_chord = etype in ("triad", "seventh", "diminished", "inversion")
+    # The two-level role model (plan sections 3-4): chords carry specific role + broad family;
+    # a function-family node carries only the presentation broad family + its label.
+    role_fields: Dict = {}
+    if is_chord:
+        role_fields = _role_node_fields(
+            data.get("mode", ""), data.get("degreeIndex"),
+            roman=data.get("roman", ""), scale_degree_name=data.get("scaleDegreeName"))
+    elif etype == "function":
+        internal = data.get("functionLabel", "")
+        broad = data.get("broadFunctionFamily") or internal_family_to_broad(internal)
+        role_fields = {
+            "broad_function_family": broad,
+            "broad_function_family_label": (data.get("broadFunctionFamilyLabel")
+                                            or broad_family_label(broad)),
+        }
     return GraphSceneNode(
         id=n.id, label=n.label, entity_type=etype,
         sublabel=str(data.get("sublabel", "") or (data.get("roman", "") if is_chord else "")),
@@ -235,7 +331,7 @@ def _scene_node_from_netnode(n) -> GraphSceneNode:
         function_label=(data.get("functionLabel", "") or data.get("function_label", "")),
         degree_index=data.get("degreeIndex"),
         x=n.x, y=n.y, radius=n.radius, visual_class=visual_class,
-        canonical_refs=refs, explanation=n.explanation, data=data)
+        canonical_refs=refs, explanation=n.explanation, data=data, **role_fields)
 
 
 def _scene_node_from_proxy(pn) -> GraphSceneNode:
@@ -295,20 +391,24 @@ def _edge_type_word(tr) -> str:
 
 
 def _detail_for(step, tr) -> Dict:
-    return {
+    d = {
         "keyContext": step.key_context,
         "roman": step.roman,
         "chordSymbol": step.chord_symbol,
         "chordTones": list(step.chord_tones),
         "quality": step.quality,
         "intervalLayer": step.interval_layer,
-        "broadFunction": BROAD_FUNCTION.get(step.function_label, ""),
+        "broadFunction": BROAD_FUNCTION.get(step.function_label, ""),   # legacy internal key
         "functionLabel": step.function_label,
         "whyBelongs": step.mapping_reason,
         "relationToNext": (tr.explanation if tr else ""),
         "edgeType": _edge_type_word(tr),
         "sequenceSemantics": step.sequence_semantics,
     }
+    # The explicit two-level role (plan sections 8, 9): specificRole (mediant / subdominant / ...)
+    # kept distinct from broadFamily (tonic-related / predominant / dominant).
+    d.update(_role_detail(step.mode, step.degree_index, step.roman))
+    return d
 
 
 def _occurrences(projection: DrillGraphProjection) -> List[SceneOccurrence]:
@@ -336,13 +436,18 @@ def _occurrences(projection: DrillGraphProjection) -> List[SceneOccurrence]:
 def _layer_defs(edges: List[GraphSceneEdge], scene_type: str) -> List[SceneLayer]:
     present = _dedupe(e.layer for e in edges)
     theory_on = scene_type in _THEORY_DEFAULT_ON
+    overrides = _SCENE_LAYER_OVERRIDES.get(scene_type, {})
     defs: List[SceneLayer] = []
     for layer in ("context", "structure", "theory", "sequence", "voice_leading"):
-        if layer in present:
-            defs.append(SceneLayer(
-                id=layer, label=_LAYER_LABELS[layer], kind=layer,
-                default_visible=(theory_on if layer == "theory" else True),
-                description=_LAYER_DESC[layer]))
+        if layer not in present:
+            continue
+        if layer in overrides:
+            label, desc, dv = overrides[layer]
+        else:
+            label, desc = _LAYER_LABELS[layer], _LAYER_DESC[layer]
+            dv = (theory_on if layer == "theory" else True)
+        defs.append(SceneLayer(id=layer, label=label, kind=layer, default_visible=dv,
+                               description=desc))
     return defs
 
 
@@ -388,8 +493,7 @@ def assemble_scene(*, scene_type: str, network: HarmonicNetwork,
         nodes=nodes, edges=edges, paths=paths, occurrence_map=occurrence_map,
         layer_definitions=_layer_defs(edges, scene_type), supported_actions=[],
         warnings=warnings, metadata=dict(metadata or {}), generator_id=generator_id)
-    scene.validate()
-    return scene
+    return _finalise(scene)
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -532,16 +636,22 @@ def build_functional_progression_scene(
         semantic_level="key", key_context=key_label, visual_class="slate",
         x=0.0, y=-300.0, radius=24.0, explanation=f"The key context: {key_label}."))
 
-    # function-lane anchors (context regions)
+    # function-lane anchors (broad-function-family regions). Labelled with the renamed presentation
+    # family ("Tonic-related family" etc.), but keyed internally by the unchanged band key.
     lane_id: Dict[str, str] = {}
     for fam, band in _FUNC_BAND.items():
         fid = f"prog:fn:{fam}"
         lane_id[fam] = fid
+        broad = internal_family_to_broad(fam)
+        fam_label = broad_family_label(broad)
         nodes.append(GraphSceneNode(
-            id=fid, label=fam.title(), entity_type="function", entity_role="family",
-            semantic_level="function", function_label=fam, visual_class="amber",
-            sublabel="lane", x=-360.0, y=band, radius=20.0,
-            explanation=f"The {fam} function lane."))
+            id=fid, label=fam_label, entity_type="function", entity_role="family",
+            semantic_level="function", function_label=fam,
+            broad_function_family=broad, broad_function_family_label=fam_label,
+            visual_class="amber", sublabel="function lane", x=-360.0, y=band, radius=20.0,
+            data={"functionLabel": fam, "broadFunctionFamily": broad,
+                  "broadFunctionFamilyLabel": fam_label},
+            explanation=f"The {fam_label.lower()}: chords grouped by broad function."))
 
     # one MARKER per occurrence (distinct markers for repeats)
     per: List[Dict] = []
@@ -552,6 +662,10 @@ def build_functional_progression_scene(
         x = -260.0 + (520.0 * (i / (n - 1)) if n > 1 else 0.0)
         mid = f"prog:{sid}:{gi}:{i}"
         ref = _resolve_triad_ref(atlas, tonic, mode, t.degree_index)
+        role_fields = _role_node_fields(mode, t.degree_index, t.roman,
+                                        getattr(t, "scale_degree_name", None))
+        srole = role_fields.get("specific_role", "")
+        flabel = role_fields.get("broad_function_family_label", broad)
         nodes.append(GraphSceneNode(
             id=mid, label=t.chord_symbol, entity_type=etype, sublabel=t.roman,
             semantic_level="chord", entity_role="instance", key_context=t.key, roman=t.roman,
@@ -563,12 +677,20 @@ def build_functional_progression_scene(
             data={"key": t.key, "roman": t.roman, "degreeIndex": t.degree_index,
                   "chordIdentity": f"{t.roman}@{tonic}", "broadFunction": broad,
                   "globalIndex": c.index},
-            explanation=f"{t.chord_symbol} is {t.roman} in {t.key} ({broad} function)."))
-        # faint membership edge marker -> its function lane
+            explanation=(f"{t.chord_symbol} is {t.roman} in {t.key}: specific role "
+                         f"{srole or broad}, {flabel.lower()}."),
+            **role_fields))
+        # membership edge marker -> its function lane: STRUCTURE, never harmonic motion (§6.5)
         edges.append(GraphSceneEdge(
             id=f"prog:mem:{gi}:{i}", source=mid, target=lane_id[broad],
-            relation="member_of_function", layer="context", directed=True,
-            explanation=f"{t.roman} is a {broad}-function chord.", visual_class="membership"))
+            relation="member_of_function", layer="structure", directed=True,
+            explanation=f"{t.roman} ({srole or broad}) is a member of the {flabel.lower()}.",
+            visual_class="membership"))
+        # context edge marker -> the key anchor: persistent, low-intensity key context (§5, §11.3)
+        edges.append(GraphSceneEdge(
+            id=f"prog:ctx:{gi}:{i}", source=mid, target=key_id,
+            relation="belongs_to_key", layer="context", directed=False,
+            explanation=f"{t.chord_symbol} is diatonic to {key_label}.", visual_class="membership"))
         per.append({"id": mid, "etype": etype, "broad": broad, "triad": t, "global": c.index})
 
     # sequence + theory edges + occurrences
@@ -611,7 +733,9 @@ def build_functional_progression_scene(
                     "whyBelongs": f"a {per[i]['broad']}-function chord in the {key_label} progression",
                     "relationToNext": expl, "edgeType": ("theory" if rel else "sequence only"),
                     "commonTones": common, "rootMotion": root_motion,
-                    "globalIndex": per[i]["global"]}))
+                    "globalIndex": per[i]["global"],
+                    **_role_detail(mode, t.degree_index, t.roman,
+                                   getattr(t, "scale_degree_name", None))}))
 
     groups_meta = [{"groupIndex": k, "key": g[0].triad.key, "globalStart": g[0].index,
                     "count": len(g)} for k, g in enumerate(groups)]
@@ -638,8 +762,7 @@ def build_functional_progression_scene(
         metadata={"drill": "function", "invariantRomans": romans, "groups": groups_meta,
                   "shownGroup": gi, "totalGroups": n_groups, "cadenceType": cadence_type},
         generator_id=scene_type)
-    scene.validate()
-    return scene
+    return _finalise(scene)
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -699,7 +822,9 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
             canonical_refs=((ref,) if ref else ()),
             data={"key": t.key, "roman": t.roman, "quality": t.chord_quality,
                   "intervalLayer": t.interval_layer, "globalIndex": c.index},
-            explanation=f"{t.chord_symbol} is a {quality} triad ({t.roman} in {t.key})."))
+            explanation=f"{t.chord_symbol} is a {quality} triad ({t.roman} in {t.key}).",
+            **_role_node_fields(t.mode, t.degree_index, t.roman,
+                                getattr(t, "scale_degree_name", None))))
         edges.append(GraphSceneEdge(
             id=f"qcls:mem:{i}", source=ids[i], target=qid, relation="instance_of",
             layer="structure", directed=True,
@@ -727,7 +852,9 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
                     "intervalLayer": t.interval_layer, "broadFunction": "", "functionLabel": "",
                     "whyBelongs": f"an instance of the {quality} triad class ({interval})",
                     "relationToNext": "classification, not a progression",
-                    "edgeType": "sequence only (enumeration)", "globalIndex": c.index}))
+                    "edgeType": "sequence only (enumeration)", "globalIndex": c.index,
+                    **_role_detail(t.mode, t.degree_index, t.roman,
+                                   getattr(t, "scale_degree_name", None))}))
 
     scene = GraphScene(
         scene_id=(scene_id or f"scene:triad_quality_class:{sid}"),
@@ -739,8 +866,7 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
         supported_actions=[], warnings=list(extra_warnings or []),
         metadata={"drill": "quality", "quality": quality, "intervalLayer": interval},
         generator_id="triad_quality_class")
-    scene.validate()
-    return scene
+    return _finalise(scene)
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -936,7 +1062,8 @@ def build_voice_leading_scene(lab_spec, *, source_kind: str = "lab", source_id: 
             data={"key": key_label, "roman": ann.roman, "voices": voice_pitches,
                   "implied": poly, "globalIndex": i},
             explanation=(f"Slice {i + 1}: {label}"
-                         + (f" implied by {voice_pitches}" if poly else f" ({ann.roman})"))))
+                         + (f" implied by {voice_pitches}" if poly else f" ({ann.roman})")),
+            **(_role_node_fields(mode, deg, ann.roman or "") if deg is not None else {})))
         # faint membership edge marker -> each of its voice lanes
         for nm, _ in vs:
             if nm in lane_ids:
@@ -998,7 +1125,9 @@ def build_voice_leading_scene(lab_spec, *, source_kind: str = "lab", source_id: 
                                    if poly else f"a {per[i]['broad']}-function chord"),
                     "relationToNext": vexpl, "voiceMotion": moves, "commonTones": common,
                     "leadingToneResolves": lt,
-                    "edgeType": "voice leading", "globalIndex": i}))
+                    "edgeType": "voice leading", "globalIndex": i,
+                    **(_role_detail(mode, per[i]["deg"], ann.roman or "")
+                       if per[i]["deg"] is not None else {})}))
 
     title = getattr(lab_spec, "title", None) or scene_type
     subtitle = (f"{key_label} · {' – '.join(m.annotation.roman or '?' for m in measures)}"
@@ -1013,8 +1142,7 @@ def build_voice_leading_scene(lab_spec, *, source_kind: str = "lab", source_id: 
         supported_actions=[], warnings=list(extra_warnings or []),
         metadata={"concept": lab_spec.concept, "voices": voice_names, "poly": poly},
         generator_id=scene_type)
-    scene.validate()
-    return scene
+    return _finalise(scene)
 
 
 def build_polyphonic_scene(lab_spec, *, source_kind: str = "lab", source_id: Optional[str] = None,
@@ -1144,6 +1272,7 @@ def build_score_scene(result, *, source_kind: str = "score", source_id: Optional
 
 
 def _finalise(scene: GraphScene) -> GraphScene:
+    scene.attach_activations()      # graph-derived "what lights up now" maps (plan section 4.2)
     scene.validate()
     return scene
 

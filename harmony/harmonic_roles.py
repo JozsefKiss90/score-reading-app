@@ -1,0 +1,284 @@
+"""Harmonic role profiles -- the explicit two-level model the scene UI needs.
+
+This module makes a distinction the rest of the app kept implicit and, in the graph scene,
+lossy: a chord has a **specific scale-degree role** (mediant, subdominant, leading-tone
+diminished, ...) *and* it belongs to a **broad function family** (tonic-related, predominant,
+dominant).  The old code carried only the collapsed family label (see
+:data:`harmony.harmonic_network.BROAD_FUNCTION`), so ``iii`` was shown simply as "tonic" -- erasing
+that it is specifically the mediant.  This module keeps both levels distinct (plan sections 1-3).
+
+Single source of truth is preserved: :mod:`theory.diatonic_harmony` still owns spelling, quality,
+Roman numerals and the raw ``scale_degree_name`` / ``function_label``.  This module adds only the
+pedagogical overlay -- how to *name and explain* the role and family -- and never re-encodes theory
+tables (the degree-name tables are *imported* from the theory engine, not copied).
+
+Backward-compatibility (plan section 3.2): the INTERNAL 3-family key
+(``"tonic"``/``"predominant"``/``"dominant"``, the values of
+:data:`harmony.harmonic_network.BROAD_FUNCTION`) is left untouched -- it is baked into node ids
+(``hn:function:{mode}:{fam}``) and layout bands.  The presentation family introduced here
+(``"tonic_related"`` etc.) is a *second* layer mapped from it, not a rename of it.
+
+Mode awareness (plan section 2.4): major-mode family strength is NOT generalised blindly to natural
+minor.  The natural-minor ``v`` (minor, no leading tone) and ``VII`` (modal subtonic) are marked
+``contextual`` and given honest, weaker family memberships rather than being asserted as strong
+dominants.
+
+Pure / headless: no Qt, JS, MusicXML or file I/O; deterministic.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, Optional
+
+# Reuse the theory engine's degree-name tables rather than duplicating them (plan section 10 "Do
+# not duplicate chord spellings or scale tables. Reuse theory.diatonic_harmony.").
+from theory.diatonic_harmony import _DEGREE_NAMES_MAJOR, _DEGREE_NAMES_MINOR
+
+
+# --------------------------------------------------------------------------------------------- #
+# Controlled vocabularies (plan section 3)
+# --------------------------------------------------------------------------------------------- #
+
+#: The broad function families a chord can belong to (the presentation layer).  ``tonic_related``
+#: replaces the bare ``tonic`` so I/iii/vi are never presented as identical "tonic" material;
+#: ``modal_or_contextual`` is the honest bucket for degrees whose function is mode-dependent.
+BROAD_FUNCTION_FAMILIES = frozenset({
+    "tonic_related", "predominant", "dominant", "modal_or_contextual",
+})
+
+#: How a chord participates in its family.
+FAMILY_MEMBERSHIP_TYPES = frozenset({
+    "primary", "related", "substitute", "preparatory", "leading_tone", "contextual",
+})
+
+#: How strong that participation is.
+FAMILY_MEMBERSHIP_STRENGTH = frozenset({
+    "strong", "medium", "weak", "context_dependent",
+})
+
+#: Human labels for the broad families (shown in the scene header / detail panel).
+BROAD_FAMILY_LABELS: Dict[str, str] = {
+    "tonic_related": "Tonic-related family",
+    "predominant": "Predominant family",
+    "dominant": "Dominant family",
+    "modal_or_contextual": "Modal / contextual family",
+}
+
+#: The INTERNAL 3-family key (``BROAD_FUNCTION`` values / node-id suffix / layout band) -> the
+#: presentation broad family.  Keep in sync with :data:`harmony.harmonic_network.BROAD_FUNCTION`'s
+#: *values* (never its keys): ``tonic`` -> ``tonic_related``.
+INTERNAL_FAMILY_TO_BROAD: Dict[str, str] = {
+    "tonic": "tonic_related",
+    "predominant": "predominant",
+    "dominant": "dominant",
+}
+
+#: A label (fine engine ``function_label`` OR a curated score-annotation scale-degree name) ->
+#: presentation broad family.  Mirrors :data:`harmony.harmonic_network.BROAD_FUNCTION` but renames
+#: ``tonic`` -> ``tonic_related`` and, unlike the old ``.get(..., "tonic")``, handles the fine
+#: scale-degree names that leak into ``function_label`` via curated score annotations (bwv846/999)
+#: instead of silently defaulting them to tonic.  Unknown labels fail *honest*, to
+#: ``modal_or_contextual`` (see :func:`broad_function_family`), never to a false "tonic".
+_LABEL_TO_BROAD: Dict[str, str] = {
+    # engine function_label values
+    "tonic": "tonic_related",
+    "mediant": "tonic_related",
+    "predominant": "predominant",
+    "subdominant": "predominant",
+    "dominant": "dominant",
+    # fine scale-degree names (curated score annotations)
+    "supertonic": "predominant",
+    "submediant": "tonic_related",
+    "leading-tone": "dominant",
+    "subtonic": "dominant",
+}
+
+
+def broad_function_family(label: str) -> str:
+    """Map an engine ``function_label`` (or a curated fine scale-degree name) to a broad family.
+
+    Honest fallback: an unrecognised label yields ``"modal_or_contextual"`` -- never a false
+    ``"tonic"`` (the old ``BROAD_FUNCTION.get(..., "tonic")`` mis-bucketed ``supertonic`` /
+    ``subtonic`` as tonic; this does not).
+    """
+    return _LABEL_TO_BROAD.get((label or "").strip().lower(), "modal_or_contextual")
+
+
+def internal_family_to_broad(internal_family: str) -> str:
+    """Map the internal 3-family key (``tonic``/``predominant``/``dominant``) to a broad family."""
+    return INTERNAL_FAMILY_TO_BROAD.get((internal_family or "").strip().lower(), "modal_or_contextual")
+
+
+def broad_family_label(broad_family: str) -> str:
+    return BROAD_FAMILY_LABELS.get(broad_family, "Contextual")
+
+
+# --------------------------------------------------------------------------------------------- #
+# HarmonicRoleProfile (plan section 3 contract)
+# --------------------------------------------------------------------------------------------- #
+
+@dataclass(frozen=True)
+class HarmonicRoleProfile:
+    """The two-level harmonic identity of one diatonic degree in a mode.
+
+    ``scale_degree_name`` + ``specific_role`` are the *specific* level; ``broad_family`` is the
+    *broad* level.  They are deliberately separate fields: the UI must never present the broad
+    family as though it were the chord's complete, context-free identity (plan section 1)."""
+
+    mode: str
+    roman: str
+    degree_index: int
+
+    scale_degree_name: str            # tonic / supertonic / mediant / ... (from theory engine)
+    specific_role: str                # e.g. "mediant", "subdominant", "leading-tone diminished"
+    specific_role_label: str          # display form of specific_role
+
+    broad_family: str                 # BROAD_FUNCTION_FAMILIES
+    broad_family_label: str           # BROAD_FAMILY_LABELS[broad_family]
+
+    family_membership_type: str       # FAMILY_MEMBERSHIP_TYPES
+    family_membership_strength: str   # FAMILY_MEMBERSHIP_STRENGTH
+    family_membership_explanation: str
+
+    contextual: bool = False
+
+    def to_dict(self) -> Dict:
+        return {
+            "mode": self.mode,
+            "roman": self.roman,
+            "degreeIndex": self.degree_index,
+            "scaleDegreeName": self.scale_degree_name,
+            "specificRole": self.specific_role,
+            "specificRoleLabel": self.specific_role_label,
+            "broadFamily": self.broad_family,
+            "broadFamilyLabel": self.broad_family_label,
+            "familyMembershipType": self.family_membership_type,
+            "familyMembershipStrength": self.family_membership_strength,
+            "familyMembershipExplanation": self.family_membership_explanation,
+            "contextual": self.contextual,
+        }
+
+
+# --------------------------------------------------------------------------------------------- #
+# Per-degree role tables (the pedagogical overlay)
+# --------------------------------------------------------------------------------------------- #
+#
+# Each entry: (specific_role, specific_role_label, broad_family, membership_type,
+#              membership_strength, membership_explanation, contextual)
+# scale_degree_name is taken from theory.diatonic_harmony (not repeated here).
+#
+# MAJOR mode -- the pedagogical defaults of plan section 3.1 (I..vii deg).
+
+_MAJOR_ROLES = {
+    0: ("tonic proper", "Tonic proper", "tonic_related", "primary", "strong",
+        "I is the tonic proper -- the harmonic home the whole key resolves to.", False),
+    1: ("predominant", "Supertonic (predominant)", "predominant", "primary", "strong",
+        "ii is a predominant chord: it prepares the dominant, falling a fifth onto V (ii -> V).",
+        False),
+    2: ("mediant", "Mediant", "tonic_related", "related", "context_dependent",
+        "iii is the mediant. It shares two tones with the tonic triad but is not the tonic proper; "
+        "it may prolong or relate to tonic depending on context, and can also lean dominant.",
+        True),
+    3: ("subdominant", "Subdominant", "predominant", "preparatory", "strong",
+        "IV is the subdominant chord. In progressions such as IV-V-I it acts as a predominant by "
+        "preparing the dominant; it can also move straight home (plagal IV-I).", False),
+    4: ("dominant", "Dominant", "dominant", "primary", "strong",
+        "V is the primary dominant triad -- the engine of tonal tension, resolving to I.", False),
+    5: ("submediant", "Submediant / tonic substitute", "tonic_related", "substitute", "medium",
+        "vi is the submediant and often acts as a tonic substitute (it shares two tones with I; it "
+        "is the goal of the deceptive resolution V -> vi).", False),
+    6: ("leading-tone diminished", "Leading-tone diminished", "dominant", "leading_tone", "strong",
+        "vii deg is the leading-tone diminished chord -- a rootless dominant sharing the dominant's "
+        "pull: its leading tone resolves up a semitone to the tonic (vii deg -> I).", False),
+}
+
+# NATURAL MINOR mode -- mode-aware (plan section 2.4).  v and VII are NOT asserted as strong
+# dominants: the diatonic v is minor (no leading tone) and VII is the modal subtonic.
+_MINOR_ROLES = {
+    0: ("tonic proper", "Tonic proper", "tonic_related", "primary", "strong",
+        "i is the tonic proper -- the harmonic home in the minor key.", False),
+    1: ("predominant", "Supertonic diminished (predominant)", "predominant", "primary", "medium",
+        "ii deg is the diminished supertonic; it acts as a predominant preparing the dominant.",
+        False),
+    2: ("mediant", "Mediant (relative major)", "tonic_related", "related", "context_dependent",
+        "III is the mediant -- the relative major. Its tonic-related grouping is contextual, not a "
+        "strong tonic identity.", True),
+    3: ("subdominant", "Subdominant", "predominant", "preparatory", "strong",
+        "iv is the subdominant and commonly prepares the dominant.", False),
+    4: ("dominant", "Dominant (weak in natural minor)", "dominant", "contextual", "context_dependent",
+        "In natural minor the diatonic v is minor and lacks a leading tone, so its dominant "
+        "function is weak/contextual; harmonic minor raises it to a true V.", True),
+    5: ("submediant", "Submediant", "tonic_related", "substitute", "medium",
+        "VI is the submediant, a common tonic substitute and the goal of the deceptive cadence in "
+        "minor.", False),
+    6: ("subtonic", "Subtonic (modal flat-VII)", "modal_or_contextual", "contextual",
+        "context_dependent",
+        "VII is the subtonic (flat-7). In natural minor it is a modal chord that typically leads to "
+        "III rather than functioning as a dominant of i; its family is contextual.", True),
+}
+
+
+def _degree_name(mode: str, degree_index: int) -> str:
+    table = _DEGREE_NAMES_MAJOR if _is_major(mode) else _DEGREE_NAMES_MINOR
+    if 0 <= degree_index < len(table):
+        return table[degree_index]
+    return ""
+
+
+def _is_major(mode: str) -> bool:
+    return (mode or "major").strip().lower() in ("major", "maj", "ionian")
+
+
+def role_profile(mode: str, degree_index: int, roman: str = "",
+                 scale_degree_name: Optional[str] = None) -> HarmonicRoleProfile:
+    """Build the :class:`HarmonicRoleProfile` for a diatonic degree.
+
+    ``scale_degree_name`` may be passed (the caller usually has a :class:`DiatonicTriad`); if
+    omitted it is looked up from the theory engine's degree tables so the two levels stay
+    consistent with the rest of the app.
+    """
+    major = _is_major(mode)
+    table = _MAJOR_ROLES if major else _MINOR_ROLES
+    sdn = scale_degree_name or _degree_name(mode, degree_index)
+    entry = table.get(degree_index)
+    if entry is None:
+        # Out-of-range / non-diatonic degree: honest contextual profile, never a false tonic.
+        return HarmonicRoleProfile(
+            mode=("major" if major else "natural_minor"), roman=roman, degree_index=degree_index,
+            scale_degree_name=sdn, specific_role=(sdn or "contextual"),
+            specific_role_label=(sdn.title() if sdn else "Contextual"),
+            broad_family="modal_or_contextual",
+            broad_family_label=broad_family_label("modal_or_contextual"),
+            family_membership_type="contextual", family_membership_strength="context_dependent",
+            family_membership_explanation="A degree with no fixed diatonic function in this mode.",
+            contextual=True)
+    role, role_label, broad, mtype, strength, expl, contextual = entry
+    return HarmonicRoleProfile(
+        mode=("major" if major else "natural_minor"), roman=roman, degree_index=degree_index,
+        scale_degree_name=sdn, specific_role=role, specific_role_label=role_label,
+        broad_family=broad, broad_family_label=broad_family_label(broad),
+        family_membership_type=mtype, family_membership_strength=strength,
+        family_membership_explanation=expl, contextual=contextual)
+
+
+def role_profile_for_triad(triad) -> HarmonicRoleProfile:
+    """Convenience: build a role profile straight from a :class:`DiatonicTriad`."""
+    return role_profile(
+        mode=triad.mode, degree_index=triad.degree_index, roman=triad.roman,
+        scale_degree_name=getattr(triad, "scale_degree_name", None))
+
+
+__all__ = [
+    "BROAD_FUNCTION_FAMILIES",
+    "FAMILY_MEMBERSHIP_TYPES",
+    "FAMILY_MEMBERSHIP_STRENGTH",
+    "BROAD_FAMILY_LABELS",
+    "INTERNAL_FAMILY_TO_BROAD",
+    "broad_function_family",
+    "internal_family_to_broad",
+    "broad_family_label",
+    "HarmonicRoleProfile",
+    "role_profile",
+    "role_profile_for_triad",
+]

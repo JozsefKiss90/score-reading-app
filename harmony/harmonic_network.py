@@ -65,6 +65,11 @@ from harmony.network_template import (
     HarmonicNetworkTemplate,
     get_template,
 )
+from harmony.harmonic_roles import (
+    internal_family_to_broad,
+    broad_family_label,
+    role_profile,
+)
 
 
 SCHEMA_VERSION = "harmony-network/v1"
@@ -87,6 +92,11 @@ NETWORK_GROUP_BY_KIND = OrderedDict([
 
 #: The seven fine ``DiatonicTriad.function_label`` values collapsed to the three broad function
 #: families the core template groups by (plan section 10.1).
+#:
+#: BACKWARD-COMPAT (plan section 3.2): the *values* here ("tonic"/"predominant"/"dominant") are the
+#: INTERNAL family key -- baked into node ids (``hn:function:{mode}:{fam}``), layout bands and atlas
+#: refs -- and must NOT change.  The renamed presentation families ("tonic_related" etc.) live in
+#: :mod:`harmony.harmonic_roles` as a *second* layer mapped from these, via ``internal_family_to_broad``.
 BROAD_FUNCTION = {
     "tonic": "tonic",
     "mediant": "tonic",
@@ -892,14 +902,28 @@ class _NetworkBuilder:
             self.core_function_by_label[fam] = node_id
             fam_ref = _present(self.atlas, function_id(mode, fam))
             romans = [t.roman for t in fam_triads]
+            # The renamed presentation family + member-specific role copy (plan sections 2.1-2.3):
+            # e.g. "Tonic-related family in C major: I, iii, vi. I is the tonic proper; iii is the
+            # mediant; vi is the submediant." -- so a broad label never masquerades as the members'
+            # complete identity.
+            broad = internal_family_to_broad(fam)
+            fam_label = broad_family_label(broad)
+            member_roles: List[Dict] = []
+            role_bits: List[str] = []
+            for t in fam_triads:
+                p = role_profile(t.mode, t.degree_index, roman=t.roman,
+                                 scale_degree_name=t.scale_degree_name)
+                member_roles.append({"roman": t.roman, "specificRole": p.specific_role,
+                                     "specificRoleLabel": p.specific_role_label,
+                                     "contextual": p.contextual})
+                role_bits.append(f"{t.roman} is the {p.specific_role}")
             entries: List[Dict] = []
             if romans:
-                spec = function_spec(romans, f"{fam.title()} family", mode, [tonic])
-                entries = [_launch_entry(spec, f"{fam.title()} family — enumerate "
-                                               f"{', '.join(romans)}")]
+                spec = function_spec(romans, f"{fam_label}", mode, [tonic])
+                entries = [_launch_entry(spec, f"{fam_label} — enumerate {', '.join(romans)}")]
             self._add_node(NetNode(
                 id=node_id,
-                label=f"{fam.title()} function",
+                label=fam_label,
                 kind="function_family",
                 pitch_class=-1,
                 spelling="",
@@ -909,10 +933,12 @@ class _NetworkBuilder:
                 trainer_specs=entries,
                 x=x, y=y, radius=lay.node_radius,
                 visual_class=vc,
-                explanation=(f"The {fam} function in {triads[0].key}: "
-                             f"{', '.join(romans)}. Family membership is a grouping, "
-                             f"not a progression."),
+                explanation=(f"{fam_label} in {triads[0].key}: {', '.join(romans)}. "
+                             + ("; ".join(role_bits) + ". " if role_bits else "")
+                             + "Family membership is a grouping, not a progression."),
                 data={"mode": mode, "functionLabel": fam,
+                      "broadFunctionFamily": broad, "broadFunctionFamilyLabel": fam_label,
+                      "memberRoles": member_roles,
                       "members": romans, "sublabel": ", ".join(romans)},
                 semantic_level="function", entity_role="family",
                 canonical_ref=fam_ref or "",

@@ -246,9 +246,69 @@ body{
 .hnNode.is-current circle{stroke:#fb923c;stroke-width:4;
   filter:drop-shadow(0 0 8px rgba(251,146,60,.95));}
 
+/* --- playback highlight HIERARCHY (plan sections 4, 5) -----------------------------------------
+   The current CONCRETE chord is the strongest mark; its broad-function family gets a softer
+   SECONDARY halo (never as strong); the key context stays a low-intensity persistent anchor; the
+   membership edge lights as STRUCTURE (dashed, not motion); the drill-order (sequence) and asserted
+   (theory) edges get distinct active styles. The family/context/edge classes are driven by the
+   occurrence's honest activation map, not by node colour. */
+/* 1. current concrete chord occurrence -- strongest glow */
+.hnNode.is-current-occurrence circle{stroke:#fb923c;stroke-width:4.5;
+  filter:drop-shadow(0 0 10px rgba(251,146,60,1));}
+/* 2. current broad-function family -- softer amber secondary halo */
+.hnNode.is-current-family circle{stroke:#f59e0b;stroke-width:3.4;
+  filter:drop-shadow(0 0 8px rgba(245,158,11,.7));}
+.hnNode.is-current-family text{font-weight:700;}
+/* 4. current key context -- persistent, low intensity */
+.hnNode.is-current-context circle{stroke:#a78bfa;stroke-width:3;opacity:.95;
+  filter:drop-shadow(0 0 5px rgba(167,139,250,.45));}
+/* 3. active membership edge (chord -> family): structural, never harmonic motion */
+.edge.is-current-structure-edge{stroke:#f59e0b !important;stroke-width:2.6;opacity:.95;
+  stroke-dasharray:2 3;}
+/* 5. active drill-order (sequence) edge */
+.edge.is-current-sequence-edge{stroke:#38bdf8 !important;stroke-width:2.8;opacity:.95;}
+/* 6. active asserted-motion (theory) edge -- the strongest edge, solid + glow */
+.edge.is-current-theory-edge{stroke:#fb923c !important;stroke-width:3.4;opacity:1;
+  stroke-dasharray:none;filter:drop-shadow(0 0 5px rgba(251,146,60,.6));}
+
+/* --- follow/pin detail panel (plan section 7) ------------------------------------------------- */
+.detailModeBar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;
+  border-bottom:1px solid var(--line);background:#f8fafc;position:sticky;top:0;z-index:2;}
+.detailModeBar .modeBtn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;
+  border:1px solid #cbd5e1;background:#fff;color:#0b3a53;cursor:pointer;}
+.detailModeBar .modeBtn.is-active{background:#0b3a53;color:#fff;border-color:#0b3a53;}
+.detailModeBar .detailModeStatus{margin-left:auto;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+.hnRight .sect{padding:9px 10px;border-bottom:1px solid var(--line);}
+.hnRight .sect .sectTag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:#64748b;margin-bottom:3px;}
+.hnRight .sect.nowPlaying{background:#fffdf5;}
+.hnRight .sect.nowPlaying .sectTag{color:#b45309;}
+.hnRight .sect.selectedConcept{background:#f8fafc;}
+.hnRight .sect h2{font-size:16px;font-weight:800;color:#0b3a53;margin:1px 0 3px;}
+.hnRight .sect .keyline{font-size:11px;color:var(--muted);margin-bottom:5px;}
+.hnRight .sect .hierRow{font-size:11px;font-weight:600;color:#0f766e;background:#ecfdf5;
+  border:1px solid #a7f3d0;border-radius:5px;padding:4px 7px;margin:4px 0;line-height:1.55;}
+.hnRight .sect .familyLine{font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px;}
+.hnRight .sect .expl{font-size:11px;color:#475569;line-height:1.5;margin-top:4px;font-style:italic;}
+.hnRight .sect .kind{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.04em;color:#64748b;background:#e2e8f0;border-radius:4px;padding:1px 6px;}
+
 /* dark mode (panels) */
 body.dark{--bg:#0b1220;--fg:#e5e7eb;--muted:#94a3b8;--line:#1f2937;--card:#0f172a;
   --accent-soft:#1e3a8a;}
 body.dark .toggleRow:hover{background:#111827;}
 body.dark .refList li code,body.dark .ctxPill{background:#111827;color:#cbd5e1;}
 body.dark .launchItem.reserved{background:#27201a;border-color:#92400e;}
+/* dark mode: follow/pin detail panel + highlight hierarchy */
+body.dark .detailModeBar{background:#0f172a;}
+body.dark .detailModeBar .modeBtn{background:#111827;color:#cbd5e1;border-color:#334155;}
+body.dark .detailModeBar .modeBtn.is-active{background:#38bdf8;color:#0b1220;border-color:#38bdf8;}
+body.dark .detailRow{color:#cbd5e1;} body.dark .detailRow b{color:#93c5fd;}
+body.dark .hnRight .sect.nowPlaying{background:#1a1710;}
+body.dark .hnRight .sect.selectedConcept{background:#0f172a;}
+body.dark .hnRight .sect h2{color:#e5e7eb;}
+body.dark .hnRight .sect .hierRow{background:#0b241d;border-color:#134e4a;color:#5eead4;}
+body.dark .hnRight .sect .familyLine{color:#fbbf24;}
+body.dark .hnRight .sect .expl{color:#94a3b8;}
+body.dark .hnRight .sect .kind{background:#1f2937;color:#cbd5e1;}

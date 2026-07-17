@@ -324,9 +324,18 @@ class HarmonicNetworkWindow(QWidget):
             if local == self._last_seq_index and not completed:
                 return
             self._last_seq_index = local
-            payload = {"sequenceIndex": local}
-            if completed:
-                payload["correct"] = True
+            # Stable per-tick payload (plan section 7.4): a bare index is ambiguous across scene
+            # switches / repeated occurrences, so also send the sceneId + occurrenceId + groupIndex.
+            scene = self._active_scene
+            occ = scene.occurrence_at(local) if scene is not None else None
+            payload = {
+                "sceneId": (scene.scene_id if scene is not None else None),
+                "occurrenceId": (occ.occurrence_id if occ is not None else None),
+                "sequenceIndex": local,
+                "groupIndex": (self._shown_group if self._prog_groups else 0),
+                "completed": completed,
+                "correct": (True if completed else None),
+            }
             self.net_view.update_occurrence_state(payload)
 
         try:
