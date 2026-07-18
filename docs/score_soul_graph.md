@@ -54,7 +54,7 @@ without pretending it is diatonic.
 - Diatonic bars: I, ii(7), V(6/5/7), vi(7), IV(7), cadential I6/4 — full Atlas + Network mapping.
 - Chromatic bars (honestly marked): **6, 10** V7/V · **12** vii°7/ii · **14, 23** vii°7 · **20, 31** V7/IV · **22, 27** vii°7/V.
 - Ambiguous: **29** (dominant 11-suspension, no third).
-- Cadences: opening V6/5–I (m3–4) and the closing PAC (m33–34) → both resolve to the Atlas `cadence:Authentic_major` node.
+- Cadences: opening V6/5–I (m3–4) and the closing PAC (m33–34) → both resolve to the Atlas `cadence:V_I_major` node (roman-style label since the F7 label unification).
 
 ### BWV 999 readiness
 

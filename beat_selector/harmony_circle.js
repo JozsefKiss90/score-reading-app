@@ -44,6 +44,18 @@
   function modeWord(mode) { return mode === "natural_minor" ? "minor" : "major"; }
   function tonicOf(key) { return String(key || "").split(" ")[0]; }
 
+  // Function vocabulary comes from the payload cheatsheet (built from
+  // harmony.harmonic_roles, the single vocabulary source) -- no legend text or
+  // label->class table is hardcoded here (ticket 01 / plan F1).
+  function functionClasses() {
+    return (data && data.cheatsheet && data.cheatsheet.functionClasses) || [];
+  }
+  function familyEntryFor(cls) {
+    var out = null;
+    functionClasses().forEach(function (fc) { if (fc["class"] === cls) out = fc; });
+    return out;
+  }
+
   function el(tag, props, kids) {
     var n = document.createElement(tag);
     applyProps(n, props);
@@ -267,15 +279,18 @@
       d.appendChild(row("Tones", (sel.tones || []).join("–")));
       d.appendChild(row("Quality", sel.quality));
       d.appendChild(row("Layer", sel.intervalLayer));
-      d.appendChild(row("Function", sel.functionLabel + " (" + sel.functionClass + ")"));
+      var fam = familyEntryFor(sel.functionClass);
+      d.appendChild(row("Function", sel.functionLabel
+        + (fam ? " — " + fam.label + (fam.short ? " (" + fam.short + ")" : "") : "")));
     }
 
-    // function legend (clickable -> highlight that function group)
+    // function legend (clickable -> highlight that function group); the
+    // entries come from the payload cheatsheet, never a local synonym table
     var leg = el("div", { class: "hcChips" }, []);
-    [["T", "Tonic"], ["S", "Pre/Sub"], ["D", "Dominant"]].forEach(function (fc) {
+    functionClasses().forEach(function (fc) {
       leg.appendChild(el("span", {
-        class: "hcChip fn-" + fc[0], text: fc[1],
-        onClick: function () { selectFunction(fc[0]); },
+        class: "hcChip fn-" + fc["class"], text: fc.label,
+        onClick: function () { selectFunction(fc["class"]); },
       }));
     });
     d.appendChild(el("div", { class: "row", html: "<span class='lbl'>Functions</span>" }));
@@ -437,8 +452,14 @@
     renderDetail();
   }
   function classFor(functionLabel) {
-    return ({ tonic: "T", mediant: "T", predominant: "S", subdominant: "S",
-      dominant: "D" })[functionLabel] || null;
+    // Derived from the payload cheatsheet patterns (which carry the Python-side
+    // functionLabel -> functionClass collapse) rather than a local copy of it.
+    var cheat = (data && data.cheatsheet) || {};
+    var found = null;
+    (cheat.majorPattern || []).concat(cheat.minorPattern || []).forEach(function (p) {
+      if (p.functionLabel === functionLabel) found = p.functionClass;
+    });
+    return found;
   }
 
   function highlightState() {

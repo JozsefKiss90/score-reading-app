@@ -66,6 +66,7 @@ from harmony.network_template import (
     get_template,
 )
 from harmony.harmonic_roles import (
+    ENGINE_FUNCTION_TO_INTERNAL_FAMILY,
     internal_family_to_broad,
     broad_family_label,
     role_profile,
@@ -97,13 +98,11 @@ NETWORK_GROUP_BY_KIND = OrderedDict([
 #: INTERNAL family key -- baked into node ids (``hn:function:{mode}:{fam}``), layout bands and atlas
 #: refs -- and must NOT change.  The renamed presentation families ("tonic_related" etc.) live in
 #: :mod:`harmony.harmonic_roles` as a *second* layer mapped from these, via ``internal_family_to_broad``.
-BROAD_FUNCTION = {
-    "tonic": "tonic",
-    "mediant": "tonic",
-    "predominant": "predominant",
-    "subdominant": "predominant",
-    "dominant": "dominant",
-}
+#:
+#: Derived from the single vocabulary source (ticket 01 / plan section 9.5) -- never hand-edit;
+#: change :data:`harmony.harmonic_roles._LABEL_TO_BROAD` instead.  A plain alias (not a copy),
+#: so the two names can never diverge at runtime.
+BROAD_FUNCTION = ENGINE_FUNCTION_TO_INTERNAL_FAMILY
 
 #: Layout order of the three function families (top, lower-right, lower-left).
 FUNCTION_LAYOUT_ORDER = ["tonic", "dominant", "predominant"]
@@ -115,6 +114,9 @@ _PATH_MOTION_RELATIONS = frozenset({
 
 #: Cadence catalogue per mode: (Roman pattern, label, cadence type). Chord content is derived
 #: from the theory engine for the active key; this is only the degree pattern (plan section 14.2).
+#: Types come from :data:`harmony.harmonic_roles.CADENCE_TYPES` and agree with the curriculum
+#: catalogue (ticket 02): VII–i is the modal *subtonic* close, i–VI–VII–i the *aeolian* loop and
+#: I–V–vi–IV the *axis* loop (deceptive motion inside it, but not a deceptive cadence).
 CADENCE_CATALOGUE = {
     "major": [
         (("V", "I"), "V–I", "authentic"),
@@ -124,14 +126,14 @@ CADENCE_CATALOGUE = {
         (("IV", "V", "I"), "IV–V–I", "authentic"),
         (("I", "IV", "V", "I"), "I–IV–V–I", "authentic"),
         (("vi", "ii", "V", "I"), "vi–ii–V–I", "authentic"),
-        (("I", "V", "vi", "IV"), "I–V–vi–IV", "mixed"),
+        (("I", "V", "vi", "IV"), "I–V–vi–IV", "axis"),
     ],
     "natural_minor": [
         (("v", "i"), "v–i", "authentic"),
-        (("VII", "i"), "VII–i", "authentic"),
+        (("VII", "i"), "VII–i", "subtonic"),
         (("iv", "v", "i"), "iv–v–i", "authentic"),
         (("i", "iv", "v", "i"), "i–iv–v–i", "authentic"),
-        (("i", "VI", "VII", "i"), "i–VI–VII–i", "mixed"),
+        (("i", "VI", "VII", "i"), "i–VI–VII–i", "aeolian"),
     ],
 }
 

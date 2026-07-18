@@ -107,7 +107,11 @@ const DATA = {
   cheatsheet: {
     majorPattern: C_TRIADS, minorPattern: C_TRIADS,
     intervalLayers: [{ quality: "major", intervalLayer: "M3+m3" }],
-    functionClasses: [{ class: "T", label: "Tonic" }, { class: "S", label: "Pre/Sub" }, { class: "D", label: "Dominant" }],
+    functionClasses: [
+      { class: "T", label: "Tonic-related family", short: "T" },
+      { class: "S", label: "Predominant family", short: "PD/S" },
+      { class: "D", label: "Dominant family", short: "D" },
+    ],
   },
   relations: [],
 };

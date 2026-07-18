@@ -39,7 +39,7 @@ from harmony.functional_network import (
     function_node_id,
     key_node_id,
 )
-from harmony.functional_network_template import FUNCTION_GROUPS
+from harmony.functional_network_template import FUNCTION_GROUPS, FUNCTION_GROUP_LABELS
 
 
 #: Default progress file (project root, next to ``.curriculum_progress.json``).
@@ -150,12 +150,13 @@ def journey_stages(network: HarmonicNetwork) -> List[JourneyStage]:
             stage_id="three_jobs",
             title="Stage 2 — Three jobs",
             explanation=(
-                "Every diatonic chord does one of three jobs: Tonic chords "
-                "are home (I, with vi and iii as stand-ins), Predominant / "
-                "Subdominant chords set up motion (ii, IV), and Dominant "
-                "chords carry tension (V, vii°). The violet badges collect "
-                "each family. Play I–IV–V–I and feel the full cycle: home → "
-                "approach → tension → home."),
+                f"Every diatonic chord does one of three jobs: the "
+                f"{FUNCTION_GROUP_LABELS['tonic']} is home (I, with vi and iii "
+                f"as stand-ins), the {FUNCTION_GROUP_LABELS['predominant']} "
+                f"sets up motion (ii and the subdominant IV), and the "
+                f"{FUNCTION_GROUP_LABELS['dominant']} carries tension (V, "
+                f"vii°). The violet badges collect each family. Play I–IV–V–I "
+                f"and feel the full cycle: home → approach → tension → home."),
             visible_node_ids=home_degrees + home_functions,
             visible_relations=["function_member"],
             emphasis_node_ids=list(home_functions),

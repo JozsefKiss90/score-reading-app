@@ -698,35 +698,43 @@ def lab_demo_specs() -> List[LabExperimentSpec]:
             concept="cadence", mode="major", key="C major", render="voice_leading",
             parameters={"pattern": ["V", "vi"], "cadence_type": "deceptive"},
         ),
+        # Progressions carry concept "voice_leading", two-chord types "cadence" --
+        # the same family rule as the curriculum catalogue (ticket 02 / plan F7);
+        # every catalogue cadence names its type from harmonic_roles.CADENCE_TYPES.
         LabExperimentSpec(
             experiment_id="cad_ii_V_I_C",
             title="ii–V–I in C major (voice leading)",
             concept="voice_leading", mode="major", key="C major",
-            render="voice_leading", parameters={"pattern": ["ii", "V", "I"]},
+            render="voice_leading",
+            parameters={"pattern": ["ii", "V", "I"], "cadence_type": "authentic"},
         ),
         LabExperimentSpec(
             experiment_id="cad_v_i_Am",
             title="v–i in A natural minor (voice leading)",
             concept="cadence", mode="natural_minor", key="A minor",
-            render="voice_leading", parameters={"pattern": ["v", "i"]},
+            render="voice_leading",
+            parameters={"pattern": ["v", "i"], "cadence_type": "authentic"},
         ),
         LabExperimentSpec(
             experiment_id="cad_iv_v_i_Am",
             title="iv–v–i in A natural minor (voice leading)",
-            concept="cadence", mode="natural_minor", key="A minor",
-            render="voice_leading", parameters={"pattern": ["iv", "v", "i"]},
+            concept="voice_leading", mode="natural_minor", key="A minor",
+            render="voice_leading",
+            parameters={"pattern": ["iv", "v", "i"], "cadence_type": "authentic"},
         ),
         LabExperimentSpec(
             experiment_id="cad_VII_i_Am",
             title="VII–i subtonic cadence in A natural minor",
             concept="cadence", mode="natural_minor", key="A minor",
-            render="voice_leading", parameters={"pattern": ["VII", "i"]},
+            render="voice_leading",
+            parameters={"pattern": ["VII", "i"], "cadence_type": "subtonic"},
         ),
         LabExperimentSpec(
             experiment_id="cad_i_VI_VII_i_Am",
             title="i–VI–VII–i Aeolian loop in A natural minor",
-            concept="cadence", mode="natural_minor", key="A minor",
-            render="voice_leading", parameters={"pattern": ["i", "VI", "VII", "i"]},
+            concept="voice_leading", mode="natural_minor", key="A minor",
+            render="voice_leading",
+            parameters={"pattern": ["i", "VI", "VII", "i"], "cadence_type": "aeolian"},
         ),
         LabExperimentSpec(
             experiment_id="motive_1353_major",

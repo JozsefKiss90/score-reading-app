@@ -113,15 +113,19 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
         "atlas_connections": [
             "Every inversion maps to the same Atlas triad node (same key, degree).",
             "The triad's quality and interval layer are invariant across inversions.",
-            "Its harmonic function (tonic / predominant / dominant) is unchanged.",
+            "Its harmonic function usually survives inversion - the cadential 6/4 "
+            "is the exception (see below).",
         ],
         "common_misconceptions": [
             "\"C/E is a new chord\" - no, it is still a C major chord, E in the bass.",
             "\"The lowest note is always the root\" - only in root position.",
-            "\"Inversion changes the chord's function\" - it does not.",
+            "\"Inversion never changes the chord's function\" - usually true, but "
+            "in the cadential 6/4 a second-inversion tonic shape over the "
+            "dominant's bass behaves as a dominant embellishment, not a tonic.",
         ],
         "next_steps": [
-            "Hear how a 6/4 chord wants to resolve (the cadential 6/4, a later topic).",
+            "Hear how a 6/4 chord wants to resolve: the cadential 6/4 leans onto "
+            "the dominant beneath it (a dedicated lesson is coming).",
             "Carry inversions into voice-leading: a smooth bass line uses inversions.",
         ],
     },

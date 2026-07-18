@@ -57,6 +57,7 @@ from harmony.exercise_spec import (
     _FUNCTION_PATTERNS_MINOR,
     _quality_specs as _es_quality_specs,
 )
+from harmony.harmonic_roles import function_flow_short
 
 
 SCHEMA_VERSION = "harmony-atlas/v1"
@@ -98,9 +99,12 @@ _STRUCTURE_CAPTION = {
 #: with the trainer (single definition); the Atlas adds the pop I-V-vi-IV and the
 #: natural-minor iv-v-i (the canonical minor authentic progression, which is not
 #: one of the shared trainer function patterns).
-#: Each entry: (tokens, label, mode, cadence_type).
+#: Each entry: (tokens, label, mode, cadence_type) with the type drawn from
+#: :data:`harmony.harmonic_roles.CADENCE_TYPES`.  The axis loop is NOT tagged
+#: "deceptive": its V-vi motion is mid-loop and the phrase ends on IV (ticket 02 /
+#: plan F2); the V-vi two-chord type below stays the deceptive exemplar.
 _EXTRA_CADENCES = [
-    (["I", "V", "vi", "IV"], "I–V–vi–IV", "major", "deceptive"),
+    (["I", "V", "vi", "IV"], "I–V–vi–IV", "major", "axis"),
     (["iv", "v", "i"], "iv–v–i", "natural_minor", "authentic"),
 ]
 
@@ -108,13 +112,15 @@ _EXTRA_CADENCES = [
 #: Derived as function-drill patterns, not hard-coded chords.  The natural-minor
 #: types (v-i, VII-i) join the four major types so every required cadence has an
 #: Atlas node the curriculum can map to (Bug 2).
+#: Labels use the SAME roman style as the progression cadences (ticket 02 / plan
+#: F7: one label style) -- which also avoids the b->f flat substitution _slug()
+#: applies to pitch-y words (e.g. "Subtonic" -> "Suftonic"); the word for each
+#: type lives in ``cadenceType``, which the UI shows next to the label.
 _CADENCE_TYPES = [
-    (["V", "I"], "Authentic", "major", "authentic"),
-    (["IV", "I"], "Plagal", "major", "plagal"),
-    (["I", "V"], "Half", "major", "half"),
-    (["V", "vi"], "Deceptive", "major", "deceptive"),
-    # Roman labels (like the progression cadences) -- avoids the b->f flat
-    # substitution _slug() applies to pitch-y words (e.g. "Subtonic" -> "Suftonic").
+    (["V", "I"], "V–I", "major", "authentic"),
+    (["IV", "I"], "IV–I", "major", "plagal"),
+    (["I", "V"], "I–V", "major", "half"),
+    (["V", "vi"], "V–vi", "major", "deceptive"),
     (["v", "i"], "v–i", "natural_minor", "authentic"),
     (["VII", "i"], "VII–i", "natural_minor", "subtonic"),
 ]
@@ -597,7 +603,7 @@ LEARNING_PATH = [
     {"level": 4, "id": "transposition", "title": "Transposition",
      "detail": "The same degree / pattern across all keys."},
     {"level": 5, "id": "functions", "title": "Functions",
-     "detail": "Tonic / predominant / dominant recognition."},
+     "detail": f"Function-family recognition ({function_flow_short()})."},
     {"level": 6, "id": "cadences", "title": "Cadences",
      "detail": "Authentic, plagal, deceptive and full progressions."},
     {"level": 7, "id": "real_music", "title": "Real music",
@@ -1126,7 +1132,7 @@ class CadenceSpan:
     key: str
     mode: str
     pattern: List[str]                                # tokens, e.g. ["ii","V","I"]
-    cadence_type: str = ""                            # authentic|plagal|half|deceptive|aeolian
+    cadence_type: str = ""    # one of harmony.harmonic_roles.CADENCE_TYPES (subtonic/axis included)
     chords: List[str] = field(default_factory=list)   # chord symbols, in order
     functions: List[str] = field(default_factory=list)  # function labels, in order
 

@@ -114,16 +114,17 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | Source | Count | Category |
 |---|---:|---|
 | inversion grid (I/ii/IV/V × 12 major + i/iv/v/VII × 12 minor) + 1 worked example | 97 | Inversions |
-| voice-leading cadences (one SATB per cadence: 8 demos + 5 generated) | 13 | Voice Leading |
+| voice-leading cadences (one SATB per cadence: 8 demos + 5 generated) | 13 | Cadences (SATB variants) |
 | `lab.lab_demo_specs` motive | 2 | Motives |
 | `lab.lab_demo_specs` polyphonic | 3 | Polyphonic Harmony |
 | block cadences from `_CADENCE_CATALOG` (6 two-chord types + 7 progressions) | 13 | Cadences |
-| **grand total** | **230 exercise leaves** | (300 nodes total) |
+| **grand total** | **230 exercise leaves** | (~300 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
-(13 cadences) so the block versions (Cadences) and SATB versions (Voice Leading)
-never drift; every cadence maps to an Atlas cadence node and cross-links to its
-counterpart. The inversion grid uses `LabExperimentSpec(concept="inversion")`
+(13 cadences) rendered as two variants under the single **Cadences** category —
+block drills plus SATB voice-leading (the old separate Voice Leading category
+duplicated the catalogue and was merged, plan F7); every cadence maps to an Atlas
+cadence node and each variant cross-links its counterpart. The inversion grid uses `LabExperimentSpec(concept="inversion")`
 (3 measures: root / first / second) and reuses `inv_C_I` as its C-major-I cell.
 Coverage is verified by `harmony.curriculum_audit` (see
 `docs/harmony_curriculum_coverage_audit.md`).

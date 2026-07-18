@@ -44,6 +44,9 @@ from typing import Any, Dict, List, Optional
 # (all vocabulary validation lives on the template class below, so importing
 # them cannot loosen the v1 module's contract).
 from harmony.network_template import NodeClass, EdgeClass
+# Display labels/badges come from the single function vocabulary (ticket 01 / plan F1); the
+# closed schema vocabularies (NODE_KINDS / ALL_RELATIONS / FUNCTION_GROUPS keys) stay frozen.
+from harmony.harmonic_roles import INTERNAL_FAMILY_SHORT, internal_family_label
 
 
 SCHEMA_VERSION = "harmony-functional-network-template/v1"
@@ -101,13 +104,10 @@ VISUAL_CLASSES = ["emerald", "violet", "amber"]
 #: substitute, with each node's explanation stating the ambiguity.
 FUNCTION_GROUPS = ["tonic", "predominant", "dominant"]
 
-#: Short badge / long display labels for the function groups.
-FUNCTION_GROUP_SHORT = {"tonic": "T", "predominant": "PD/S", "dominant": "D"}
-FUNCTION_GROUP_LABELS = {
-    "tonic": "Tonic family",
-    "predominant": "Predominant / Subdominant family",
-    "dominant": "Dominant family",
-}
+#: Short badge / long display labels for the function groups -- derived from the shared
+#: vocabulary (never hand-edit; ticket 01 / plan F1).
+FUNCTION_GROUP_SHORT = {g: INTERNAL_FAMILY_SHORT[g] for g in FUNCTION_GROUPS}
+FUNCTION_GROUP_LABELS = {g: internal_family_label(g) for g in FUNCTION_GROUPS}
 
 
 # ---------------------------------------------------------------------------
@@ -348,8 +348,10 @@ def functional_degree_network_v1(
                   "by harmonic function (tonic cluster bottom-centre, "
                   "predominants left, dominants right)."),
         NodeClass("function_group", "Function group", "violet", "#a78bfa",
-                  "A functional family within one key: Tonic (I, vi, iii), "
-                  "Predominant/Subdominant (ii, IV) or Dominant (V, vii°). "
+                  f"A functional family within one key: the "
+                  f"{FUNCTION_GROUP_LABELS['tonic']} (I, vi, iii), the "
+                  f"{FUNCTION_GROUP_LABELS['predominant']} (ii, IV) or the "
+                  f"{FUNCTION_GROUP_LABELS['dominant']} (V, vii°). "
                   "The iii chord is grouped as a tonic substitute; its "
                   "explanation states the ambiguity."),
         NodeClass("key_hub", "Key hub", "amber", "#fbbf24",

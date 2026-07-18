@@ -64,7 +64,8 @@ class TestScoreGraphBwv846(unittest.TestCase):
         cads = self.graph.nodes_of_type("cadence")
         self.assertTrue(cads)
         refs = [c.data.get("atlasRef") for c in cads]
-        self.assertIn("cadence:Authentic_major", refs)
+        # roman-style label (one label style across cadence nodes, plan F7)
+        self.assertIn("cadence:V_I_major", refs)
 
     def test_resolves_to_includes_dominant_to_tonic(self):
         res = self.graph.edges_of_relation("resolves_to")

@@ -60,10 +60,13 @@ class TestStructure(unittest.TestCase):
         titles = [c.title for c in self.root.children]
         for needed in ("Scales", "Chords (Triads)", "Degrees & Transposition",
                        "Functions", "Cadences", "Intervals & Interval Layers",
-                       "Inversions", "Voice Leading", "Motives",
+                       "Inversions", "Motives",
                        "Polyphonic Harmony", "Interactive Harmony Atlas",
                        "Circle of Fifths"):
             self.assertIn(needed, titles, needed)
+        # F7: the old Voice Leading category duplicated the cadence catalogue;
+        # its SATB leaves live under Cadences now (see test_content_truth.py).
+        self.assertNotIn("Voice Leading", titles)
 
     def test_orders_are_sequential_per_parent(self):
         for n in self.root.walk():

@@ -43,26 +43,34 @@ from harmony.exercise_spec import (
     DEFAULT_MAJOR_KEYS,
     DEFAULT_MINOR_KEYS,
 )
+from harmony.harmonic_roles import (
+    ENGINE_FUNCTION_TO_INTERNAL_FAMILY,
+    INTERNAL_FAMILY_SHORT,
+    internal_family_label,
+)
 
 
 SCHEMA_VERSION = "harmony-circle/v1"
 
-#: Coarse harmonic-function colour class (T / S / D) for each engine function
-#: label.  This is a *presentational grouping* of the engine's labels into the
-#: three colour buckets the chart uses -- defined once, not a theory table.
+#: INTERNAL family key -> the chart's colour-class letter.  The letters are a *styling
+#: contract* (CSS classes ``fn-T`` / ``fn-S`` / ``fn-D`` in harmony_circle.js), like node ids --
+#: they never render as vocabulary; display text comes from the shared labels below.
+_FAMILY_CLASS = {"tonic": "T", "predominant": "S", "dominant": "D"}
+
+#: Engine function label -> colour class, derived from the single vocabulary source
+#: (ticket 01 / plan F1) -- never hand-edit.
 _FUNCTION_CLASS = {
-    "tonic": "T",
-    "mediant": "T",
-    "predominant": "S",
-    "subdominant": "S",
-    "dominant": "D",
+    label: _FAMILY_CLASS[fam]
+    for label, fam in ENGINE_FUNCTION_TO_INTERNAL_FAMILY.items()
 }
 
-#: Human labels for the three function colour classes (Part 7 cheatsheet legend).
+#: The three function colour classes with their shared presentation label + short badge
+#: (Part 7 cheatsheet legend; the JS legend renders these verbatim).
 _FUNCTION_CLASS_LABELS = [
-    {"class": "T", "label": "Tonic"},
-    {"class": "S", "label": "Predominant / Subdominant"},
-    {"class": "D", "label": "Dominant"},
+    {"class": _FAMILY_CLASS[fam],
+     "label": internal_family_label(fam),
+     "short": INTERNAL_FAMILY_SHORT[fam]}
+    for fam in ("tonic", "predominant", "dominant")
 ]
 
 #: Relationship vocabulary reserved for future layers (Part 8).  The circle only

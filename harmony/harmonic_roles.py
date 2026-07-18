@@ -33,7 +33,12 @@ from typing import Dict, Optional
 
 # Reuse the theory engine's degree-name tables rather than duplicating them (plan section 10 "Do
 # not duplicate chord spellings or scale tables. Reuse theory.diatonic_harmony.").
-from theory.diatonic_harmony import _DEGREE_NAMES_MAJOR, _DEGREE_NAMES_MINOR
+from theory.diatonic_harmony import (
+    _DEGREE_NAMES_MAJOR,
+    _DEGREE_NAMES_MINOR,
+    _FUNCTION_LABELS_MAJOR,
+    _FUNCTION_LABELS_MINOR,
+)
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -112,6 +117,85 @@ def internal_family_to_broad(internal_family: str) -> str:
 
 def broad_family_label(broad_family: str) -> str:
     return BROAD_FAMILY_LABELS.get(broad_family, "Contextual")
+
+
+# --------------------------------------------------------------------------------------------- #
+# Derived vocabulary (ticket 01 / plan F1, section 9.5): the single source everyone else maps from
+# --------------------------------------------------------------------------------------------- #
+
+#: The theory engine's fine ``function_label`` vocabulary (both mode tables).  Derived from the
+#: engine so this module can never disagree with it.
+ENGINE_FUNCTION_LABELS = frozenset(_FUNCTION_LABELS_MAJOR) | frozenset(_FUNCTION_LABELS_MINOR)
+
+#: Presentation broad family -> INTERNAL 3-family key (the inverse of
+#: :data:`INTERNAL_FAMILY_TO_BROAD`; ``modal_or_contextual`` has no internal key by design).
+BROAD_TO_INTERNAL_FAMILY: Dict[str, str] = {
+    broad: internal for internal, broad in INTERNAL_FAMILY_TO_BROAD.items()
+}
+
+#: THE collapse map: engine fine ``function_label`` -> INTERNAL 3-family key.  Derived from
+#: :data:`_LABEL_TO_BROAD`, never hand-maintained.  ``harmony.harmonic_network.BROAD_FUNCTION``,
+#: ``harmony.functional_network.ENGINE_FUNCTION_TO_GROUP`` and the circle payload's colour
+#: classes are all copies of this dict (drift-tested in tests/test_function_vocabulary.py).
+ENGINE_FUNCTION_TO_INTERNAL_FAMILY: Dict[str, str] = {
+    label: BROAD_TO_INTERNAL_FAMILY[_LABEL_TO_BROAD[label]]
+    for label in sorted(ENGINE_FUNCTION_LABELS)
+}
+
+#: Canonical short badge per INTERNAL family (legend chips, group badges).  ``PD/S`` names both
+#: the predominant family and its subdominant member -- the one abbreviation that does not take
+#: sides in the old predominant-vs-subdominant synonym conflict (plan F1).
+INTERNAL_FAMILY_SHORT: Dict[str, str] = {
+    "tonic": "T",
+    "predominant": "PD/S",
+    "dominant": "D",
+}
+
+
+def internal_family_label(internal_family: str) -> str:
+    """The presentation label for an INTERNAL family key (e.g. ``"tonic"`` ->
+    ``"Tonic-related family"``).  The two strings are different by design: the internal key is
+    baked into node ids and layout bands; this label is what a learner reads."""
+    return broad_family_label(internal_family_to_broad(internal_family))
+
+
+def function_flow_short() -> str:
+    """The canonical short form of the functional loop, e.g. ``"T → PD/S → D → T"``."""
+    fams = ("tonic", "predominant", "dominant", "tonic")
+    return " → ".join(INTERNAL_FAMILY_SHORT[f] for f in fams)
+
+
+#: Shorthand tokens accepted inside functional drill patterns, per function name.  The trainer's
+#: token table (``harmony.exercise_spec._FUNCTION_TOKEN_TO_ROMAN``) is derived from this pair of
+#: tables, so the drill vocabulary and the prose vocabulary can never diverge.
+FUNCTION_TOKEN_ALIASES: Dict[str, tuple] = {
+    "tonic": ("T", "TONIC"),
+    "subdominant": ("S", "SD", "SUBDOMINANT"),
+    "predominant": ("PD", "PREDOMINANT"),
+    "dominant": ("D", "DOMINANT"),
+}
+
+#: The exemplar diatonic degree (major mode, 0-based) each function name resolves to when used
+#: as a drill token: T -> I, PD -> ii (the primary predominant), S -> IV (the subdominant),
+#: D -> V.  Each degree's :func:`role_profile` specific role bears the function's name
+#: (drift-tested).
+FUNCTION_EXEMPLAR_DEGREE: Dict[str, int] = {
+    "tonic": 0,
+    "predominant": 1,
+    "subdominant": 3,
+    "dominant": 4,
+}
+
+
+#: Canonical cadence/progression-type vocabulary (ticket 02 / plan F2+F7), shared by the
+#: curriculum catalogue, the Atlas cadence nodes, the harmonic network's cadence catalogue,
+#: lab cadence parameters and score-analysis cadence spans.  ``subtonic`` is the modal
+#: flat-VII -> i close; ``aeolian`` and ``axis`` tag loop *progressions* (i-VI-VII-i and
+#: I-V-vi-IV) rather than two-chord closures -- the axis loop contains deceptive motion but is
+#: never itself labelled "deceptive".
+CADENCE_TYPES = frozenset({
+    "authentic", "plagal", "half", "deceptive", "subtonic", "aeolian", "axis",
+})
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -275,9 +359,18 @@ __all__ = [
     "FAMILY_MEMBERSHIP_STRENGTH",
     "BROAD_FAMILY_LABELS",
     "INTERNAL_FAMILY_TO_BROAD",
+    "BROAD_TO_INTERNAL_FAMILY",
+    "ENGINE_FUNCTION_LABELS",
+    "ENGINE_FUNCTION_TO_INTERNAL_FAMILY",
+    "INTERNAL_FAMILY_SHORT",
+    "FUNCTION_TOKEN_ALIASES",
+    "FUNCTION_EXEMPLAR_DEGREE",
+    "CADENCE_TYPES",
     "broad_function_family",
     "internal_family_to_broad",
     "broad_family_label",
+    "internal_family_label",
+    "function_flow_short",
     "HarmonicRoleProfile",
     "role_profile",
     "role_profile_for_triad",

@@ -2,7 +2,7 @@
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
     "totalLeaves": 230,
-    "categories": 12,
+    "categories": 11,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
     "missingRequiredCount": 0,
@@ -123,8 +123,8 @@
       "categoryIds": [
         "cat:cadences"
       ],
-      "expected": "13 cadences: 6 two-chord types + 7 functional progressions (block).",
-      "actualLeaves": 13,
+      "expected": "13 cadences (6 two-chord types + 7 functional progressions), each as a block drill AND an SATB voice-leading variant (26 leaves).",
+      "actualLeaves": 26,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
@@ -138,6 +138,7 @@
       "tests": [
         "tests/test_curriculum.py",
         "tests/test_curriculum_cadences.py",
+        "tests/test_content_truth.py",
         "tests/test_harmony_atlas.py"
       ]
     },
@@ -184,29 +185,6 @@
       "tests": [
         "tests/test_curriculum.py",
         "tests/test_curriculum_inversions.py",
-        "tests/test_harmony_lab.py"
-      ]
-    },
-    {
-      "key": "voice_leading",
-      "title": "Voice Leading",
-      "categoryIds": [
-        "cat:voice_leading"
-      ],
-      "expected": "13 SATB voice-leading cadences (one per cadence).",
-      "actualLeaves": 13,
-      "reserved": false,
-      "duplicateExerciseIds": [],
-      "duplicateExperimentIds": [],
-      "invalidLabSpec": [],
-      "invalidBridge": [],
-      "emptyExplanations": [],
-      "missingAtlasMapping": [],
-      "unresolvedAtlasMapping": [],
-      "missingCircleMapping": [],
-      "unresolvedCircleMapping": [],
-      "tests": [
-        "tests/test_curriculum.py",
         "tests/test_harmony_lab.py"
       ]
     },

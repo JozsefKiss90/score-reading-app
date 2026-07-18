@@ -36,6 +36,7 @@ from theory.diatonic_harmony import (
     _canon_mode,
     _mode_word,
 )
+from harmony.harmonic_roles import FUNCTION_TOKEN_ALIASES, FUNCTION_EXEMPLAR_DEGREE
 
 
 SCHEMA_VERSION = "harmony-trainer/v1"
@@ -48,14 +49,6 @@ DEFAULT_MAJOR_KEYS = [
 DEFAULT_MINOR_KEYS = [
     "A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#",
 ]
-
-#: Functional shorthand accepted inside ``function`` patterns.
-_FUNCTION_TOKEN_TO_ROMAN = {
-    "T": "I", "TONIC": "I",
-    "S": "IV", "SD": "IV", "SUBDOMINANT": "IV",
-    "PD": "ii", "PREDOMINANT": "ii",
-    "D": "V", "DOMINANT": "V",
-}
 
 _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
@@ -74,6 +67,15 @@ MAX_CHORDS_PER_SPEC = 12
 #: the ``°`` decoration, so e.g. "vii°" and "ii°" resolve to the right index).
 _MAJOR_DEGREE_LABELS = ["I", "ii", "iii", "IV", "V", "vi", "vii°"]
 _MINOR_DEGREE_LABELS = ["i", "ii°", "III", "iv", "v", "VI", "VII"]
+
+#: Functional shorthand accepted inside ``function`` patterns.  Derived from the single
+#: function vocabulary (ticket 01 / plan F1): each alias resolves to the exemplar degree its
+#: function name denotes (T -> I, S/SD -> IV, PD -> ii, D -> V) -- never hand-edit.
+_FUNCTION_TOKEN_TO_ROMAN = {
+    alias: _MAJOR_DEGREE_LABELS[FUNCTION_EXEMPLAR_DEGREE[name]]
+    for name, aliases in FUNCTION_TOKEN_ALIASES.items()
+    for alias in aliases
+}
 
 #: Function/Roman patterns required by the trainer, grouped by mode.  Each entry
 #: is ``(tokens, display_label)``.

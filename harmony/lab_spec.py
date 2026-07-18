@@ -57,6 +57,7 @@ from harmony.exercise_spec import (
     DEFAULT_MINOR_KEYS,
     _key_slug,
 )
+from harmony.harmonic_roles import CADENCE_TYPES
 
 
 SCHEMA_VERSION = "harmony-lab/v1"
@@ -163,7 +164,7 @@ class InversionParams:
 @dataclass(frozen=True)
 class CadenceParams:
     pattern: tuple = ("V", "I")       # Roman / functional tokens
-    cadence_type: str = ""            # display only: authentic|plagal|half|deceptive
+    cadence_type: str = ""            # display only; one of harmonic_roles.CADENCE_TYPES
     strict_bass: bool = False
 
 
@@ -320,6 +321,10 @@ class LabExperimentSpec:
                 raise ValueError(f"{self.concept} requires a non-empty 'pattern'")
             self._check_diatonic(cp.pattern)        # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
+            if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:
+                raise ValueError(
+                    f"unknown cadence_type {cp.cadence_type!r}; expected one of "
+                    f"{sorted(CADENCE_TYPES)} (harmony.harmonic_roles.CADENCE_TYPES)")
 
         elif self.concept == "motive":
             mp = motive_params(p)

@@ -35,6 +35,7 @@ from harmony.lab import _CARET
 from harmony.lab_explanations import get_concept_explanation, canonical_concept
 from harmony.curriculum import (
     CurriculumNode, get_curriculum, to_json, SCHEMA_VERSION,
+    function_families_prose, function_flow_short,
 )
 
 
@@ -264,10 +265,8 @@ _DRILL_THEORY = {
         "Triad quality is the order of two stacked thirds: major = M3+m3, "
         "minor = m3+M3, diminished = m3+m3. A quality drill collects every triad "
         "of one quality so the ear learns the colour independent of key."),
-    "function": (
-        "Functional harmony groups chords as tonic (rest), predominant "
-        "(preparation) and dominant (tension). A progression moves T → S → D → T; "
-        "playing it whole lets you feel the pull back home."),
+    # Generated from the shared two-level vocabulary (ticket 01 / plan F1).
+    "function": function_families_prose("major"),
 }
 
 
@@ -350,7 +349,7 @@ _CATEGORY_OBJECTIVES = {
                    "visual": "See the stacked-thirds shape of each quality."},
     "cat:degrees": {"audio": "Hear the same degree colour in any key.",
                     "visual": "Track one Roman numeral across the staff and circle."},
-    "cat:functions": {"audio": "Feel the T–S–D pull of a progression.",
+    "cat:functions": {"audio": f"Feel the {function_flow_short()} pull of a progression.",
                       "visual": "Follow the function colours through the chords."},
     "cat:cadences": {"audio": "Identify a cadence by its closing sound.",
                      "visual": "Spot the cadential bass motion."},
@@ -358,8 +357,11 @@ _CATEGORY_OBJECTIVES = {
                       "visual": "See M3 vs m3 on the staff."},
     "cat:inversions": {"audio": "Hear the chord identity survive a moving bass.",
                        "visual": "Read figured bass (5/3, 6, 6/4)."},
-    "cat:voice_leading": {"audio": "Hear voices resolve into the cadence.",
-                          "visual": "See common tones held and tendency tones move."},
+    # The SATB cadence variants live under cat:cadences now (F7); the lookup
+    # walks up from a leaf to the nearest id present here, so a lesson id works.
+    "lesson:voice_leading_cadences": {
+        "audio": "Hear voices resolve into the cadence.",
+        "visual": "See common tones held and tendency tones move."},
     "cat:motives": {"audio": "Recognise a motive transposed to a new key.",
                     "visual": "See the same contour re-spelled."},
     "cat:polyphony": {"audio": "Hear two lines imply a chord progression.",

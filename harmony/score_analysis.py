@@ -36,6 +36,7 @@ from theory.diatonic_harmony import (
     note_pc,
     parse_key,
 )
+from harmony.harmonic_roles import CADENCE_TYPES
 
 __all__ = [
     "SCORE_ANALYSIS_SCHEMA",
@@ -289,7 +290,7 @@ class ScoreCadenceSpan:
     start_measure: int
     end_measure: int
     pattern: List[str] = field(default_factory=list)        # ["V","I"] etc.
-    cadence_type: str = ""                                   # authentic/half/...
+    cadence_type: str = ""    # one of harmony.harmonic_roles.CADENCE_TYPES (subtonic/axis included)
     chord_symbols: List[str] = field(default_factory=list)
     romans: List[str] = field(default_factory=list)
     functions: List[str] = field(default_factory=list)
@@ -301,6 +302,10 @@ class ScoreCadenceSpan:
             raise ValueError(
                 f"cadence end_measure {self.end_measure} < start_measure "
                 f"{self.start_measure}")
+        if self.cadence_type and self.cadence_type not in CADENCE_TYPES:
+            raise ValueError(
+                f"unknown cadence_type {self.cadence_type!r}; expected one of "
+                f"{sorted(CADENCE_TYPES)} (harmony.harmonic_roles.CADENCE_TYPES)")
 
     def to_dict(self) -> Dict:
         return {

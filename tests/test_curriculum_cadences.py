@@ -42,9 +42,17 @@ class TestCadenceCurriculum(unittest.TestCase):
         self.atlas = build_atlas()
         self.cadences = self.root.find("cat:cadences")
         self.assertIsNotNone(self.cadences)
-        # (mode, tokens) -> leaf, from each cadence leaf's bridge pattern.
+        # The category holds both render variants of each cadence (F7); the
+        # block drills live outside the SATB voice-leading lesson.
+        vl_lesson = self.root.find("lesson:voice_leading_cadences")
+        vl_leaf_ids = {lf.id for lf in vl_lesson.leaves()}
+        self.block_leaves = [lf for lf in self.cadences.leaves()
+                             if lf.id not in vl_leaf_ids]
+        self.vl_leaves = [lf for lf in self.cadences.leaves()
+                          if lf.id in vl_leaf_ids]
+        # (mode, tokens) -> block leaf, from each cadence leaf's bridge pattern.
         self.by_cadence = {}
-        for lf in self.cadences.leaves():
+        for lf in self.block_leaves:
             es = lf.lab_spec.to_exercise_specs()
             self.assertEqual(len(es), 1, lf.id)
             self.by_cadence[(es[0].mode, tuple(es[0].pattern))] = lf
@@ -101,17 +109,22 @@ class TestCadenceCurriculum(unittest.TestCase):
             self.assertLessEqual(len(compiled), MAX_CHORDS_PER_SPEC, lf.id)
 
     def test_each_cadence_links_to_a_voice_leading_counterpart(self):
-        vl = self.root.find("cat:voice_leading")
-        vl_ids = {lf.id for lf in vl.leaves()}
-        for lf in self.cadences.leaves():
+        # F7: both variants live under Cadences; each block leaf must link to
+        # an SATB leaf of the same pattern (and vice versa).
+        vl_ids = {lf.id for lf in self.vl_leaves}
+        block_ids = {lf.id for lf in self.block_leaves}
+        for lf in self.block_leaves:
             related_vl = [r for r in lf.related if r in vl_ids]
             self.assertTrue(related_vl, f"{lf.id} has no voice-leading link")
+        for lf in self.vl_leaves:
+            related_block = [r for r in lf.related if r in block_ids]
+            self.assertTrue(related_block, f"{lf.id} has no block-cadence link")
 
     def test_voice_leading_covers_every_cadence(self):
-        # One SATB voice-leading cadence per block cadence (13).
-        vl = self.root.find("cat:voice_leading")
+        # One SATB voice-leading variant per block cadence (13), same category.
         vl_keys = set()
-        for lf in vl.leaves():
+        for lf in self.vl_leaves:
+            self.assertEqual(lf.lab_spec.render, "voice_leading", lf.id)
             es = lf.lab_spec.to_exercise_specs()
             if es:
                 vl_keys.add((es[0].mode, tuple(es[0].pattern)))
@@ -119,7 +132,9 @@ class TestCadenceCurriculum(unittest.TestCase):
             self.assertIn((mode, tokens), vl_keys, f"VL missing {tokens} ({mode})")
 
     def test_theory_states_function_path_and_bass_motion(self):
-        for lf in self.cadences.leaves():
+        # The derived function-path/bass-motion prose is the block variant's
+        # contract; the SATB variants carry the voice-leading concept prose.
+        for lf in self.block_leaves:
             self.assertIn("Function path:", lf.theory, lf.id)
             self.assertIn("Bass motion:", lf.theory, lf.id)
 

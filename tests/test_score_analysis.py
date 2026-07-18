@@ -247,7 +247,8 @@ class TestResultAndContainers(unittest.TestCase):
     def test_cadence_resolves_to_atlas_node(self):
         r = self._result()
         ref = r.cadences[0].atlas_cadence_ref("major")
-        self.assertEqual(ref, "cadence:Authentic_major")
+        # roman-style label (one label style across cadence nodes, plan F7)
+        self.assertEqual(ref, "cadence:V_I_major")
         self.assertIsNotNone(build_atlas().node(ref))
 
 

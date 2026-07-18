@@ -71,19 +71,22 @@ from harmony.functional_network_template import (
     FUNCTION_GROUP_SHORT,
     FUNCTION_GROUP_LABELS,
 )
+from harmony.harmonic_roles import (
+    ENGINE_FUNCTION_TO_INTERNAL_FAMILY,
+    function_flow_short,
+    internal_family_label,
+)
 
 
 #: How the engine's five per-degree ``function_label`` values collapse onto
 #: the network's three merged function groups.  ``mediant`` is grouped with
 #: the tonic substitutes (see the module docstring -- each iii node's
 #: explanation states the ambiguity).
-ENGINE_FUNCTION_TO_GROUP = {
-    "tonic": "tonic",
-    "mediant": "tonic",
-    "predominant": "predominant",
-    "subdominant": "predominant",
-    "dominant": "dominant",
-}
+#:
+#: Derived from the single vocabulary source (ticket 01 / plan section 9.5) -- never hand-edit;
+#: change :data:`harmony.harmonic_roles._LABEL_TO_BROAD` instead.  A plain alias (not a copy),
+#: so the two names can never diverge at runtime.
+ENGINE_FUNCTION_TO_GROUP = ENGINE_FUNCTION_TO_INTERNAL_FAMILY
 
 #: Per-degree functional role prose (major mode), appended to the engine's own
 #: per-triad explanation.  Keyed by 0-based degree index.
@@ -111,9 +114,12 @@ _ROLE_PROSE = {
 #: function-map cell spec pattern, extended so every family drill *ends home*
 #: and the tonic family includes the mediant it groups.
 _GROUP_DRILLS = {
-    "tonic": (["I", "vi", "iii", "I"], "Tonic family I–vi–iii–I"),
-    "predominant": (["IV", "ii", "V", "I"], "Predominant family IV–ii–V–I"),
-    "dominant": (["V", "vii°", "I"], "Dominant family V–vii°–I"),
+    "tonic": (["I", "vi", "iii", "I"],
+              f"{internal_family_label('tonic')} I–vi–iii–I"),
+    "predominant": (["IV", "ii", "V", "I"],
+                    f"{internal_family_label('predominant')} IV–ii–V–I"),
+    "dominant": (["V", "vii°", "I"],
+                 f"{internal_family_label('dominant')} V–vii°–I"),
 }
 
 
@@ -483,15 +489,16 @@ class _FunctionalBuilder:
 
 #: Per-group prose for the function-group node explanations.
 _GROUP_PROSE = {
-    "tonic": ("Tonic-family chords are points of rest: phrases start and end "
-              "here, and every dominant arrow in the panel resolves into this "
-              "cluster."),
-    "predominant": ("Predominant (subdominant-family) chords set up the "
-                    "dominant: they are the approach lane of the T → PD → D "
-                    "→ T cycle (ii → V and IV → V)."),
-    "dominant": ("Dominant-family chords carry the tension: V and its "
-                 "rootless twin vii° both contain the leading tone and pull "
-                 "home to I."),
+    "tonic": (f"{internal_family_label('tonic')} chords are points of rest: "
+              "phrases start and end here, and every dominant arrow in the "
+              "panel resolves into this cluster."),
+    "predominant": (f"{internal_family_label('predominant')} chords (the "
+                    "supertonic ii and the subdominant IV) set up the "
+                    f"dominant: they are the approach lane of the "
+                    f"{function_flow_short()} cycle (ii → V and IV → V)."),
+    "dominant": (f"{internal_family_label('dominant')} chords carry the "
+                 "tension: V and its rootless twin vii° both contain the "
+                 "leading tone and pull home to I."),
 }
 
 
