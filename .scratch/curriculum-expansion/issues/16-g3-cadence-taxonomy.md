@@ -13,3 +13,7 @@
 - [ ] Cadence drills are available in multiple keys via transposition orbits.
 
 **Plan:** docs/curriculum_expansion_plan.md §3 G3, §1.2 F8, F9
+
+## Comments
+
+2026-07-18: Ticket 35 (one cadence catalogue) extracts the triplicated catalogue (curriculum / atlas / harmonic network) behind one source. It is not a hard blocker, but landing 35 first makes this ticket's new cadence types a one-file catalogue change instead of a three-file edit — see 35's third acceptance box for the no-churn guarantee it must hold.
