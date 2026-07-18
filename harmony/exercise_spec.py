@@ -55,11 +55,13 @@ _VALID_RENDER = {"block", "arpeggio"}
 _VALID_QUALITY = {"major", "minor", "diminished", "augmented"}
 
 #: Readability cap: the maximum number of chords (== measures) in a single
-#: generated default spec.  It matches the project's existing shipped demo
-#: ("all V across the 12 keys" = 12 measures), the de-facto single-exercise
-#: length.  Drills that would exceed it (function patterns, multi-degree
-#: quality drills across all 12 keys) are split into several specs by
-#: key-group so every exercise stays short enough to read on the staff.
+#: spec.  It matches the project's existing shipped demo ("all V across the
+#: 12 keys" = 12 measures), the de-facto single-exercise length; the trainer
+#: renders a single Verovio page, so chords past the cap would land on a
+#: hidden second page.  The default builders split long drills (function
+#: patterns, multi-degree quality drills across all 12 keys) into several
+#: specs by key-group, and ``validate()`` enforces the cap for *every* spec,
+#: including hand-authored JSON and bridge-supplied ones (plan F6).
 MAX_CHORDS_PER_SPEC = 12
 
 #: Quality-cased Roman labels for each diatonic degree.  Used in titles and as
@@ -135,6 +137,13 @@ class HarmonyExerciseSpec:
                 raise ValueError("quality drill requires 'quality'")
             if self.quality not in _VALID_QUALITY:
                 raise ValueError(f"Unknown quality {self.quality!r}")
+            if self.quality == "augmented":
+                raise ValueError(
+                    "quality='augmented' is not drillable yet: no augmented "
+                    "triad is diatonic to major or natural minor, so the "
+                    "drill would compile to zero chords and the score "
+                    "builder would fail. Augmented drills arrive with "
+                    "harmonic minor's III+.")
         if self.drill == "function" and not self.pattern:
             raise ValueError("function drill requires 'pattern'")
 
@@ -142,6 +151,33 @@ class HarmonyExerciseSpec:
         # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
         for k in self._all_keys():
             self._check_key_range(k)
+
+        # Enforce the readability cap: the trainer renders a single Verovio
+        # page, so chords past the cap would land on a hidden second page.
+        n = self._expected_chord_count()
+        if n > MAX_CHORDS_PER_SPEC:
+            raise ValueError(
+                f"Spec {self.exercise_id!r} compiles to {n} chords; the "
+                f"single-page readability cap is {MAX_CHORDS_PER_SPEC} "
+                f"(chords past the cap would render on a hidden second "
+                f"page). Split the drill into shorter specs, e.g. by "
+                f"scoping 'keys' to fewer keys.")
+
+    def _expected_chord_count(self) -> int:
+        """How many chords :func:`compile_exercise` will emit for this spec.
+
+        Mirrors the compiler's per-drill expansion exactly, without building
+        the triads for the non-``quality`` drills.
+        """
+        if self.drill == "full_key":
+            return 7
+        keys = _keys_for(self)
+        if self.drill == "horizontal_degree":
+            return len(keys)
+        if self.drill == "function":
+            return len(self.pattern or []) * len(keys)
+        return sum(len(_triads_of_quality(k, self.mode, self.quality))
+                   for k in keys)
 
     def _all_keys(self) -> List[str]:
         keys: List[str] = []
@@ -231,6 +267,17 @@ def _keys_for(spec: HarmonyExerciseSpec) -> List[str]:
     return DEFAULT_MAJOR_KEYS if spec.mode == "major" else DEFAULT_MINOR_KEYS
 
 
+def _triads_of_quality(key: str, mode: str, quality: str) -> List[DiatonicTriad]:
+    """The diatonic triads of ``key``/``mode`` with ``quality``, in degree order.
+
+    The single definition of "which triads a quality drill selects": the
+    compiler, the validation chord count, and the default spec builders all
+    call this, so they cannot drift apart.
+    """
+    return [t for t in generate_diatonic_triads(key, mode)
+            if t.chord_quality == quality]
+
+
 def _key_label(key: str, mode: str) -> str:
     tonic, _ = parse_key(key)
     return f"{tonic} {_mode_word(mode)}"
@@ -266,11 +313,9 @@ def compile_exercise(spec: HarmonyExerciseSpec) -> CompiledExercise:
             add(triad, _key_label(key, mode))
 
     elif spec.drill == "quality":
-        want = spec.quality
         for key in _keys_for(spec):
-            for triad in generate_diatonic_triads(key, mode):
-                if triad.chord_quality == want:
-                    add(triad, _key_label(key, mode))
+            for triad in _triads_of_quality(key, mode, spec.quality):
+                add(triad, _key_label(key, mode))
 
     elif spec.drill == "function":
         roman_pattern = normalise_pattern(spec.pattern)
@@ -443,8 +488,7 @@ def _quality_specs(mode: str = "major") -> List[HarmonyExerciseSpec]:
     specs = []
     for quality in ("major", "minor", "diminished"):
         # How many triads of this quality occur per key in this mode.
-        per_key = sum(1 for t in generate_diatonic_triads(keys[0], mode)
-                      if t.chord_quality == quality)
+        per_key = len(_triads_of_quality(keys[0], mode, quality))
         if per_key == 0:
             continue
         chunks = _chunk_keys(keys, per_key)

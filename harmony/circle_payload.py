@@ -227,9 +227,9 @@ def spec_from_circle_request(req: Dict) -> HarmonyExerciseSpec:
         exercise_id=exercise_id, title=title, drill=drill, **fields)
     spec.validate()                      # raises on missing/invalid drill params
 
-    # Readability guard: never hand the trainer a single exercise longer than the
-    # cap (a quality/function drill across all 12 keys would be 36-48 chords).
-    # The circle UI sends scoped requests; this backstops any other caller.
+    # validate() already enforces the readability cap (plan F6); compiling here
+    # additionally fails fast on unparseable degree/pattern tokens and backstops
+    # any drift between validate()'s chord count and the compiler's.
     n = len(compile_exercise(spec))
     if n > MAX_CHORDS_PER_SPEC:
         raise ValueError(
