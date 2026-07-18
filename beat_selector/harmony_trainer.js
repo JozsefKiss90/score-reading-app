@@ -99,8 +99,8 @@
     bassMissText = "";
   }
 
-  // Map: pitch class -> Set(noteId) for a given measure, from boot.PITCH_MAP.
-  function idsByPcForMeasure(absMeasure) {
+  // Map: keyOf(midi) -> Set(noteId) for a given measure, from boot.PITCH_MAP.
+  function idsForMeasure(absMeasure, keyOf) {
     var out = new Map();
     var pm = app && app.state && app.state.boot && app.state.boot.PITCH_MAP;
     if (!pm) return out;
@@ -111,12 +111,20 @@
         if (!r || !r.id || !r.pitch) return;
         var mm = pitchToMidi(r.pitch);
         if (mm === null) return;
-        var pc = mod12(mm);
-        if (!out.has(pc)) out.set(pc, new Set());
-        out.get(pc).add(String(r.id));
+        var k = keyOf(mm);
+        if (!out.has(k)) out.set(k, new Set());
+        out.get(k).add(String(r.id));
       });
     });
     return out;
+  }
+
+  // Octave-agnostic (grading) and octave-exact (playback flash) views.
+  function idsByPcForMeasure(absMeasure) {
+    return idsForMeasure(absMeasure, mod12);
+  }
+  function idsByMidiForMeasure(absMeasure) {
+    return idsForMeasure(absMeasure, function (m) { return m; });
   }
 
   // Build selNotesByMidi for a set of expected pitch classes.  Every octave of
@@ -188,6 +196,88 @@
           { detail: detail === undefined ? cur() : detail }));
       }
     } catch (e) { /* ignore */ }
+  }
+
+  // ---- target playback visuals (transport, plan U1) ----------------------
+  // The Python transport (audio/target_playback.py) sequences the target
+  // chords through the synth and mirrors each noteon here so the notated
+  // noteheads flash while they sound.  This path is display-only: it never
+  // touches midiDown / selNotesByMidi / grading state, so the learner's own
+  // MIDI monitoring keeps working during and after playback.
+  var pbStamp = new Map();   // note id -> stamp of the latest flash holding it
+  var pbSeq = 0;
+
+  function pbEnsureStyle() {
+    try {
+      var root = app && app._svgRoot ? app._svgRoot() : null;
+      if (!root) return;
+      var doc = root.ownerDocument;
+      if (!doc || (doc.getElementById && doc.getElementById("ht-pb-style"))) return;
+      var style = doc.createElementNS(
+        "http://www.w3.org/2000/svg", "style");
+      style.setAttribute("id", "ht-pb-style");
+      style.textContent = [
+        ".pb-live .notehead use,",
+        ".pb-live .notehead path,",
+        ".pb-live .notehead ellipse,",
+        ".pb-live .notehead polygon,",
+        ".pb-live .notehead rect {",
+        "  fill: #d97706 !important;",
+        "  stroke: #d97706 !important;",
+        "}",
+      ].join("\n");
+      root.appendChild(style);
+    } catch (e) { /* ignore */ }
+  }
+
+  function pbSetClass(id, on) {
+    var node = app && app._svgGetById ? app._svgGetById(id) : null;
+    if (!node) return;
+    try { node.classList.toggle("pb-live", !!on); } catch (e) { /* ignore */ }
+  }
+
+  // Flash the noteheads for `midis` in `absMeasure` for `durMs` — octave-
+  // exact (idsByMidiForMeasure), so only heads that sound light.  Overlapping
+  // flashes (a held bass under per-beat tones) expire independently: each id
+  // remembers its latest stamp and only that flash's timer un-lights it.
+  function playbackFlash(absMeasure, midis, durMs) {
+    if (!app) return 0;
+    pbEnsureStyle();
+    var byMidi = idsByMidiForMeasure(absMeasure);
+    var byPc = idsByPcForMeasure(absMeasure);
+    var ids = [];
+    (midis || []).forEach(function (m) {
+      m = Math.trunc(Number(m));
+      var exact = byMidi.get(m);
+      var set = (exact && exact.size) ? exact : byPc.get(mod12(m));
+      if (set) set.forEach(function (id) { ids.push(id); });
+    });
+    var stamp = ++pbSeq;
+    ids.forEach(function (id) {
+      pbStamp.set(id, stamp);
+      pbSetClass(id, true);
+    });
+    if (ids.length && durMs > 0) {
+      setTimeout(function () {
+        ids.forEach(function (id) {
+          if (pbStamp.get(id) === stamp) {
+            pbStamp.delete(id);
+            pbSetClass(id, false);
+          }
+        });
+      }, durMs);
+    }
+    return ids.length;
+  }
+
+  // Un-light everything and re-park the cursor on the learner's current
+  // grading target (playback moved it).  Grading state is untouched.
+  function playbackClear() {
+    pbStamp.forEach(function (_stamp, id) { pbSetClass(id, false); });
+    pbStamp = new Map();
+    var t = cur();
+    if (t) placeHighlight(t.absMeasure);
+    return true;
   }
 
   // ---- navigation --------------------------------------------------------
@@ -470,6 +560,7 @@
     idx = 0;
     resetAttempt();
     finished = false;
+    pbStamp = new Map();
 
     ensureStyles();
     if (document.body) document.body.classList.add("ht-active");
@@ -496,5 +587,9 @@
     // The current target chord (consumed by the Harmony Atlas to sync its
     // highlight to the live playback position). Null when nothing is loaded.
     currentTarget: function () { return cur(); },
+    // Target playback visuals (driven by audio/target_playback.py).
+    playbackFlash: playbackFlash,
+    playbackClear: playbackClear,
+    playbackActiveIds: function () { return Array.from(pbStamp.keys()); },
   };
 })();

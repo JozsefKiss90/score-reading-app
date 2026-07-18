@@ -41,7 +41,7 @@ from typing import List, Optional, Tuple
 from PyQt6.QtCore import Qt, QCoreApplication, QTimer, QUrl, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox,
-    QLabel, QSplitter,
+    QLabel, QSplitter, QCheckBox, QSpinBox,
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
@@ -50,6 +50,7 @@ from harmony.exercise_spec import (
 )
 from harmony.musicxml_builder import build_exercise
 from harmony.circle_payload import build_circle_payload, spec_from_circle_request
+from audio.target_playback import TargetTransport, PLAYING, MIN_BPM, MAX_BPM
 
 #: Pseudo-group shown first in the filter: every exercise, in group order.
 ALL_GROUPS = "All groups"
@@ -215,6 +216,34 @@ class HarmonyTrainerWindow(QWidget):
         self.btnNext.clicked.connect(lambda: self.load_index(self._current_idx + 1))
         top.addWidget(self.btnNext)
 
+        # Transport (ticket 05 / plan U1): sound the target progression
+        # through the score widget's synth.  Living in this window's top bar
+        # makes it available in every launcher that hosts the trainer.
+        self.transport = TargetTransport(self)
+        self.transport.stateChanged.connect(self._on_transport_state)
+
+        self.btnPlay = QPushButton("▶ Play")
+        self.btnPlay.setToolTip("Play the target chords (hear the answer)")
+        self.btnPlay.clicked.connect(self.transport.toggle)
+        top.addWidget(self.btnPlay)
+
+        self.btnStopPlay = QPushButton("⏹")
+        self.btnStopPlay.setToolTip("Stop playback and rewind")
+        self.btnStopPlay.clicked.connect(self.transport.stop)
+        top.addWidget(self.btnStopPlay)
+
+        self.chkLoop = QCheckBox("Loop")
+        self.chkLoop.toggled.connect(self.transport.set_loop)
+        top.addWidget(self.chkLoop)
+
+        self.spinTempo = QSpinBox()
+        self.spinTempo.setRange(MIN_BPM, MAX_BPM)
+        self.spinTempo.setValue(self.transport.bpm)
+        self.spinTempo.setSuffix(" bpm")
+        self.spinTempo.setToolTip("Playback tempo")
+        self.spinTempo.valueChanged.connect(self.transport.set_bpm)
+        top.addWidget(self.spinTempo)
+
         # Score host (left) + optional Circle-of-Fifths panel (right).
         self._score_host = QWidget()
         self._score_container = QVBoxLayout(self._score_host)
@@ -248,6 +277,12 @@ class HarmonyTrainerWindow(QWidget):
             root.addWidget(self._score_host, 1)
 
         self._populate_exercises(self._all_specs)  # initial: All groups
+
+    # ------------------------------------------------------------------
+    # Target playback transport
+    # ------------------------------------------------------------------
+    def _on_transport_state(self, state: str):
+        self.btnPlay.setText("⏸ Pause" if state == PLAYING else "▶ Play")
 
     # ------------------------------------------------------------------
     # Circle-of-Fifths panel integration
@@ -455,6 +490,7 @@ class HarmonyTrainerWindow(QWidget):
         path (:meth:`load_external_lab`).
         """
         self.setWindowTitle(title)
+        self.transport.stop()   # silence the old exercise before the swap
         self._remove_current_score()
         self._score_widget = ScoreViewBeats(
             str(mxl_path), midi_service=self._midi_service)
@@ -466,6 +502,7 @@ class HarmonyTrainerWindow(QWidget):
             if btn is not None:
                 btn.hide()
         self._ensure_trainer(self._score_widget, payload)
+        self.transport.attach(self._score_widget, payload)
 
     def load_external_lab(self, musicxml: str, payload: dict) -> None:
         """Load a *prebuilt* ``(musicxml, payload)`` pair (Music Theory Lab).
@@ -483,6 +520,7 @@ class HarmonyTrainerWindow(QWidget):
         self._show_score(mxl_path, payload, f"Music Theory Lab — {title}")
 
     def closeEvent(self, event):
+        self.transport.stop()
         self._cleanup_temp()
         super().closeEvent(event)
 

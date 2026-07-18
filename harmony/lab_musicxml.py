@@ -189,6 +189,8 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
         "chordTones": list(a.chord_tones),
         "pitchClasses": pcs,
         "midiPitches": measure.sounding_midis(),
+        "bassMidi": min((n.midi for n in measure.staff2 if not n.is_rest),
+                        default=None),
         "intervalLayer": a.interval_layer or "",
         "functionLabel": a.function_label or "",
         "scaleDegreeName": a.scale_degree_name or "",

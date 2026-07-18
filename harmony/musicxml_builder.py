@@ -325,6 +325,7 @@ def _target_for(chord: CompiledChord) -> Dict:
         "chordTones": list(triad.pitches),
         "pitchClasses": pitch_classes,
         "midiPitches": midi_pitches,
+        "bassMidi": _midi_of(*triad_bass_note(triad)),
         "intervalLayer": triad.interval_layer,
         "functionLabel": triad.function_label,
         "scaleDegreeName": triad.scale_degree_name,

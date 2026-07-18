@@ -219,7 +219,46 @@ list, so you can jump to any chord for free practice.
 
 ---
 
-## 6. Running it
+## 6. Target playback (transport)
+
+Every drill can be *heard*, not just seen (plan U1 — "sound before symbol").
+The trainer window's top bar has a transport — **▶ Play / ⏸ Pause**, **⏹**
+(stop + rewind), **Loop**, and a **tempo** spinner (30–240 bpm, default 80) —
+that plays the target progression through the score widget's already-loaded
+FluidSynth monitor. Because the transport lives in `HarmonyTrainerWindow`
+itself, it is available in every launcher that hosts the trainer (standalone,
+Atlas, Lab, Harmonic Network, Functional Network, Curriculum).
+
+Three layers share the work:
+
+* **`harmony/playback_plan.py`** (pure, no Qt) turns a trainer/lab payload
+  into beat-timed note events — one 4/4 measure per target, exactly what the
+  score notates: block chords sound `midiPitches` + the new `bassMidi` target
+  field (the notated bass whole note) for the full measure; arpeggio/melody
+  measures hold the bass while the tones sound one beat each (driven by the
+  payload's `EXPECTED_MIDI_BY_MEASURE_OR_BEAT` beat map). Playback follows the
+  *notation*, not the grading: lab strict-bass measures grade as ordered walks
+  but play as the block chords they notate (`concept` overrides `render`).
+* **`audio/target_playback.py`** (`TargetTransport`) owns transport state on a
+  QTimer beat clock: play/pause (pause silences but holds position and
+  re-attacks on resume), stop (rewind + hand the display back), loop, and live
+  tempo changes. It fires synth `noteon`/`noteoff`, sweeps the cursor via the
+  page-global `jsSetCursorAbs` in notated-measure seconds, and mirrors every
+  onset into the controller.
+* **`harmony_trainer.js`** (`playbackFlash` / `playbackClear`) flashes the
+  noteheads that actually sound — octave-exact against `PITCH_MAP`, with a
+  pitch-class fallback — in amber (`pb-live`), distinct from the learner's
+  green/red. Overlapping flashes (held bass under per-beat tones) expire
+  independently.
+
+The playback path is display-only: it never touches `midiDown`,
+`selNotesByMidi`, or the grading position, so the learner's own MIDI
+monitoring works unchanged during playback — and while the transport is idle
+it runs no timers and makes no synth or JS calls at all.
+
+---
+
+## 7. Running it
 
 ```bash
 # comprehensive default set (102 exercises, with the Group filter)
@@ -243,13 +282,14 @@ holds the same set as a flat, ready-to-run file. (The smaller five-exercise
 # Python theory + MusicXML smoke tests (stdlib unittest, no extra deps)
 .venv/Scripts/python.exe -m unittest discover -s tests -p "test_*.py" -t .
 
-# Headless behavioural test for the injected JS controller
+# Headless behavioural tests for the injected JS controller
 node tests/harmony_trainer_node_test.js
+node tests/harmony_trainer_playback_test.js
 ```
 
 ---
 
-## 7. Future work
+## 8. Future work
 
 The data model and payload were shaped to grow without refactoring:
 
