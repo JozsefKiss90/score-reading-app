@@ -29,6 +29,8 @@
   var arpIndex = 0;         // next expected tone index (arpeggio mode)
   var completed = false;    // current target fully played?
   var finished = false;     // whole exercise done?
+  var bassMiss = false;     // full set played but with the wrong lowest note
+  var bassMissText = "";    // feedback naming the expected bass
 
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -53,6 +55,48 @@
   function isArpeggio() {
     var t = cur();
     return !!(t && t.render === "arpeggio");
+  }
+
+  // Strict-bass grading (plan G4/F4): a block target with `strictBass: true`
+  // demands `bassPitchClass` as the LOWEST sounding chord tone.  Returns the
+  // demanded pitch class, or null when the target grades octave-agnostically.
+  function strictBassPc(t) {
+    return (t && t.strictBass && t.bassPitchClass !== null &&
+            t.bassPitchClass !== undefined) ? mod12(t.bassPitchClass) : null;
+  }
+
+  var PC_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  // Spell a pitch class with the target's own chord-tone spelling when it has
+  // one (Eb stays Eb, not D#); fall back to the sharp names.
+  function toneName(t, pc) {
+    pc = mod12(pc);
+    if (t && t.pitchClasses && t.chordTones) {
+      var i = t.pitchClasses.map(mod12).indexOf(pc);
+      if (i !== -1 && t.chordTones[i]) return t.chordTones[i];
+    }
+    return PC_NAMES[pc];
+  }
+
+  // The lowest *currently sounding* chord tone (stray non-chord notes are
+  // already shown red and stay advisory).  Null when none is held.
+  function lowestHeldChordTone(t) {
+    var pcs = t.pitchClasses.map(mod12);
+    var low = null;
+    app.state.midiDown.forEach(function (m) {
+      m = Math.trunc(Number(m));
+      if (pcs.indexOf(mod12(m)) === -1) return;
+      if (low === null || m < low) low = m;
+    });
+    return low;
+  }
+
+  function resetAttempt() {
+    satisfied = new Set();
+    arpIndex = 0;
+    completed = false;
+    bassMiss = false;
+    bassMissText = "";
   }
 
   // Map: pitch class -> Set(noteId) for a given measure, from boot.PITCH_MAP.
@@ -153,9 +197,7 @@
     if (i < 0) i = 0;
     if (i > N - 1) i = N - 1;
     idx = i;
-    satisfied = new Set();
-    arpIndex = 0;
-    completed = false;
+    resetAttempt();
     finished = false;
     applySelection();
     placeHighlight(cur().absMeasure);
@@ -197,8 +239,24 @@
     } else {
       if (t.pitchClasses.map(mod12).indexOf(pc) !== -1) satisfied.add(pc);
       if (!completed && coversAll(satisfied, t.pitchClasses)) {
-        completed = true;
-        renderProgress();
+        var wantBass = strictBassPc(t);
+        var low = wantBass === null ? null : lowestHeldChordTone(t);
+        if (wantBass === null || (low !== null && mod12(low) === wantBass)) {
+          completed = true;
+          bassMiss = false;
+          bassMissText = "";
+          renderProgress();
+        } else if (low !== null) {
+          // Right pitch classes, wrong sounding bass: fail with feedback naming
+          // the demanded bass.  Recoverable by adding it below (no release) or
+          // by releasing everything for a fresh attempt.
+          bassMiss = true;
+          bassMissText = "✗ Right chord, wrong bass: " + toneName(t, wantBass) +
+            " must be the lowest sounding note" +
+            (t.figuredBass ? " (" + t.figuredBass + ")" : "") +
+            " — you have " + toneName(t, low) + " in the bass.";
+          renderProgress();
+        }
       }
     }
   }
@@ -208,6 +266,16 @@
     if (isArpeggio()) return;                // arpeggio advances on note-on
     if (completed && app.state.midiDown.size === 0) {
       advance();
+      return;
+    }
+    // A flagged bass miss resets to a clean attempt once every key is up (the
+    // feedback stays visible until the next attempt succeeds or the target
+    // changes).  Non-strict targets keep accumulating across releases.
+    if (bassMiss && app.state.midiDown.size === 0) {
+      var keepText = bassMissText;
+      resetAttempt();
+      bassMissText = keepText;
+      applySelection();
     }
   }
 
@@ -250,6 +318,8 @@
       "#htCurrent .big{font-size:15px;font-weight:700;color:#0b3a53;}",
       "#htCurrent .exp{margin-top:6px;color:#334155;font-size:12px;font-style:italic;}",
       "#htCurrent.done{background:#dcfce7;border-color:#86efac;}",
+      "#htBassMsg{display:none;margin:6px 0;padding:6px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#991b1b;font-size:12px;}",
+      "#htBassMsg.show{display:block;}",
       "#htList{max-height:34vh;overflow:auto;margin-top:4px;}",
       "#htList .htGroup{font-weight:600;color:#475569;margin:8px 2px 2px;font-size:12px;}",
       "#htCard{}",
@@ -268,6 +338,7 @@
       ".dark-score #trainerPanel h3{color:#93c5fd;}",
       ".dark-score #htControls button{background:#1f2937;border-color:#374151;color:#e5e7eb;}",
       ".dark-score #htCurrent{background:#0b1220;border-color:#1e3a8a;color:#e5e7eb;}",
+      ".dark-score #htBassMsg{background:#2b0b0b;border-color:#7f1d1d;color:#fca5a5;}",
       ".dark-score #htCurrent .big{color:#93c5fd;}",
       ".dark-score #htCurrent .exp{color:#cbd5e1;}",
       ".dark-score .htCard{background:#0b0b0b;border-color:#1f2933;color:#e5e7eb;}",
@@ -296,6 +367,7 @@
       '  <span id="htProgress"></span>' +
       '</div>' +
       '<div id="htDone">✓ Exercise complete!</div>' +
+      '<div id="htBassMsg"></div>' +
       '<div id="htCurrent"></div>' +
       '<div id="htList"></div>';
     side.insertBefore(panel, side.firstChild);
@@ -311,10 +383,15 @@
     var t = cur();
     if (!t) { el.textContent = ""; return; }
     var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
+    var wantBass = strictBassPc(t);
     el.className = completed ? "done" : "";
     el.innerHTML =
       '<div class="row big">' + esc(t.key) + " — " + esc(t.roman) +
       " (" + esc(t.functionLabel) + ")</div>" +
+      (wantBass === null ? "" :
+        '<div class="row"><span class="lbl">Bass</span>' +
+        esc(t.bassNote || toneName(t, wantBass)) + " — lowest note" +
+        (t.figuredBass ? " (" + esc(t.figuredBass) + ")" : "") + "</div>") +
       '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
       '<div class="row"><span class="lbl">Scale</span>' + esc(t.scale.join(" ")) + "</div>" +
       '<div class="row"><span class="lbl">Chord</span>' + esc(t.chordSymbol) +
@@ -331,6 +408,11 @@
     if (p) p.textContent = "Chord " + (idx + 1) + " / " + targets().length;
     var done = document.getElementById("htDone");
     if (done) done.className = finished ? "show" : "";
+    var bm = document.getElementById("htBassMsg");
+    if (bm) {
+      bm.textContent = bassMissText;
+      bm.className = bassMissText ? "show" : "";
+    }
     renderCurrent();
     // reflect completion state on the active card
     var card = document.querySelector('.htCard.active');
@@ -386,9 +468,7 @@
     }
     data = payload || {};
     idx = 0;
-    satisfied = new Set();
-    arpIndex = 0;
-    completed = false;
+    resetAttempt();
     finished = false;
 
     ensureStyles();

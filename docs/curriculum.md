@@ -114,11 +114,12 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | Source | Count | Category |
 |---|---:|---|
 | inversion grid (I/ii/IV/V × 12 major + i/iv/v/VII × 12 minor) + 1 worked example | 97 | Inversions |
+| ii6–V–I bridge drill (`cad_ii6_V_I_C`, figured predominant — ticket 04 / G4) | 1 | Inversions › ii6 at the cadence |
 | voice-leading cadences (one SATB per cadence: 8 demos + 5 generated) | 13 | Cadences (SATB variants) |
 | `lab.lab_demo_specs` motive | 2 | Motives |
 | `lab.lab_demo_specs` polyphonic | 3 | Polyphonic Harmony |
 | block cadences from `_CADENCE_CATALOG` (6 two-chord types + 7 progressions) | 13 | Cadences |
-| **grand total** | **230 exercise leaves** | (~300 nodes total) |
+| **grand total** | **231 exercise leaves** | (~300 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

@@ -150,6 +150,41 @@ def default_keys(mode: str) -> List[str]:
     return list(DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS)
 
 
+#: Understood triad figured-bass suffixes -> inversion number, longest first so
+#: ``"64"`` wins over ``"6"``.  Sevenths figures (7, 6/5, 4/3, 4/2) arrive with G1.
+_TRIAD_FIGURES = [
+    ("6/4", 2), ("64", 2), ("6/3", 1), ("63", 1), ("5/3", 0), ("53", 0), ("6", 1),
+]
+
+
+def parse_figured_token(token: str) -> "Tuple[str, int]":
+    """Split an optional triad figured-bass suffix off a Roman token.
+
+    ``"ii6" -> ("ii", 1)``; ``"I64" -> ("I", 2)``; ``"V" -> ("V", 0)``.  The
+    figure is a *performance instruction* (plan G4): it demands the inversion's
+    chord member in the bass.  Unknown figures are left on the token — the
+    caller's Roman validation rejects them explicitly (the tolerant
+    ``roman_token_to_index`` would otherwise silently strip digits, playing
+    ``"ii6"`` as root-position ii, which is exactly the F4 dishonesty).
+    """
+    t = (token or "").strip()
+    for suffix, inv in _TRIAD_FIGURES:
+        if t.endswith(suffix) and len(t) > len(suffix):
+            return t[:-len(suffix)].strip(), inv
+    return t, 0
+
+
+def split_figured_pattern(pattern) -> "Tuple[List[str], List[int]]":
+    """``["ii6","V","I"] -> (["ii","V","I"], [1,0,0])`` (see parse_figured_token)."""
+    romans: List[str] = []
+    inversions: List[int] = []
+    for tok in pattern:
+        head, inv = parse_figured_token(tok)
+        romans.append(head)
+        inversions.append(inv)
+    return romans, inversions
+
+
 # ---------------------------------------------------------------------------
 # Per-concept parameter views (typed, validated read of ``parameters``)
 # ---------------------------------------------------------------------------
@@ -319,7 +354,17 @@ class LabExperimentSpec:
             cp = cadence_params(p)
             if not cp.pattern:
                 raise ValueError(f"{self.concept} requires a non-empty 'pattern'")
-            self._check_diatonic(cp.pattern)        # raises on bad/chromatic token
+            romans, figures = split_figured_pattern(cp.pattern)
+            for orig, head in zip(cp.pattern, romans):
+                if any(ch.isdigit() for ch in head):
+                    raise ValueError(
+                        f"unrecognised figured-bass suffix in {orig!r}; the "
+                        f"understood triad figures are 5/3, 6 (6/3) and 6/4")
+            if any(figures) and self.render != "block":
+                raise ValueError(
+                    "figured tokens (e.g. 'ii6') require render='block'; the "
+                    "SATB voice-leading render voices root positions only")
+            self._check_diatonic(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
             if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:
                 raise ValueError(
@@ -430,10 +475,15 @@ class LabExperimentSpec:
 
         elif self.concept in ("cadence", "voice_leading"):
             cp = cadence_params(p)
-            roman = normalise_pattern(list(cp.pattern))   # validate() ensured diatonic
+            heads, figures = split_figured_pattern(cp.pattern)
+            roman = normalise_pattern(heads)              # validate() ensured diatonic
+            # Figures re-attach in the id (ii6 must not collide with a plain ii
+            # drill), while the skeleton itself is the root-position pattern.
+            id_tokens = [n + ("" if not f else "6" if f == 1 else "64")
+                         for n, f in zip(roman, figures)]
             label = "–".join(cp.pattern)
             specs.append(HarmonyExerciseSpec(
-                exercise_id=f"lab_{self.concept}_{self.mode}_{_key_slug(tonic)}_{_ident('_'.join(roman))}",
+                exercise_id=f"lab_{self.concept}_{self.mode}_{_key_slug(tonic)}_{_ident('_'.join(id_tokens))}",
                 title=f"{label} in {tonic} {_mode_word(self.mode)}",
                 drill="function", render="block", mode=self.mode,
                 pattern=roman, keys=[tonic],

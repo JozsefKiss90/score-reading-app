@@ -669,6 +669,27 @@ def _vl_specs_by_cadence() -> "Dict[tuple, LabExperimentSpec]":
     return out
 
 
+def _ii6_cadence_spec() -> LabExperimentSpec:
+    """The inversions↔cadences bridge drill (ticket 04 / plan G4).
+
+    ii6 as *the* predominant voicing of the authentic cadence: the figured
+    token demands F (the third of ii) as the lowest sounding note, so the
+    figure is assessed, not decorative, and the bass walks 4̂–5̂–1̂.
+    """
+    spec = LabExperimentSpec(
+        experiment_id="cad_ii6_V_I_C",
+        title="ii6–V–I in C major — the first-inversion predominant",
+        concept="cadence", mode="major", key="C major", render="block",
+        parameters={"pattern": ["ii6", "V", "I"], "cadence_type": "authentic"},
+        description=("The authentic cadence with its classic predominant "
+                     "voicing: ii6 puts F in the bass so the bass line walks "
+                     "4̂–5̂–1̂ (F–G–C). The figure 6 is graded — F must be "
+                     "the lowest sounding note."),
+    )
+    spec.validate()
+    return spec
+
+
 # ---------------------------------------------------------------------------
 # Inversion curriculum grid (Bug 3: I/ii/IV/V x 12 major + i/iv/v/VII x 12 minor)
 # ---------------------------------------------------------------------------
@@ -1040,7 +1061,8 @@ def build_curriculum() -> CurriculumNode:
                            "a full functional path: predominant prepares the "
                            "dominant, which resolves (or is deceptively denied) at "
                            "the tonic. The bass line carries the motion.",
-                    related=["lesson:voice_leading_cadences"])
+                    related=["lesson:voice_leading_cadences",
+                             "lesson:inversion_cadence_bridge"])
     fill_cadences(group(l_prog, "cadence_prog_major", "Major progressions",
                         "I–IV–V–I, ii–V–I, vi–ii–V–I, I–V–vi–IV (block, in C major).",
                         3), prog_major)
@@ -1157,6 +1179,26 @@ def build_curriculum() -> CurriculumNode:
     fill_lab(group(l_inv_min, "inv_minor_subtonic", "Subtonic VII",
                    "VII inverted in all 12 natural-minor keys.", 2),
              _inversion_curriculum_specs("natural_minor", "VII"), 2)
+    l_inv_cad = lesson(inversions, "inversion_cadence_bridge",
+                       "ii6 at the cadence",
+                       "The first inversion at work: ii6 as the classic "
+                       "predominant voicing of the authentic cadence.",
+                       "Play ii6–V–I with the demanded bass — the figure is a "
+                       "performance instruction, not a caption.", 3,
+                       theory="Inversions earn their keep at the cadence: "
+                              "voicing the predominant as ii6 puts the fourth "
+                              "scale degree in the bass, so the bass line walks "
+                              "4̂–5̂–1̂ (in C: F–G–C) into the close — the "
+                              "smoothest approach to the dominant. The figure 6 "
+                              "here is assessed: the drill only passes when the "
+                              "third of ii is the lowest sounding note.",
+                       related=["lesson:cadence_progressions",
+                                "lesson:chord_inversions"],
+                       keywords=["ii6", "cadence", "predominant", "figured bass"])
+    fill_lab(group(l_inv_cad, "inv_cadence_ii6", "ii6–V–I",
+                   "The authentic cadence with a first-inversion predominant "
+                   "(bass 4̂–5̂–1̂).", 3),
+             [_ii6_cadence_spec()], 3)
 
     # ===================================================================
     # 8. MOTIVES  (lab: 2)

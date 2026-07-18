@@ -72,7 +72,7 @@ helper (`harmony.lab._satb_progression`), explicitly *not* a counterpoint engine
 | `concept` | `render` (allowed) | key `parameters` |
 |---|---|---|
 | `inversion` | `block`, `arpeggio` | `degree`, `inversions` ⊆ `{0,1,2}`, `strict_bass?` |
-| `cadence` | `block`, `voice_leading` | `pattern`, `cadence_type?` |
+| `cadence` | `block`, `voice_leading` | `pattern` (figured tokens like `ii6` allowed with `render="block"`), `cadence_type?` |
 | `voice_leading` | `voice_leading`, `block` | `pattern` |
 | `motive` | `melody` | `degrees`, `keys?` |
 | `polyphonic_harmony` | `polyphonic` | `progression`, `upper_degrees`, `bass_degrees?` |
@@ -121,9 +121,16 @@ The chord tones are invariant; only the **bass** changes. For C major I:
 
 The upper voices stay the root-position `C–E–G`; the bass staff shows `C → E → G`.
 The guide names the inversion, figured bass, the invariant tones, and the changing
-bass. MIDI validation accepts the chord tones (any octave); the optional
-`strict_bass` mode requires the **bass note first** (it reuses the existing
-ordered-tone arpeggio branch of `harmony_trainer.js`, so no controller change).
+bass. **Every plain block inversion measure is bass-graded** (ticket 04 / plan
+G4/F4): the payload target carries `strictBass: true` + `bassPitchClass`, and
+`harmony_trainer.js` only completes the chord when the demanded member is the
+*lowest sounding chord tone* — the right pitch classes over the wrong bass fail
+with feedback naming the expected bass. The optional `strict_bass` parameter
+*instead* requires the **bass note first in time** (its demand is encoded as the
+ordered-tone walk, so those targets do not carry the `strictBass` flag). Cadence
+patterns may demand a voicing with a figured token (`ii6`): that measure's bass
+is then graded the lowest-note way (see `cad_ii6_V_I_C`, the curriculum's
+inversions↔cadences bridge drill).
 
 ### Voice-leading cadences (Phase 3)
 Cadences are rendered as a simple **closed-position SATB-like** grand-staff

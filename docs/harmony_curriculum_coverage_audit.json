@@ -1,7 +1,7 @@
 {
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
-    "totalLeaves": 230,
+    "totalLeaves": 231,
     "categories": 11,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
@@ -171,7 +171,7 @@
         "cat:inversions"
       ],
       "expected": "96-key grid (I/ii/IV/V x 12 major + i/iv/v/VII x 12 minor) + worked example.",
-      "actualLeaves": 97,
+      "actualLeaves": 98,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],

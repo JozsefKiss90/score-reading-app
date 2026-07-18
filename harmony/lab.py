@@ -62,6 +62,7 @@ from harmony.lab_spec import (
     cadence_params,
     motive_params,
     polyphonic_params,
+    split_figured_pattern,
 )
 
 
@@ -76,6 +77,12 @@ SATB_BASE_OCTAVE = 4       # base octave for SATB close-position upper voices
 #: Inversion -> figured-bass + label.  ``"6"`` is the common shorthand for 6/3.
 _FIGURED_BASS = {0: "5/3", 1: "6", 2: "6/4"}
 _INVERSION_LABEL = {0: "root position", 1: "first inversion", 2: "second inversion"}
+
+
+def _inversion_annotation(inv: int, bass_name: str) -> dict:
+    """The annotation fields an inversion always carries together."""
+    return dict(inversion=inv, figured_bass=_FIGURED_BASS[inv],
+                inversion_label=_INVERSION_LABEL[inv], bass_note=bass_name)
 
 #: Scale-degree caret labels for motive degrees (^1..^7, octave-folded).
 _CARET = {1: "^1", 2: "^2", 3: "^3", 4: "^4", 5: "^5", 6: "^6", 7: "^7"}
@@ -162,6 +169,7 @@ class LabMeasure:
     target_pitch_classes: Tuple[int, ...]   # what the MIDI validator expects (ordered)
     bass_pitch_class: Optional[int] = None
     expected_by_beat: Optional[Dict[int, List[int]]] = None  # arpeggio/melody/strict
+    strict_bass: bool = False               # demand bass_pitch_class as the LOWEST note
 
     def sounding_midis(self) -> List[int]:
         out = [n.midi for n in (self.staff1 + self.staff2) if not n.is_rest]
@@ -306,10 +314,8 @@ def _gen_inversion(spec: LabExperimentSpec) -> List[LabMeasure]:
             f"{bass_name}."
         )
         ann = _annotation_for(
-            triad, tonic, mode,
-            inversion=inv, figured_bass=_FIGURED_BASS[inv],
-            inversion_label=_INVERSION_LABEL[inv], bass_note=bass_name,
-            lab_note=lab_note,
+            triad, tonic, mode, lab_note=lab_note,
+            **_inversion_annotation(inv, bass_name),
         )
         measures.append(LabMeasure(
             index=k, render=spec.render, group=group,
@@ -318,6 +324,13 @@ def _gen_inversion(spec: LabExperimentSpec) -> List[LabMeasure]:
             staff1=staff1, staff2=(bass,), annotation=ann, underlying=triad,
             target_pitch_classes=target, bass_pitch_class=bass_pc,
             expected_by_beat=expected,
+            # An inversion's bass is the task (plan G4/F4): plain block measures
+            # are graded lowest-sounding-note-strict.  The legacy strict_bass
+            # parameter instead encodes its demand as a bass-first ordered walk
+            # (expected_by_beat), and arpeggio stays an ordered walk -- neither
+            # carries the flag, so the panel never claims a lowest-note check
+            # that the ordered branch is not making.
+            strict_bass=(spec.render == "block" and expected is None),
         ))
     return measures
 
@@ -431,7 +444,10 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
     tonic, mode = tonic_of(spec.key), spec.mode
     scale = generate_scale(tonic, mode)
     fifths = scale.fifths
-    roman = normalise_pattern(list(cp.pattern))
+    # Figured tokens ("ii6") demand an inversion's chord member in the bass
+    # (plan G4); validate() guarantees figures only appear with render="block".
+    heads, inversions = split_figured_pattern(list(cp.pattern))
+    roman = normalise_pattern(heads)
     triads = transpose_degree_pattern(roman, tonic, mode)
     label = "–".join(cp.pattern)
     concept_word = "voice leading" if spec.concept == "voice_leading" else "cadence"
@@ -442,7 +458,9 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
 
     measures: List[LabMeasure] = []
     prev_triad: Optional[DiatonicTriad] = None
+    prev_bass_name: Optional[str] = None
     for k, triad in enumerate(triads):
+        inv = inversions[k]
         triad_pcs = tuple(triad.pitch_classes)
         common, bass_motion, tendency = _voice_leading_text(prev_triad, triad, scale)
 
@@ -455,16 +473,26 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
                 ("tenor", _spell_octave(voicing["T"])),
                 ("bass", _spell_octave(voicing["B"])),
             )
-            bass_pc = note_pc(triad.pitches[0])
+            bass_name = triad.pitches[0]
+            bass_pc = note_pc(bass_name)
             render = "voice_leading"
-        else:  # block triads
+        else:  # block triads; the figure (if any) selects the bass chord member
             staff1 = _treble_block_notes(triad)
-            staff2 = (_bass_note(triad.pitches[0]),)
+            bass_name = triad.pitches[inv]
+            staff2 = (_bass_note(bass_name),)
             voices = ()
-            bass_pc = note_pc(triad.pitches[0])
+            bass_pc = note_pc(bass_name)
             render = "block"
 
-        bits = [f"{triad.roman} ({triad.chord_symbol}, {triad.function_label})"]
+        # Bass motion names the actual (possibly inverted) bass, not the root.
+        if bass_motion is not None and prev_bass_name is not None:
+            bass_motion = f"{prev_bass_name} → {bass_name}"
+
+        sym = triad.chord_symbol if not inv else f"{triad.chord_symbol}/{bass_name}"
+        bits = [f"{cp.pattern[k]} ({sym}, {triad.function_label})"]
+        if inv:
+            bits.append(f"{_INVERSION_LABEL[inv]} ({_FIGURED_BASS[inv]}) — "
+                        f"{bass_name} in the bass")
         if bass_motion:
             bits.append(f"bass {bass_motion}")
         if common:
@@ -473,10 +501,12 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             bits.append(tendency[0])
         lab_note = "; ".join(bits) + "."
 
+        inv_extra = {} if not inv else _inversion_annotation(inv, bass_name)
         ann = _annotation_for(
             triad, tonic, mode, voices=voices, common_tones=common,
             bass_motion=bass_motion, tendency_tones=tendency,
             cadence_type=cp.cadence_type or None, lab_note=lab_note,
+            **inv_extra,
         )
         measures.append(LabMeasure(
             index=k, render=render, group=group, key_display=scale.key,
@@ -485,8 +515,10 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             staff1=staff1, staff2=staff2, annotation=ann, underlying=triad,
             target_pitch_classes=triad_pcs, bass_pitch_class=bass_pc,
             expected_by_beat=None,
+            strict_bass=bool(inv),      # only the figured chord is bass-graded
         ))
         prev_triad = triad
+        prev_bass_name = bass_name
     return measures
 
 

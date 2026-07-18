@@ -201,6 +201,7 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
         "inversionLabel": a.inversion_label,
         "bassNote": a.bass_note,
         "bassPitchClass": measure.bass_pitch_class,
+        "strictBass": measure.strict_bass,
         "voices": [list(v) for v in a.voices],
         "commonTones": list(a.common_tones),
         "bassMotion": a.bass_motion,
