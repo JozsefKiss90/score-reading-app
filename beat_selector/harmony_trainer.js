@@ -14,6 +14,10 @@
  *     not) and greens the on-staff noteheads -- with zero changes to app.js.
  *   - It wraps window.onMidiNoteOn / onMidiNoteOff to drive target
  *     advancement (block: all tones; arpeggio: tones in order).
+ *   - Non-MIDI answer modes (plan U2): payloads carrying ANSWER_MODE "mcq"
+ *     render a multiple-choice strip (identification drills), "card" turns
+ *     the chord-card list into the answer surface.  Both grade via
+ *     submitAnswer(); MIDI events then only monitor, never grade.
  *
  * The shared viewer (app.js, sidebar.js, keyboard_view.js, beatpage.html) is
  * never modified, so existing behaviour cannot regress.
@@ -31,6 +35,20 @@
   var finished = false;     // whole exercise done?
   var bassMiss = false;     // full set played but with the wrong lowest note
   var bassMissText = "";    // feedback naming the expected bass
+
+  // ---- answer modes (plan U2, ticket 06) ---------------------------------
+  // "midi" is the classic play-the-chord flow.  "mcq" renders an answer
+  // strip for identification drills; "card" turns the chord-card list into
+  // the answer surface.  In both non-midi modes MIDI events keep their
+  // monitoring visuals but never grade.
+  var ANSWER_ADVANCE_MS = 600;
+  var answerMode = "midi";  // "midi" | "mcq" | "card"
+  var answerLog = [];       // {idx, mode, given, expected, correct}
+  var lastAnswer = null;    // latest entry (feedback for the current target)
+  var answeredCorrect = new Set();   // target indexes answered correctly
+  var cardOrder = null;     // card mode: shuffled DISPLAY order (once per
+                            // exercise) so the list doesn't mirror the
+                            // question sequence — indexes/grading unchanged
 
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -288,6 +306,7 @@
     if (i > N - 1) i = N - 1;
     idx = i;
     resetAttempt();
+    lastAnswer = null;               // feedback belongs to the left target
     finished = false;
     applySelection();
     placeHighlight(cur().absMeasure);
@@ -310,6 +329,7 @@
 
   // ---- MIDI event hooks (run after the base app handlers) ----------------
   function afterNoteOn(pitch, velocity) {
+    if (answerMode !== "midi") return;       // ID drills grade via answer()
     if (Number(velocity) <= 0) return;       // velocity-0 is a note-off
     var t = cur();
     if (!t || finished) return;
@@ -352,6 +372,7 @@
   }
 
   function afterNoteOff() {
+    if (answerMode !== "midi") return;       // ID drills grade via answer()
     if (finished) return;
     if (isArpeggio()) return;                // arpeggio advances on note-on
     if (completed && app.state.midiDown.size === 0) {
@@ -389,6 +410,54 @@
     };
   }
 
+  // ---- non-MIDI answering (plan U2) --------------------------------------
+  // MCQ: `given` is an option string, graded against the target's mcq.answer.
+  // Card: `given` is a card index, graded against the current target index —
+  // or a per-target `answerIndex` override (the "spot the intruder" seam).
+  // Returns the recorded log entry, or null when answering is not available.
+  function submitAnswer(given) {
+    var t = cur();
+    if (!t || finished || completed) return null;
+    var entry;
+    if (answerMode === "mcq") {
+      entry = { idx: idx, mode: "mcq", given: given,
+                expected: (t.mcq || {}).answer };
+    } else if (answerMode === "card") {
+      var want = (t.answerIndex === undefined || t.answerIndex === null)
+        ? idx : Math.trunc(Number(t.answerIndex));
+      entry = { idx: idx, mode: "card", given: Math.trunc(Number(given)),
+                expected: want };
+    } else {
+      return null;                    // midi mode: cards navigate, not answer
+    }
+    entry.correct = entry.given === entry.expected;
+    answerLog.push(entry);
+    lastAnswer = entry;
+    if (entry.correct) {
+      completed = true;
+      answeredCorrect.add(entry.idx);
+      if (answerMode === "card") markCardDone(entry.expected);
+      renderProgress();
+      renderAnswerUI();
+      setTimeout(function () {
+        // Only auto-advance the question that was answered (the learner may
+        // have navigated away during the feedback beat).
+        if (idx === entry.idx && completed && !finished) advance();
+      }, ANSWER_ADVANCE_MS);
+    } else {
+      renderProgress();
+      renderAnswerUI();
+    }
+    return entry;
+  }
+
+  function markCardDone(i) {
+    try {
+      var el = document.querySelector('.htCard[data-index="' + i + '"]');
+      if (el) el.classList.add("done");
+    } catch (e) { /* headless stub */ }
+  }
+
   // ---- sidebar panel -----------------------------------------------------
   function ensureStyles() {
     if (document.getElementById("htStyle")) return;
@@ -423,6 +492,16 @@
       ".htCard.done .rn{color:#16a34a;}",
       "#htDone{display:none;margin:6px 0;padding:6px 8px;background:#dcfce7;border:1px solid #16a34a;border-radius:6px;color:#14532d;font-weight:600;}",
       "#htDone.show{display:block;}",
+      /* answer strip (plan U2) */
+      "#htAnswer{margin:6px 0;}",
+      "#htAnswer .prompt{font-weight:600;margin:4px 0;color:#0b3a53;}",
+      "#htAnswer .opts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}",
+      "#htAnswer button.htOpt{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:4px 10px;font:13px system-ui;}",
+      "#htAnswer button.htOpt:hover{background:#e2e8f0;}",
+      "#htAnswer button.htOpt:disabled{opacity:.55;cursor:default;}",
+      "#htAnsMsg{margin:4px 0;font-size:12px;font-weight:600;}",
+      "#htAnsMsg.ok{color:#166534;}",
+      "#htAnsMsg.bad{color:#991b1b;}",
       /* dark mode */
       ".dark-score #trainerPanel{border-bottom-color:#222;}",
       ".dark-score #trainerPanel h3{color:#93c5fd;}",
@@ -433,6 +512,10 @@
       ".dark-score #htCurrent .exp{color:#cbd5e1;}",
       ".dark-score .htCard{background:#0b0b0b;border-color:#1f2933;color:#e5e7eb;}",
       ".dark-score .htCard.active{background:#1e3a8a;border-color:#60a5fa;}",
+      ".dark-score #htAnswer .prompt{color:#93c5fd;}",
+      ".dark-score #htAnswer button.htOpt{background:#1f2937;border-color:#374151;color:#e5e7eb;}",
+      ".dark-score #htAnsMsg.ok{color:#86efac;}",
+      ".dark-score #htAnsMsg.bad{color:#fca5a5;}",
       /* hide the dormant native beat-selector UI while the trainer owns the panel */
       "body.ht-active #side > h3, body.ht-active #side > #beatList{display:none;}",
     ].join("\n");
@@ -459,6 +542,7 @@
       '<div id="htDone">✓ Exercise complete!</div>' +
       '<div id="htBassMsg"></div>' +
       '<div id="htCurrent"></div>' +
+      '<div id="htAnswer"></div>' +
       '<div id="htList"></div>';
     side.insertBefore(panel, side.firstChild);
 
@@ -475,6 +559,27 @@
     var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
     var wantBass = strictBassPc(t);
     el.className = completed ? "done" : "";
+    // Identification (MCQ): the Roman numeral, function, tones etc. ARE the
+    // answer — show only the key context and point at the highlighted bar.
+    if (answerMode === "mcq") {
+      el.innerHTML =
+        '<div class="row big">' + esc(t.key) + "</div>" +
+        '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
+        '<div class="row"><span class="lbl">Where</span>bar ' +
+        esc(t.measureNumber) + " (highlighted)</div>";
+      return;
+    }
+    // Card matching: the card labels carry the Roman/symbol, so the prompt
+    // describes the chord without naming it.
+    if (answerMode === "card") {
+      el.innerHTML =
+        '<div class="row big">' + esc(t.key) + " — which chord is this?</div>" +
+        '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
+        '<div class="row"><span class="lbl">Tones</span>' + esc(t.chordTones.join("–")) + "</div>" +
+        '<div class="row"><span class="lbl">Function</span>' + esc(t.functionLabel) +
+        " (" + esc(t.scaleDegreeName) + ")</div>";
+      return;
+    }
     el.innerHTML =
       '<div class="row big">' + esc(t.key) + " — " + esc(t.roman) +
       " (" + esc(t.functionLabel) + ")</div>" +
@@ -513,9 +618,28 @@
     var list = document.getElementById("htList");
     if (!list) return;
     list.innerHTML = "";
+    // MCQ identification: the ordered card list (I..vii° per measure) would
+    // hand out the answer; the MCQ strip replaces it entirely.
+    if (answerMode === "mcq") return;
+    // Card mode: display order is shuffled once per exercise — otherwise the
+    // targets advance in exactly the list's order and clicking top-to-bottom
+    // would complete the drill without reading the prompt.  Group headers are
+    // dropped there (they assume measure order); grading indexes unchanged.
+    var order = targets().map(function (_, i) { return i; });
+    if (answerMode === "card") {
+      if (!cardOrder || cardOrder.length !== order.length) {
+        for (var j = order.length - 1; j > 0; j--) {
+          var k = Math.floor(Math.random() * (j + 1));
+          var tmp = order[j]; order[j] = order[k]; order[k] = tmp;
+        }
+        cardOrder = order.slice();
+      }
+      order = cardOrder.slice();
+    }
     var lastGroup = null;
-    targets().forEach(function (t, i) {
-      if (t.group && t.group !== lastGroup) {
+    order.forEach(function (i) {
+      var t = targets()[i];
+      if (answerMode !== "card" && t.group && t.group !== lastGroup) {
         var g = document.createElement("div");
         g.className = "htGroup";
         g.textContent = t.group;
@@ -523,16 +647,67 @@
         lastGroup = t.group;
       }
       var card = document.createElement("div");
-      card.className = "htCard" + (i === idx ? " active" : "");
+      // Card-answer mode: marking the active card would answer the question,
+      // so only correctly answered cards get a state.
+      var active = answerMode === "card" ? "" : (i === idx ? " active" : "");
+      var done = answerMode === "card" && answeredCorrect.has(i) ? " done" : "";
+      card.className = "htCard" + active + done;
       card.dataset.index = String(i);
       card.innerHTML =
         '<span class="rn">' + esc(t.roman) + "</span>" +
         '<span class="sym">' + esc(t.chordSymbol) + "</span>" +
         '<span class="meta">' + esc(t.intervalLayer) + " · " +
         esc(t.functionLabel) + "</span>";
-      card.addEventListener("click", function () { goTo(i); });
+      card.addEventListener("click", function () {
+        if (answerMode === "card") submitAnswer(i);
+        else goTo(i);
+      });
       list.appendChild(card);
     });
+  }
+
+  // The answer strip: MCQ options for identification drills, or the
+  // click-a-card instruction.  Empty (and inert) in classic midi mode.
+  function renderAnswerUI() {
+    var box = document.getElementById("htAnswer");
+    if (!box) return;
+    box.innerHTML = "";
+    if (answerMode === "midi" || finished) return;
+    var t = cur();
+    if (!t) return;
+
+    var prompt = document.createElement("div");
+    prompt.className = "prompt";
+    prompt.textContent = answerMode === "mcq"
+      ? ((t.mcq && t.mcq.prompt) || "Identify the chord:")
+      : "Click the matching chord card below.";
+    box.appendChild(prompt);
+
+    if (answerMode === "mcq") {
+      var opts = document.createElement("div");
+      opts.className = "opts";
+      (((t.mcq) && t.mcq.options) || []).forEach(function (opt) {
+        var b = document.createElement("button");
+        b.className = "htOpt";
+        b.textContent = opt;
+        if (completed) b.disabled = true;
+        b.addEventListener("click", function () { submitAnswer(opt); });
+        opts.appendChild(b);
+      });
+      box.appendChild(opts);
+    }
+
+    var msg = document.createElement("div");
+    msg.id = "htAnsMsg";
+    if (lastAnswer && lastAnswer.idx === idx) {
+      msg.className = lastAnswer.correct ? "ok" : "bad";
+      msg.textContent = lastAnswer.correct
+        ? "✓ Correct — " + (answerMode === "mcq" ? String(lastAnswer.given) : "that's the one") + "!"
+        : (answerMode === "mcq"
+            ? "✗ Not " + String(lastAnswer.given) + " — try again."
+            : "✗ Not that card — try again.");
+      box.appendChild(msg);
+    }
   }
 
   function renderPanel() {
@@ -542,6 +717,7 @@
         "  —  " + (data.render === "arpeggio" ? "arpeggio" : "block triads");
     }
     renderList();
+    renderAnswerUI();
     renderProgress();
   }
 
@@ -561,6 +737,12 @@
     resetAttempt();
     finished = false;
     pbStamp = new Map();
+    answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card")
+      ? data.ANSWER_MODE : "midi";
+    answerLog = [];
+    lastAnswer = null;
+    answeredCorrect = new Set();
+    cardOrder = null;
 
     ensureStyles();
     if (document.body) document.body.classList.add("ht-active");
@@ -582,7 +764,14 @@
     reset: function () { goTo(0); },
     state: function () {
       return { idx: idx, completed: completed, finished: finished,
-               arpIndex: arpIndex, total: targets().length };
+               arpIndex: arpIndex, total: targets().length,
+               answerMode: answerMode, answered: answerLog.length };
+    },
+    // Non-MIDI answering (plan U2).  MCQ: answer("IV"); card: answer(3).
+    answer: submitAnswer,
+    answerState: function () {
+      return { mode: answerMode, log: answerLog.slice(),
+               last: lastAnswer || undefined };
     },
     // The current target chord (consumed by the Harmony Atlas to sync its
     // highlight to the live playback position). Null when nothing is loaded.

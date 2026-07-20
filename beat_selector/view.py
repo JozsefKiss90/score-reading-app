@@ -9,7 +9,7 @@ import time
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
 os.environ.setdefault("QT_OPENGL", "software")
 
-from PyQt6.QtCore import Qt, QUrl, pyqtSlot
+from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
@@ -156,6 +156,17 @@ class ScoreViewBeats(QWidget):
                 self._midi_player = None
         else:
             dlog("[AUDIO] MidiPlayer import failed; no in-app sound.")
+
+        # --- Synthetic note input (plan U2): pointer presses on the on-screen
+        # piano and QWERTY typing queue events in the page (note_input.js).
+        # This poll drains that queue and sounds the notes.  Grading and
+        # highlighting already happened client-side (NoteInput routes through
+        # window.onMidiNoteOn/off), so this path is sound-only and never
+        # re-enters the page; the hardware-MIDI slots above are untouched.
+        self._note_input_poll = QTimer(self)
+        self._note_input_poll.setInterval(50)
+        self._note_input_poll.timeout.connect(self._poll_note_input)
+        self._note_input_poll.start()
 
         self._tk = verovio.toolkit()
         self._tk.setOptions({
@@ -513,6 +524,42 @@ class ScoreViewBeats(QWidget):
     }})()
     """
         self._run_js_safe(js, label="midi_off")
+
+    # ------------------------------------------------------------------
+    # Synthetic note input (on-screen piano / QWERTY, plan U2): sound only.
+    # ------------------------------------------------------------------
+    def _poll_note_input(self):
+        """Drain pointer/QWERTY note events from the page and sound them."""
+        if not self._html_ready:
+            return
+        try:
+            self.web.page().runJavaScript(
+                "(window.NoteInput && window.NoteInput.takeEvents)"
+                " ? window.NoteInput.takeEvents() : []",
+                self._on_note_input_events,
+            )
+        except Exception as e:
+            dlog("[SYNTH-IN] poll failed:", e)
+
+    def _on_note_input_events(self, events):
+        if not isinstance(events, list) or not events:
+            return
+        if not (self._midi_audio_enabled and self._midi_player is not None):
+            return  # events are drained regardless, so the queue never backs up
+        for ev in events:
+            if not isinstance(ev, dict):
+                continue
+            try:
+                midi = int(ev.get("midi", -1))
+                if not 0 <= midi <= 127:
+                    continue
+                if ev.get("type") == "on":
+                    vel = max(1, min(int(ev.get("vel", 96)), 127))
+                    self._midi_player.fs.noteon(0, midi, vel)
+                elif ev.get("type") == "off":
+                    self._midi_player.fs.noteoff(0, midi)
+            except Exception as e:
+                dlog("[SYNTH-IN] sound failed:", e)
 
     def closeEvent(self, event):
         try:

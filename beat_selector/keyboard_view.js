@@ -27,10 +27,35 @@ export class KeyboardView {
     this._keysByMidi = new Map();
     this._whiteMidis = [];
     this._blackMidis = [];
+    this._pointerNotes = new Map(); // pointerId -> midi (pointer input, plan U2)
 
     this._build();
     window.addEventListener('resize', () => this.layout());
     this.layout();
+  }
+
+  // ------------------------------------------------------------------
+  // Pointer input (plan U2): pressing a key plays it.  Notes route through
+  // window.NoteInput into the same window.onMidiNoteOn/off path hardware
+  // MIDI uses, so highlighting and grading are identical.  Display logic
+  // (setKeyStates) is untouched.
+  // ------------------------------------------------------------------
+  _bindPointer(k, midi){
+    k.addEventListener('pointerdown', (e) => {
+      if(e.button > 0) return;                   // primary button / touch / pen only
+      e.preventDefault();
+      try { k.setPointerCapture(e.pointerId); } catch {}
+      this._pointerNotes.set(e.pointerId, midi);
+      window.NoteInput?.noteOn?.(midi);
+    });
+    const release = (e) => {
+      const m = this._pointerNotes.get(e.pointerId);
+      if(m === undefined) return;
+      this._pointerNotes.delete(e.pointerId);
+      window.NoteInput?.noteOff?.(m);
+    };
+    k.addEventListener('pointerup', release);
+    k.addEventListener('pointercancel', release);
   }
 
   _build(){
@@ -61,6 +86,7 @@ export class KeyboardView {
         k.appendChild(lbl);
       }
 
+      this._bindPointer(k, m);
       root.appendChild(k);
       this._keysByMidi.set(m, k);
     }
@@ -78,6 +104,7 @@ export class KeyboardView {
         k.appendChild(lbl);
       }
 
+      this._bindPointer(k, m);
       root.appendChild(k);
       this._keysByMidi.set(m, k);
     }

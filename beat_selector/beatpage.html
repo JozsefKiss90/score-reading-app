@@ -146,6 +146,14 @@ svg{
   border-bottom:2px solid rgba(255,255,255,0.25);
 }
 
+/* Pointer input (plan U2): keys are pressable, so behave like a control */
+.keyW, .keyB{
+  cursor:pointer;
+  touch-action:none;      /* touch presses play notes instead of scrolling */
+  user-select:none;
+  -webkit-user-select:none;
+}
+
 /* Press feedback: green if correct, red if wrong */
 .keyOkW{ background:#86efac !important; border-color:#16a34a !important; }
 .keyOkB{ background:#16a34a !important; border-color:#14532d !important; }
@@ -283,6 +291,11 @@ svg{
     PITCH_MAP:      {PITCH_MAP_JSON}
   };
 </script>
+
+<!-- Classic script (not a module): defines window.NoteInput before the app
+     boots.  On-screen-piano pointer presses and QWERTY typing route through
+     it into the same window.onMidiNoteOn/off path hardware MIDI uses. -->
+<script src="./js/note_input.js"></script>
 
 <script type="module">
   import { createApp } from './js/app.js';

@@ -53,6 +53,12 @@ DEFAULT_MINOR_KEYS = [
 _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
 _VALID_QUALITY = {"major", "minor", "diminished", "augmented"}
+#: How the learner answers a drill (plan U2, ticket 06).  ``midi`` is the
+#: classic play-the-chord flow (hardware, on-screen piano, or QWERTY — all
+#: three feed the same grader); ``mcq`` renders a multiple-choice strip for
+#: identification drills; ``card`` turns the chord-card list into the answer
+#: surface (click the matching card).
+_VALID_ANSWER_MODES = {"midi", "mcq", "card"}
 
 #: Readability cap: the maximum number of chords (== measures) in a single
 #: spec.  It matches the project's existing shipped demo ("all V across the
@@ -98,6 +104,9 @@ GROUP_DEGREE = "Degree transposition drills"
 GROUP_QUALITY = "Quality recognition drills"
 GROUP_FUNCTION = "Function drills"
 GROUP_ARPEGGIO = "Arpeggio drills"
+#: Opt-in launcher group for the no-MIDI identification drills (plan U2).
+#: NOT part of ``default_exercise_groups()`` — see ``identification_demo_specs``.
+GROUP_IDENTIFY = "Identification drills (no MIDI needed)"
 
 
 # ---------------------------------------------------------------------------
@@ -121,12 +130,17 @@ class HarmonyExerciseSpec:
     quality: Optional[str] = None       # quality drill, e.g. "diminished"
     pattern: Optional[List[str]] = None  # function drill, e.g. ["ii", "V", "I"]
     keys: Optional[List[str]] = None     # explicit key list (else mode default)
+    answer_mode: str = "midi"            # one of _VALID_ANSWER_MODES (plan U2)
 
     def validate(self) -> None:
         if self.drill not in _VALID_DRILLS:
             raise ValueError(f"Unknown drill {self.drill!r}; expected {_VALID_DRILLS}")
         if self.render not in _VALID_RENDER:
             raise ValueError(f"Unknown render {self.render!r}; expected {_VALID_RENDER}")
+        if self.answer_mode not in _VALID_ANSWER_MODES:
+            raise ValueError(
+                f"Unknown answer_mode {self.answer_mode!r}; expected "
+                f"{sorted(_VALID_ANSWER_MODES)}")
         self.mode = _canon_mode(self.mode)
         if self.drill == "horizontal_degree" and not self.degree:
             raise ValueError("horizontal_degree drill requires 'degree'")
@@ -557,3 +571,56 @@ def all_default_specs() -> List[HarmonyExerciseSpec]:
     for specs in default_exercise_groups().values():
         out.extend(specs)
     return out
+
+
+def degree_labels_for_mode(mode: str) -> List[str]:
+    """The seven quality-cased Roman labels of ``mode``, in degree order.
+
+    This is the MCQ option vocabulary for Roman-numeral identification drills
+    (plan U2): the labels match ``DiatonicTriad.roman`` exactly, so a target's
+    ``roman`` is always one of them.
+    """
+    return list(_MAJOR_DEGREE_LABELS if _canon_mode(mode) == "major"
+                else _MINOR_DEGREE_LABELS)
+
+
+def identification_demo_specs() -> List[HarmonyExerciseSpec]:
+    """Launchable no-MIDI identification drills (plan U2, ticket 06).
+
+    Deliberately a *separate* set: ``default_exercise_groups()`` is
+    load-bearing (the curriculum wraps exactly its 102 drills and tests pin
+    its group names), so identification drills are appended only where a host
+    opts in (the trainer launcher's :data:`GROUP_IDENTIFY` group).
+    """
+    specs = [
+        HarmonyExerciseSpec(
+            exercise_id="identify_mcq_fullkey_c_major",
+            title="Identify the chord — C major (MCQ)",
+            drill="full_key", mode="major", key="C major", answer_mode="mcq",
+            description=("The cursor sits on one diatonic triad of C major; "
+                         "name its Roman numeral from the answer strip. "
+                         "No MIDI needed.")),
+        HarmonyExerciseSpec(
+            exercise_id="identify_mcq_fullkey_a_minor",
+            title="Identify the chord — A minor (MCQ)",
+            drill="full_key", mode="natural_minor", key="A minor",
+            answer_mode="mcq",
+            description=("Name the Roman numeral of each diatonic triad of "
+                         "A natural minor from the answer strip.")),
+        HarmonyExerciseSpec(
+            exercise_id="identify_mcq_function_251_c_major",
+            title="Identify the chord — ii–V–I in C (MCQ)",
+            drill="function", mode="major", pattern=["ii", "V", "I"],
+            keys=["C"], answer_mode="mcq",
+            description=("Name each chord of the ii–V–I progression in "
+                         "C major from the answer strip.")),
+        HarmonyExerciseSpec(
+            exercise_id="identify_card_fullkey_c_major",
+            title="Match the chord card — C major",
+            drill="full_key", mode="major", key="C major", answer_mode="card",
+            description=("Read the current chord's tones and function, then "
+                         "click the matching chord card in the list.")),
+    ]
+    for s in specs:
+        s.validate()
+    return specs

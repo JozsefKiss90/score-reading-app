@@ -219,6 +219,54 @@ list, so you can jump to any chord for free practice.
 
 ---
 
+## 5b. Answer modalities beyond hardware MIDI (plan U2)
+
+Drills are completable **without MIDI hardware** through four input paths.
+
+**Note input without a MIDI keyboard.** Two new sources synthesize the very
+same `window.onMidiNoteOn` / `window.onMidiNoteOff` calls the Python host
+makes for hardware MIDI, so highlighting and grading are byte-identical and
+the hardware path is untouched:
+
+* **On-screen piano** (`keyboard_view.js`) — pointer presses play keys
+  (primary button / touch / pen, with pointer capture; multi-touch chords work
+  on touchscreens, and block targets also accumulate across sequential
+  mouse taps because the grader's `satisfied` set survives releases).
+* **QWERTY fallback** (`note_input.js`, `window.NoteInput`) — DAW-style,
+  layout-independent `e.code` mapping: the `A`-row plays white keys from C4,
+  the `W`-row the black keys between them (`A`=C4 … `K`=C5 … `'`=F5), `Z`/`X`
+  shift the octave. Auto-repeat, modifier chords and typing into inputs are
+  ignored; a window-blur failsafe releases held notes.
+
+Both queue their events in `NoteInput`; `ScoreViewBeats` polls
+`NoteInput.takeEvents()` (50 ms) and sounds them on the FluidSynth monitor —
+sound-only, never re-entering the page.
+
+**Answering without playing.** The spec gains `answer_mode`
+(`midi` default | `mcq` | `card`), carried to the controller as the payload's
+`ANSWER_MODE`:
+
+* **`mcq`** — identification drills. Each target carries an `mcq` block
+  (`prompt`, the mode's seven Roman-numeral `options`, `answer`); the panel
+  renders an answer strip, hides the giveaway detail rows and the ordered
+  chord-card list, and grades clicks via `HarmonyTrainer.answer(option)`.
+  Correct advances after a feedback beat; wrong records the miss and lets you
+  retry. MIDI (from any source) still lights keys but never grades.
+* **`card`** — the chord cards become the answer surface: the prompt shows
+  the current chord's tones/function and clicking the matching card answers
+  (`HarmonyTrainer.answer(index)`). A per-target `answerIndex` override is the
+  seam for "spot the intruder" (plan G5a). In classic `midi` mode card clicks
+  keep navigating exactly as before.
+
+Every attempt lands in an answer log (`HarmonyTrainer.answerState()`,
+`state().answered`), the seam for progress tracking. Launchable no-MIDI drills
+live in `identification_demo_specs()` under the trainer launcher's
+**Identification drills (no MIDI needed)** group — deliberately *not* part of
+the load-bearing `default_exercise_groups()` 102-drill set that the
+curriculum/Atlas/network wrap.
+
+---
+
 ## 6. Target playback (transport)
 
 Every drill can be *heard*, not just seen (plan U1 — "sound before symbol").
@@ -285,6 +333,9 @@ holds the same set as a flat, ready-to-run file. (The smaller five-exercise
 # Headless behavioural tests for the injected JS controller
 node tests/harmony_trainer_node_test.js
 node tests/harmony_trainer_playback_test.js
+node tests/harmony_trainer_bass_test.js
+node tests/harmony_trainer_answer_test.js   # MCQ / card answer modes (U2)
+node tests/note_input_test.js               # on-screen piano + QWERTY input (U2)
 ```
 
 ---

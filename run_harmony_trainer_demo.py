@@ -47,6 +47,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 from harmony.exercise_spec import (
     HarmonyExerciseSpec, compile_exercise, default_exercise_groups, load_specs,
+    identification_demo_specs, GROUP_IDENTIFY,
 )
 from harmony.musicxml_builder import build_exercise
 from harmony.circle_payload import build_circle_payload, spec_from_circle_request
@@ -581,7 +582,12 @@ def _load_groups(argv: List[str]) -> "OrderedDict[str, List[HarmonyExerciseSpec]
     """Comprehensive grouped set by default; a JSON file arg loads one flat group."""
     if len(argv) > 1 and argv[1] and Path(argv[1]).exists():
         return OrderedDict([(Path(argv[1]).name, load_specs(argv[1]))])
-    return default_exercise_groups()
+    groups = default_exercise_groups()
+    # Opt-in extra group (plan U2): no-MIDI identification drills.  Appended
+    # only here so the curriculum/atlas/network consumers of
+    # default_exercise_groups() keep their exact 102-drill set.
+    groups[GROUP_IDENTIFY] = identification_demo_specs()
+    return groups
 
 
 def main(argv: Optional[List[str]] = None) -> int:

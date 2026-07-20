@@ -23,7 +23,11 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
-from harmony.exercise_spec import CompiledChord, CompiledExercise
+from harmony.exercise_spec import (
+    CompiledChord,
+    CompiledExercise,
+    degree_labels_for_mode,
+)
 from theory.diatonic_harmony import (
     DiatonicTriad,
     key_signature_fifths,
@@ -333,6 +337,20 @@ def _target_for(chord: CompiledChord) -> Dict:
     }
 
 
+def _mcq_for(target: Dict) -> Dict:
+    """The multiple-choice block of one ``answer_mode="mcq"`` target (plan U2).
+
+    v1 asks for the Roman numeral; the option vocabulary is the mode's seven
+    degree labels, which match ``DiatonicTriad.roman`` spelling exactly (the
+    ``°`` decoration included), so ``answer`` is always one of ``options``.
+    """
+    return {
+        "prompt": f"Which chord of {target['key']} is this?",
+        "options": degree_labels_for_mode(target["mode"]),
+        "answer": target["roman"],
+    }
+
+
 def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     """Per-measure metadata for the runtime trainer (JSON-serialisable).
 
@@ -341,6 +359,11 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     ``EXPECTED_MIDI_BY_MEASURE_OR_BEAT``.
     """
     targets = [_target_for(c) for c in compiled.chords]
+
+    answer_mode = compiled.spec.answer_mode
+    if answer_mode == "mcq":
+        for t in targets:
+            t["mcq"] = _mcq_for(t)
 
     target_by_measure: Dict[str, Dict] = {str(t["absMeasure"]): t for t in targets}
 
@@ -363,6 +386,7 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         "title": compiled.title,
         "render": compiled.spec.render,
         "match": "pitch_class",
+        "ANSWER_MODE": answer_mode,
         "TARGET_CHORDS": targets,
         "TARGET_BY_MEASURE": target_by_measure,
         "EXPECTED_MIDI_BY_MEASURE_OR_BEAT": expected,
