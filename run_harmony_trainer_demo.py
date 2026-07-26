@@ -49,6 +49,7 @@ from harmony.exercise_spec import (
     HarmonyExerciseSpec, compile_exercise, default_exercise_groups, load_specs,
     identification_demo_specs, GROUP_IDENTIFY,
 )
+from harmony.echo_drills import echo_demo_specs, GROUP_ECHO
 from harmony.musicxml_builder import build_exercise
 from harmony.circle_payload import build_circle_payload, spec_from_circle_request
 from audio.target_playback import TargetTransport, PLAYING, MIN_BPM, MAX_BPM
@@ -504,6 +505,17 @@ class HarmonyTrainerWindow(QWidget):
                 btn.hide()
         self._ensure_trainer(self._score_widget, payload)
         self.transport.attach(self._score_widget, payload)
+        # Echo drills are sound-first (plan A1, ticket 07): the notation is
+        # veiled, so hearing the target IS the prompt — start playback
+        # unasked.  The short delay lets the fresh page begin loading (the
+        # audio itself needs no page); the widget guard drops the auto-play
+        # if the user switched exercises in the meantime.
+        if payload.get("PRESENTATION") == "echo":
+            w = self._score_widget
+            QTimer.singleShot(
+                400,
+                lambda: self.transport.play() if self._score_widget is w
+                else None)
 
     def load_external_lab(self, musicxml: str, payload: dict) -> None:
         """Load a *prebuilt* ``(musicxml, payload)`` pair (Music Theory Lab).
@@ -587,6 +599,9 @@ def _load_groups(argv: List[str]) -> "OrderedDict[str, List[HarmonyExerciseSpec]
     # only here so the curriculum/atlas/network consumers of
     # default_exercise_groups() keep their exact 102-drill set.
     groups[GROUP_IDENTIFY] = identification_demo_specs()
+    # Opt-in extra group (plan A1, ticket 07): echo-play ear drills — the
+    # notation-hidden aural twins.  Same opt-in reasoning as above.
+    groups[GROUP_ECHO] = echo_demo_specs()
     return groups
 
 

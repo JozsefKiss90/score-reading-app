@@ -88,6 +88,11 @@ Every node (any `kind`) carries the full pedagogical envelope:
 | `children` | sub-tree (empty for a leaf) |
 | `lab_spec` | the **one** `LabExperimentSpec` an exercise leaf owns |
 
+Exercise-leaf payloads additionally carry `echoEligible` (plan A1, ticket 07):
+`true` on native `drill`-concept leaves, whose aural **echo twin** (same drill
+by ear, one shared mastery record) the workspace offers once the visual leaf
+is started — see `docs/harmony_trainer.md` §5c.
+
 ## 4. Mapping of the original 102 drills
 
 `harmony.exercise_spec.default_exercise_groups()` yields exactly **102**

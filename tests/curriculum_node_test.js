@@ -272,4 +272,53 @@ const PAYLOAD = loadPayload();
   console.log("Test H (sync): PASS");
 })();
 
+// === Test I: echo drill affordance (plan A1, ticket 07) =====================
+(function testEchoAffordance() {
+  const h = makeHarness(PAYLOAD);
+  h.ui.init(PAYLOAD);
+
+  // find an echo-eligible leaf and an ineligible one from the real payload
+  let echoId = null, plainId = null;
+  (function find(node) {
+    if (node.kind === "exercise") {
+      if (node.echoEligible && !echoId) echoId = node.id;
+      if (!node.echoEligible && !plainId) plainId = node.id;
+    }
+    (node.children || []).forEach(find);
+  })(PAYLOAD.tree);
+  assert(echoId, "the payload marks echo-eligible leaves");
+  assert(plainId, "lab-concept leaves stay ineligible");
+
+  const echoButtons = () =>
+    ALL.filter((n) => /curEcho/.test(n.className));
+
+  // Not started -> the button renders locked and clicking enqueues nothing.
+  h.ui.select(echoId);
+  let btns = echoButtons();
+  assert(btns.length >= 1, "eligible leaf shows the echo button");
+  assert(/locked/.test(btns[btns.length - 1].className),
+         "echo is locked before the visual leaf is started");
+  btns[btns.length - 1].fire("click");
+  assert(h.ui.takeLaunch() === null, "locked echo click enqueues nothing");
+
+  // Progress arrives (leaf started) -> the detail re-renders unlocked.
+  h.ui.setProgress({ stats: { [echoId]: {
+    id: echoId, kind: "exercise", state: "started", attempts: 1,
+    bestScore: 0, percent: 0 } } });
+  btns = echoButtons().filter((n) => !/locked/.test(n.className));
+  assert(btns.length >= 1, "started leaf unlocks the echo button");
+  btns[btns.length - 1].fire("click");
+  const spec = h.ui.takeLaunch();
+  assert(spec && spec.echo === true, "echo launch carries the echo flag");
+  assert(spec.concept === "drill", "echo launch wraps the native drill spec");
+
+  // Ineligible leaves never show the affordance.  (ALL accumulates nodes
+  // across renders, so "no new echo button" means the count stays flat.)
+  const countBefore = echoButtons().length;
+  h.ui.select(plainId);
+  assert(echoButtons().length === countBefore,
+         "selecting an ineligible leaf adds no echo button");
+  console.log("Test I (echo affordance): PASS");
+})();
+
 console.log("\nAll curriculum.js behavioural checks passed (" + passed + " assertions).");

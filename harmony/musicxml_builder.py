@@ -387,6 +387,7 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         "render": compiled.spec.render,
         "match": "pitch_class",
         "ANSWER_MODE": answer_mode,
+        "PRESENTATION": compiled.spec.presentation,
         "TARGET_CHORDS": targets,
         "TARGET_BY_MEASURE": target_by_measure,
         "EXPECTED_MIDI_BY_MEASURE_OR_BEAT": expected,

@@ -395,6 +395,23 @@
     var launchProps = { class: "curLaunch", text: "▶ Launch exercise",
       onClick: function () { launchNode(selectedId); } };
     pane.appendChild(el("button", launchProps));
+
+    // Echo twin (plan A1, ticket 07): the same drill by ear — available on
+    // native trainer leaves once the visual leaf is at least *started*
+    // (sound-before-symbol lives inside a vocabulary you have met).  Aural
+    // attempts land on the same leaf, so both feed one mastery record.
+    var node = byId[selectedId];
+    if (node && node.echoEligible) {
+      var unlocked = echoUnlocked(selectedId);
+      var echoProps = {
+        class: "curLaunch curEcho" + (unlocked ? "" : " locked"),
+        text: unlocked ? "🎧 Echo drill — play it by ear"
+                       : "🎧 Echo drill — locked (start the visual drill first)",
+        onClick: function () { launchNode(selectedId, true); },
+      };
+      if (!unlocked) echoProps.disabled = "disabled";
+      pane.appendChild(el("button", echoProps));
+    }
   }
 
   function renderLesson(pane, m, node) {
@@ -461,12 +478,32 @@
   // ========================================================================
   // Launch
   // ========================================================================
-  function launchNode(id) {
+  // Echo unlock gate: the aural twin opens once the visual leaf has been
+  // started.  Allowlist (mirroring harmony/echo_drills.echo_unlocked), so
+  // unknown or future states stay locked exactly like the Python gate.
+  function echoUnlocked(id) {
+    var stats = progressFor(id);
+    var s = stats && stats.state;
+    return s === "started" || s === "completed" || s === "mastered";
+  }
+
+  function launchNode(id, echo) {
     var node = byId[id];
     if (!node || node.kind !== "exercise" || !node.labSpec) return;
-    launchQueue.push(node.labSpec);
+    if (echo) {
+      // Locked or ineligible echo requests are dropped (the button is
+      // disabled anyway; this keeps the queue honest for keyboard paths).
+      if (!node.echoEligible || !echoUnlocked(id)) return;
+      var spec = {};
+      Object.keys(node.labSpec).forEach(function (k) { spec[k] = node.labSpec[k]; });
+      spec.echo = true;   // host flag; LabExperimentSpec.from_dict ignores it
+      launchQueue.push(spec);
+    } else {
+      launchQueue.push(node.labSpec);
+    }
     var hint = dollar("curLaunchHint");
-    if (hint) hint.textContent = "Launching: " + node.title;
+    if (hint) hint.textContent =
+      (echo ? "Launching echo: " : "Launching: ") + node.title;
   }
   function takeLaunch() { return launchQueue.length ? launchQueue.shift() : null; }
 
@@ -484,6 +521,13 @@
     }
     var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
     add("Key", (t.key || "") + " (" + modeWord + ")");
+    // Echo listen phase (ticket 07): the trainer redacts the target, so the
+    // guide names only the key and says why the rest is hidden.
+    if (t.echoVeiled) {
+      add("Bar", t.measureNumber);
+      add("Echo", "listen and play it back — details appear when you finish");
+      return { heading: headingFor(t), rows: rows, note: "" };
+    }
     if (t.concept === "melody") {
       add("Motive", t.motiveLabel);
       add("Degrees", t.degreeLabels);
@@ -676,6 +720,7 @@
     progressStats = (payload && payload.stats) || {};
     renderTree();
     renderProgressPanel();
+    renderDetail();   // the echo affordance gates on the leaf's state
   }
 
   function init(payload) {

@@ -60,6 +60,13 @@ _VALID_QUALITY = {"major", "minor", "diminished", "augmented"}
 #: surface (click the matching card).
 _VALID_ANSWER_MODES = {"midi", "mcq", "card"}
 
+#: How the exercise is presented (plan A1, ticket 07).  ``visual`` is the
+#: classic notation-first drill; ``echo`` is its aural twin — the target plays
+#: with the notation hidden and the learner plays it back by ear.  Echo-play
+#: keeps the ``midi`` grading contract, so it is only valid with
+#: ``answer_mode="midi"`` (the ID answer modes are later A1 levels).
+_VALID_PRESENTATIONS = {"visual", "echo"}
+
 #: Readability cap: the maximum number of chords (== measures) in a single
 #: spec.  It matches the project's existing shipped demo ("all V across the
 #: 12 keys" = 12 measures), the de-facto single-exercise length; the trainer
@@ -131,6 +138,7 @@ class HarmonyExerciseSpec:
     pattern: Optional[List[str]] = None  # function drill, e.g. ["ii", "V", "I"]
     keys: Optional[List[str]] = None     # explicit key list (else mode default)
     answer_mode: str = "midi"            # one of _VALID_ANSWER_MODES (plan U2)
+    presentation: str = "visual"         # one of _VALID_PRESENTATIONS (plan A1)
 
     def validate(self) -> None:
         if self.drill not in _VALID_DRILLS:
@@ -141,6 +149,15 @@ class HarmonyExerciseSpec:
             raise ValueError(
                 f"Unknown answer_mode {self.answer_mode!r}; expected "
                 f"{sorted(_VALID_ANSWER_MODES)}")
+        if self.presentation not in _VALID_PRESENTATIONS:
+            raise ValueError(
+                f"Unknown presentation {self.presentation!r}; expected "
+                f"{sorted(_VALID_PRESENTATIONS)}")
+        if self.presentation == "echo" and self.answer_mode != "midi":
+            raise ValueError(
+                "presentation='echo' requires answer_mode='midi': echo-play "
+                "means playing back what you hear; the identification answer "
+                "modes get their own aural drills in later A1 levels.")
         self.mode = _canon_mode(self.mode)
         if self.drill == "horizontal_degree" and not self.degree:
             raise ValueError("horizontal_degree drill requires 'degree'")

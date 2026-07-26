@@ -74,6 +74,7 @@ from harmony.exercise_spec import (
     GROUP_ARPEGGIO,
 )
 from harmony.lab_spec import LabExperimentSpec
+from harmony.echo_drills import is_echo_eligible
 from harmony.lab import lab_demo_specs
 from harmony.atlas import (
     scale_id, degree_id, triad_id, quality_id, function_id, layer_id,
@@ -182,6 +183,7 @@ class CurriculumNode:
         if self.lab_spec is not None:
             d["labSpec"] = self.lab_spec.to_dict()
             d["exerciseSpecs"] = [s.to_dict() for s in self.lab_spec.to_exercise_specs()]
+            d["echoEligible"] = is_echo_eligible(self.lab_spec)
         gs = self.graph_scene_metadata()
         if gs:
             d["graphScene"] = gs

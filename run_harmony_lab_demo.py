@@ -59,6 +59,7 @@ from harmony.exercise_spec import HarmonyExerciseSpec
 from harmony.curriculum import get_curriculum
 from harmony.curriculum_explanations import build_curriculum_payload
 from harmony.curriculum_progress import ProgressStore
+from harmony.echo_drills import echo_variant, echo_unlocked, is_echo_eligible
 from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene
 from harmony.graph_scene_generators import (
     build_legacy_scene, build_functional_progression_scene, progression_group_map,
@@ -457,6 +458,9 @@ class HarmonyLabWindow(QWidget):
         self._scene_last_idx: Optional[int] = None
         self._scene_prog_groups = None                # cross-key progression group map, or None
         self._scene_shown_group = 0
+        # Echo drills (ticket 07) withhold the routed scene until completion:
+        # (node_id, spec) of the pending reveal, or None.
+        self._echo_scene_pending = None
 
         # Semantic index: a trainer drill's signature -> the owning curriculum
         # leaf id, so an Atlas / Circle click filters the curriculum even though
@@ -527,12 +531,13 @@ class HarmonyLabWindow(QWidget):
     # -- launch handlers -------------------------------------------------
     def _on_curriculum_launch(self, spec_dict: dict):
         """A curriculum exercise click -> launch its owning LabExperimentSpec."""
+        echo = bool(spec_dict.get("echo"))   # the echo button (ticket 07)
         try:
-            spec = LabExperimentSpec.from_dict(spec_dict)
+            spec = LabExperimentSpec.from_dict(spec_dict)  # drops the flag
         except Exception as exc:  # malformed payload -> ignore, keep running
             print("[LAB] ignoring invalid curriculum experiment:", exc)
             return
-        self._launch_node(f"ex:{spec.experiment_id}", spec)
+        self._launch_node(f"ex:{spec.experiment_id}", spec, echo=echo)
 
     def _on_curriculum_selection(self, node_id: str):
         """A curriculum node selection -> highlight its Atlas / Circle nodes."""
@@ -580,20 +585,41 @@ class HarmonyLabWindow(QWidget):
         self._select_curriculum_for_spec(spec)
 
     # -- the single launch entry point (drill vs synthetic concept) ------
-    def _launch_node(self, node_id: str, spec: LabExperimentSpec):
+    def _launch_node(self, node_id: str, spec: LabExperimentSpec,
+                     echo: bool = False):
+        if echo:
+            # Echo twins (ticket 07) are gated: native drill leaves only, and
+            # only once the visual leaf is started.  The JS disables the
+            # button; this enforces the same rule against stale payloads.
+            record = self._progress.progress.get(node_id)
+            if not is_echo_eligible(spec) or not echo_unlocked(
+                    record.state if record else None):
+                print("[LAB] echo drill locked (start the visual leaf first):",
+                      node_id)
+                return
         if spec.concept == "drill":
-            self._launch_drill(node_id, spec)
+            self._launch_drill(node_id, spec, echo=echo)
         else:
             self._launch_experiment(node_id, spec)
-        # Route the selected exercise to its bounded harmonic scene + push it to the graph pane.
-        self._load_scene(node_id, spec)
+        if echo:
+            # No scene during the listen phase: the routed graph names the
+            # very chords the learner must find by ear.  The reveal loads it
+            # at completion (_record_completion).
+            self._echo_scene_pending = (node_id, spec)
+            self._scene_active = None
+            self.scene_view.clear_scene("echo drill — listen first")
+        else:
+            # Route the selected exercise to its bounded harmonic scene + push it to the graph pane.
+            self._echo_scene_pending = None
+            self._load_scene(node_id, spec)
         # Mark the exercise as started + refresh the progress overlay.
         self._current_node_id = node_id
         self._completed_nodes.discard(node_id)
         self._progress.started(node_id, _now_iso())
         self._push_progress()
 
-    def _launch_drill(self, node_id: str, spec: LabExperimentSpec):
+    def _launch_drill(self, node_id: str, spec: LabExperimentSpec,
+                      echo: bool = False):
         """A native trainer drill (passthrough concept) -> load straight into the trainer."""
         from harmony.atlas import level_for_spec
         try:
@@ -601,6 +627,8 @@ class HarmonyLabWindow(QWidget):
         except Exception as exc:
             print("[LAB] invalid drill exercise:", exc)
             return
+        if echo:
+            inner = echo_variant(inner)   # same chords, ear-first presentation
         self._experiment = None
         self._cadence_node_id = None
         self.trainer.load_external_spec(inner)
@@ -755,6 +783,12 @@ class HarmonyLabWindow(QWidget):
         self._progress.record(node_id, accuracy=1.0, score=100.0,
                               timestamp=_now_iso())
         self._push_progress()
+        # Echo reveal: the trainer just unveiled the notation; bring in the
+        # routed scene that was withheld during the listen phase.
+        if self._echo_scene_pending and self._echo_scene_pending[0] == node_id:
+            pending_id, pending_spec = self._echo_scene_pending
+            self._echo_scene_pending = None
+            self._load_scene(pending_id, pending_spec)
 
     # -- Atlas / Circle highlight helpers --------------------------------
     def _active_from_atlas_nodes(self, atlas_nodes) -> dict:

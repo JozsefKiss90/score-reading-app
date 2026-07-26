@@ -50,6 +50,16 @@
                             // exercise) so the list doesn't mirror the
                             // question sequence — indexes/grading unchanged
 
+  // ---- echo presentation (plan A1 level 1, ticket 07) --------------------
+  // "echo" payloads (PRESENTATION) are aural twins: the target is *heard*
+  // (host transport) and played back by ear, so while the drill is
+  // unfinished the notation is veiled (SVG class + hiding style), the guide
+  // panel redacts every chord-identifying field, and the chord-card list is
+  // withheld.  Grading is untouched — the same pitch-class validator runs.
+  // Finishing lifts the veil (sound-before-symbol: the notation is revealed
+  // for review); navigating again re-veils the next pass.
+  var presentation = "visual";  // "visual" | "echo"
+
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
@@ -211,7 +221,7 @@
           typeof window.dispatchEvent === "function" &&
           typeof CustomEvent === "function") {
         window.dispatchEvent(new CustomEvent("harmonytrainer:targetchange",
-          { detail: detail === undefined ? cur() : detail }));
+          { detail: detail === undefined ? publicTarget() : detail }));
       }
     } catch (e) { /* ignore */ }
   }
@@ -261,6 +271,11 @@
   function playbackFlash(absMeasure, midis, durMs) {
     if (!app) return 0;
     pbEnsureStyle();
+    // Re-assert the echo veil: flashes fire throughout the auto-played
+    // listen phase, so a late-rendered SVG gets veiled here even after
+    // updateVeil's own retry window lapsed.  (attempts=100 -> no new
+    // retry timers pile up from this call.)
+    updateVeil(100);
     var byMidi = idsByMidiForMeasure(absMeasure);
     var byPc = idsByPcForMeasure(absMeasure);
     var ids = [];
@@ -298,6 +313,60 @@
     return true;
   }
 
+  // ---- echo veil (plan A1, ticket 07) ------------------------------------
+  function isVeiled() { return presentation === "echo" && !finished; }
+
+  // The hiding style lives inside the SVG (like the playback style) so it
+  // survives the page's own stylesheets.  Everything pitch-identifying is
+  // hidden — noteheads (g.note covers stem + accidental), beamed groups,
+  // rests, ledger lines, and the chord-symbol / Roman-numeral labels
+  // (g.harm) — while staff, clefs, key/time signatures and the cursor stay,
+  // so the learner still sees *where* they are, just not *what* sounds.
+  function veilEnsureStyle(root) {
+    try {
+      var doc = root.ownerDocument;
+      if (!doc || (doc.getElementById && doc.getElementById("ht-veil-style"))) return;
+      var style = doc.createElementNS("http://www.w3.org/2000/svg", "style");
+      style.setAttribute("id", "ht-veil-style");
+      style.textContent = [
+        ".ht-veil g.note, .ht-veil g.chord, .ht-veil g.beam,",
+        ".ht-veil g.rest, .ht-veil g.accid, .ht-veil g.dots,",
+        ".ht-veil g.ledgerLines, .ht-veil g.harm {",
+        "  visibility: hidden;",
+        "}",
+      ].join("\n");
+      root.appendChild(style);
+    } catch (e) { /* ignore */ }
+  }
+
+  // Sync the veil with the current phase.  The SVG renders asynchronously
+  // after init, so keep retrying while it should be veiled but isn't yet.
+  function updateVeil(attempts) {
+    var on = isVeiled();
+    try {
+      if (document.body) document.body.classList.toggle("ht-echo", on);
+    } catch (e) { /* headless stub */ }
+    var root = app && app._svgRoot ? app._svgRoot() : null;
+    if (!root) {
+      if (on && (attempts || 0) < 100) {
+        setTimeout(function () { updateVeil((attempts || 0) + 1); }, 100);
+      }
+      return;
+    }
+    veilEnsureStyle(root);
+    try { root.classList.toggle("ht-veil", on); } catch (e) { /* ignore */ }
+  }
+
+  // The external-sync view of the current target (Atlas / Circle / guide
+  // panes poll this).  While veiled it is redacted to what the learner may
+  // know — key, mode, and position — so no consumer can leak the answer.
+  function publicTarget() {
+    var t = cur();
+    if (!t || !isVeiled()) return t;
+    return { echoVeiled: true, key: t.key, mode: t.mode, render: t.render,
+             absMeasure: t.absMeasure, measureNumber: t.measureNumber };
+  }
+
   // ---- navigation --------------------------------------------------------
   function goTo(i) {
     var N = targets().length;
@@ -308,6 +377,7 @@
     resetAttempt();
     lastAnswer = null;               // feedback belongs to the left target
     finished = false;
+    updateVeil();                    // a fresh echo pass re-hides the notation
     applySelection();
     placeHighlight(cur().absMeasure);
     renderPanel();
@@ -323,7 +393,9 @@
       completed = false;
       satisfied = new Set();
       arpIndex = 0;
+      updateVeil();                  // echo reveal: sound before symbol
       renderPanel();
+      emitTargetChange();            // consumers may now see the full target
     }
   }
 
@@ -559,6 +631,19 @@
     var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
     var wantBass = strictBassPc(t);
     el.className = completed ? "done" : "";
+    // Echo listen phase: everything that names the chord IS the answer —
+    // show only the key context, the position, and how to listen.
+    if (isVeiled()) {
+      el.innerHTML =
+        '<div class="row big">' + esc(t.key) + " — echo by ear</div>" +
+        '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
+        '<div class="row"><span class="lbl">Where</span>bar ' +
+        esc(t.measureNumber) + " (highlighted)</div>" +
+        '<div class="exp">🎧 Notation is hidden. Press ▶ Play to ' +
+        "hear the target, then play it back on the keyboard. It is graded " +
+        "exactly like the visual drill; finishing reveals the notation.</div>";
+      return;
+    }
     // Identification (MCQ): the Roman numeral, function, tones etc. ARE the
     // answer — show only the key context and point at the highlighted bar.
     if (answerMode === "mcq") {
@@ -621,6 +706,9 @@
     // MCQ identification: the ordered card list (I..vii° per measure) would
     // hand out the answer; the MCQ strip replaces it entirely.
     if (answerMode === "mcq") return;
+    // Echo listen phase: every card names its chord (roman + symbol), so the
+    // list is withheld until the finish reveal.
+    if (isVeiled()) return;
     // Card mode: display order is shuffled once per exercise — otherwise the
     // targets advance in exactly the list's order and clicking top-to-bottom
     // would complete the drill without reading the prompt.  Group headers are
@@ -713,8 +801,13 @@
   function renderPanel() {
     var title = document.getElementById("htTitle");
     if (title) {
-      title.textContent = (data.title || "Exercise") +
-        "  —  " + (data.render === "arpeggio" ? "arpeggio" : "block triads");
+      var renderWord = data.render === "arpeggio" ? "arpeggio" : "block triads";
+      // Echo titles can spell the progression ("Echo: V–I …"), so while the
+      // drill is veiled the header stays neutral; the finish reveal brings
+      // the full title back alongside the notation.
+      title.textContent = isVeiled()
+        ? "🎧 Echo drill — listen, then play it back  —  " + renderWord
+        : (data.title || "Exercise") + "  —  " + renderWord;
     }
     renderList();
     renderAnswerUI();
@@ -739,6 +832,7 @@
     pbStamp = new Map();
     answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card")
       ? data.ANSWER_MODE : "midi";
+    presentation = data.PRESENTATION === "echo" ? "echo" : "visual";
     answerLog = [];
     lastAnswer = null;
     answeredCorrect = new Set();
@@ -748,6 +842,7 @@
     if (document.body) document.body.classList.add("ht-active");
     buildPanelSkeleton();
     wrapMidiHandlers();
+    updateVeil();
     applySelection();
     if (cur()) placeHighlight(cur().absMeasure);
     renderPanel();
@@ -765,7 +860,8 @@
     state: function () {
       return { idx: idx, completed: completed, finished: finished,
                arpIndex: arpIndex, total: targets().length,
-               answerMode: answerMode, answered: answerLog.length };
+               answerMode: answerMode, answered: answerLog.length,
+               presentation: presentation, veiled: isVeiled() };
     },
     // Non-MIDI answering (plan U2).  MCQ: answer("IV"); card: answer(3).
     answer: submitAnswer,
@@ -775,7 +871,9 @@
     },
     // The current target chord (consumed by the Harmony Atlas to sync its
     // highlight to the live playback position). Null when nothing is loaded.
-    currentTarget: function () { return cur(); },
+    // During an unfinished echo drill this is redacted to key/mode/position
+    // (echoVeiled: true) so no external pane can leak the answer.
+    currentTarget: publicTarget,
     // Target playback visuals (driven by audio/target_playback.py).
     playbackFlash: playbackFlash,
     playbackClear: playbackClear,

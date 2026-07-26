@@ -267,6 +267,54 @@ curriculum/Atlas/network wrap.
 
 ---
 
+## 5c. Echo-play ear drills (plan A1 level 1, ticket 07)
+
+Every native drill has an **aural twin**: the same spec with
+`presentation: "echo"` (default `"visual"`), the first level of the
+ear-training engine. Echo-play is *sound before symbol* on the *same
+vocabulary* — the target plays with the notation hidden, the learner plays it
+back by ear, and the very same pitch-class validator grades the attempt.
+
+* **Model** (`harmony/echo_drills.py`, pure): `echo_variant(spec)` derives the
+  twin (`*_echo` id, "Echo: " title, same compiled chords — the payload differs
+  *only* in identity + `PRESENTATION`); `is_echo_eligible(lab_spec)` marks the
+  curriculum leaves that own one (native `drill`-concept leaves: the triad
+  families and the cadence block drills — 115 of the 231 leaves);
+  `echo_unlocked(state)` gates the twin on the visual leaf being at least
+  *started*.
+* **Listen phase** (`harmony_trainer.js`): while an echo drill is unfinished
+  the notation is **veiled** — an `ht-veil` class + injected SVG style hide
+  noteheads, beams, rests, accidentals, ledger lines and the chord-symbol /
+  Roman-numeral labels (staff, clefs, signatures and the cursor stay, so the
+  learner sees *where* they are, not *what* sounds); the guide panel redacts
+  every chord-identifying field; the chord-card list is withheld; and
+  `currentTarget()` (the Atlas/Circle/guide sync feed) is redacted to
+  key/mode/position with `echoVeiled: true`, so no external pane can leak the
+  answer. Grading state is untouched: the same note events complete and
+  advance targets, and the keyboard's green/red monitoring works as always.
+* **Sound-first**: loading an echo payload auto-starts the section-6 transport
+  (`HarmonyTrainerWindow._show_score`), and ▶ Play replays it at will.
+* **Reveal**: finishing the drill lifts the veil — the notation (and, in the
+  Lab, the withheld Harmonic Scene) appears for review. Navigating the chords
+  again re-veils for a fresh ear pass.
+* **Curriculum wiring** (Lab workspace): eligible leaves show a **🎧 Echo
+  drill** button that unlocks once the visual leaf is started; the launch
+  payload is the leaf's own `labSpec` plus an `echo: true` flag, so the host
+  records the echo attempt under the **same curriculum node id** — aural and
+  visual attempts share one mastery record per leaf.
+* **Launcher demo**: the standalone trainer appends the opt-in
+  `GROUP_ECHO` group (`echo_demo_specs()`), leaving the load-bearing
+  `default_exercise_groups()` 102-drill set untouched (same pattern as the
+  identification group). That launcher has no progress store, so — like every
+  drill there — the demo group is ungated and records nothing; the gated,
+  mastery-recorded path is the curriculum workspace.
+
+Later A1 levels (quality ID, progression ID, cadence ID, bass dictation,
+chromatic spotting) ship inside their module tickets — this slice is
+echo-play only.
+
+---
+
 ## 6. Target playback (transport)
 
 Every drill can be *heard*, not just seen (plan U1 — "sound before symbol").
@@ -336,6 +384,7 @@ node tests/harmony_trainer_playback_test.js
 node tests/harmony_trainer_bass_test.js
 node tests/harmony_trainer_answer_test.js   # MCQ / card answer modes (U2)
 node tests/note_input_test.js               # on-screen piano + QWERTY input (U2)
+node tests/harmony_trainer_echo_test.js     # echo-play veil + reveal (A1, ticket 07)
 ```
 
 ---
