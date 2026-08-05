@@ -52,12 +52,12 @@ from harmony.functional_network import (
 )
 from harmony.functional_network_template import get_template
 from harmony.functional_journey import (
-    JourneyProgress,
     JourneyStage,
     journey_stages,
     drill_node_ids,
     DEFAULT_PROGRESS_FILENAME,
 )
+from harmony.progress_service import ProgressService
 from run_harmonic_network_demo import HarmonicNetworkView
 from run_harmony_trainer_demo import (
     HarmonyTrainerWindow, MidiService, ATLAS_GROUP,
@@ -118,7 +118,8 @@ class FunctionalNetworkWindow(QWidget):
         template = get_template(template_id)
         self._network = build_functional_network(template)
         self._stages: List[JourneyStage] = journey_stages(self._network)
-        self._progress = JourneyProgress.open(progress_path)
+        # Journey progress routes through the unified service (ticket 08).
+        self._progress = ProgressService(journey_path=progress_path).journey
         self._implemented = self._network.template.implemented_relations()
         self._node_ids = {n.id for n in self._network.nodes}
         self._degree_ids = {n.id for n in self._network.nodes

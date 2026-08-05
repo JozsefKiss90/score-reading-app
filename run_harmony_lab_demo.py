@@ -58,7 +58,7 @@ from harmony.lab_explanations import (
 from harmony.exercise_spec import HarmonyExerciseSpec
 from harmony.curriculum import get_curriculum
 from harmony.curriculum_explanations import build_curriculum_payload
-from harmony.curriculum_progress import ProgressStore
+from harmony.progress_service import ProgressService
 from harmony.echo_drills import echo_variant, echo_unlocked, is_echo_eligible
 from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene
 from harmony.graph_scene_generators import (
@@ -67,13 +67,13 @@ from harmony.graph_scene_generators import (
 from run_harmony_trainer_demo import HarmonyTrainerWindow, MidiService, CircleView
 from run_harmony_atlas_demo import AtlasView
 from run_harmonic_network_demo import HarmonicNetworkView
+from run_dashboard_demo import DashboardView
 
 _BEAT = Path(__file__).resolve().parent / "beat_selector"
 _LAB_HTML = _BEAT / "harmony_lab.html"               # legacy flat catalogue (kept)
 _CURRICULUM_HTML = _BEAT / "curriculum.html"          # canonical curriculum browser
 _CHEAT_HTML = _BEAT / "lab_cheatsheet.html"
 _MAP_HTML = _BEAT / "lab_mapping.html"
-_PROGRESS_PATH = Path(__file__).resolve().parent / ".curriculum_progress.json"
 
 
 def _now_iso() -> str:
@@ -467,9 +467,9 @@ class HarmonyLabWindow(QWidget):
         # those panels synthesise their own exercise ids.
         self._spec_index = self._build_spec_index()
 
-        # Progress store (persisted between sessions).
-        self._progress = ProgressStore(_PROGRESS_PATH)
-        self._progress.load()
+        # Unified progress service (ticket 08): the single reader/writer over
+        # BOTH persisted stores (curriculum leaves + functional journey).
+        self._progress = ProgressService()   # default project-root store paths
 
         # The trainer is the score + MIDI host; the Lab/Atlas/Circle drive it, so
         # it needs no built-in exercise groups or its own Circle panel.
@@ -489,7 +489,13 @@ class HarmonyLabWindow(QWidget):
         # exercise (setScene), not one fixed graph. Starts on the Explore key-relation scene.
         self.scene_view = HarmonicNetworkView(initial_scene=build_legacy_scene().to_dict())
 
+        # The Home dashboard (ticket 08): streak + due-today strip + mastery
+        # heatmap over the whole curriculum, refreshed with every progress push.
+        self.dashboard_view = DashboardView(
+            self._progress.dashboard_payload(datetime.now(timezone.utc)))
+
         self.right_tabs = QTabWidget()
+        self.right_tabs.addTab(self.dashboard_view, "Home")
         self.right_tabs.addTab(self.atlas_view, "Atlas")
         self.right_tabs.addTab(self.scene_view, "Harmonic Scene")
         self.right_tabs.addTab(self.circle_view, "Circle of Fifths")
@@ -511,6 +517,7 @@ class HarmonyLabWindow(QWidget):
         # Wire the launch sources into the middle trainer.
         self.curriculum_view.launchRequested.connect(self._on_curriculum_launch)
         self.curriculum_view.selectionRequested.connect(self._on_curriculum_selection)
+        self.dashboard_view.launchRequested.connect(self._on_dashboard_launch)
         self.circle_view.launchRequested.connect(self._on_circle_launch)
         self.circle_view.labLaunchRequested.connect(self._on_circle_lab_launch)
         self.atlas_view.launchRequested.connect(self._on_atlas_launch)
@@ -551,6 +558,15 @@ class HarmonyLabWindow(QWidget):
         target = self._circle_target_from_node(node)
         if target:
             self.circle_view.update_target(target)
+
+    def _on_dashboard_launch(self, node_id: str):
+        """A Home-dashboard click (due card / heatmap cell) -> launch that leaf."""
+        node = self._curriculum.find(node_id)
+        if node is None or node.kind != "exercise" or node.lab_spec is None:
+            print("[LAB] dashboard node not launchable:", node_id)
+            return
+        self.curriculum_view.select(node.id)
+        self._launch_node(node.id, node.lab_spec)
 
     def _on_circle_launch(self, req: dict):
         """A circle drill click -> trainer drill + select the owning curriculum leaf."""
@@ -770,6 +786,8 @@ class HarmonyLabWindow(QWidget):
             self.curriculum_view.set_progress(
                 self._progress.payload(self._curriculum))
             self._progress.save()
+            self.dashboard_view.set_payload(self._progress.dashboard_payload(
+                datetime.now(timezone.utc), self._curriculum))
         except Exception as exc:
             print("[LAB] progress push failed:", exc)
 
