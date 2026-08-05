@@ -67,6 +67,11 @@ _CATEGORIES = [
       "tests/test_content_truth.py", "tests/test_harmony_atlas.py"],
      "13 cadences (6 two-chord types + 7 functional progressions), each as a "
      "block drill AND an SATB voice-leading variant (26 leaves)."),
+    ("sevenths", "Seventh Chords", ["cat:sevenths"],
+     ["tests/test_seventh_chords.py", "tests/test_curriculum.py"],
+     "The V7 tracer (plan G1a): add-the-7th + V7→I chunked across the 12 major "
+     "keys, and the two-voice tritone-resolution frame per key (16 leaves; the "
+     "remaining seventh qualities and V7 inversions are reserved)."),
     ("intervals", "Intervals & Interval Layers", ["cat:intervals"],
      ["tests/test_harmony_atlas.py"],
      "Theory + cross-links to quality groups (owns no exercise by design)."),
@@ -86,8 +91,8 @@ _CATEGORIES = [
      "Bridge categories opening the Atlas / Circle (reserved leaves)."),
     ("reserved", "Reserved topics", ["cat:advanced", "cat:reserved"],
      ["tests/test_curriculum.py"],
-     "7th chords, harmonic/melodic minor, modal, jazz, secondary dominants, "
-     "real-score analysis, reduction (all reserved)."),
+     "Harmonic/melodic minor, modal, jazz, secondary dominants, real-score "
+     "analysis, reduction (all reserved; seventh chords went live with G1a)."),
 ]
 
 

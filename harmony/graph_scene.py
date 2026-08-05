@@ -79,7 +79,7 @@ SEMANTIC_SCOPES = frozenset({
 ENTITY_TYPES = frozenset({
     "key",           # a tonal centre / key context (NOT a chord)
     "triad",         # an exact diatonic triad
-    "seventh",       # a (reserved) dominant seventh
+    "seventh",       # a dominant seventh (live since ticket 09's V7 tracer)
     "diminished",    # a leading-tone diminished triad
     "degree",        # an abstract, key-invariant scale degree
     "function",      # a broad function family (tonic / predominant / dominant)

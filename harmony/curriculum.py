@@ -48,6 +48,7 @@ from typing import Dict, List, Optional
 from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
+    parse_seventh_token,
     _mode_word,
 )
 from harmony.harmonic_roles import (
@@ -66,6 +67,8 @@ from harmony.exercise_spec import (
     DEFAULT_MAJOR_KEYS,
     DEFAULT_MINOR_KEYS,
     _key_slug,
+    _chunk_keys,
+    _keys_label,
     GROUP_MAJOR_FULL_KEY,
     GROUP_MINOR_FULL_KEY,
     GROUP_DEGREE,
@@ -73,7 +76,7 @@ from harmony.exercise_spec import (
     GROUP_FUNCTION,
     GROUP_ARPEGGIO,
 )
-from harmony.lab_spec import LabExperimentSpec
+from harmony.lab_spec import LabExperimentSpec, split_figured_pattern
 from harmony.echo_drills import is_echo_eligible
 from harmony.lab import lab_demo_specs
 from harmony.atlas import (
@@ -275,19 +278,42 @@ def _dedup(seq) -> List[str]:
     return out
 
 
+def _base_roman(roman: str) -> str:
+    """``"V7" -> "V"``: the scale degree a seventh chord is built on."""
+    return roman.replace("7", "")
+
+
+def _is_tetrad(t) -> bool:
+    return len(t.pitches) > 3
+
+
+def _degree_roman(t) -> str:
+    """The Roman the DEGREE refs may claim: a tetrad projects onto its base
+    degree (V7 is genuinely built on degree 5), never onto a triad node."""
+    return _base_roman(t.roman) if _is_tetrad(t) else t.roman
+
+
 def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
-    """Atlas node ids a native drill highlights -- derived from its compiled chords."""
+    """Atlas node ids a native drill highlights -- derived from its compiled chords.
+
+    A tetrad (V7) maps only onto what the Atlas truly has: its scale, its
+    scale-*degree* node (the chord is genuinely built on degree 5) and its
+    function family.  It never claims the triad / quality / layer nodes -- the
+    Atlas has no seventh-chord node kind, and landing G7 on the G-triad node
+    would be exactly the dishonesty the ``base_roman`` rule forbids.
+    """
     refs: List[str] = []
     compiled = compile_exercise(hs)
     for c in compiled.chords:
         t = c.triad
         key = t.key.split()[0]
         refs.append(scale_id(key, hs.mode))
-        refs.append(degree_id(hs.mode, t.roman))
-        refs.append(triad_id(key, hs.mode, t.degree_index))
-        refs.append(quality_id(t.chord_quality))
+        refs.append(degree_id(hs.mode, _degree_roman(t)))
+        if not _is_tetrad(t):
+            refs.append(triad_id(key, hs.mode, t.degree_index))
+            refs.append(quality_id(t.chord_quality))
+            refs.append(layer_id(t.interval_layer))
         refs.append(function_id(hs.mode, t.function_label))
-        refs.append(layer_id(t.interval_layer))
     return _dedup(refs)
 
 
@@ -301,16 +327,19 @@ def _atlas_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
     if spec.concept == "inversion":
         tokens = [str(p.get("degree", "I"))]
     elif spec.concept in ("cadence", "voice_leading"):
-        tokens = list(p.get("pattern", []))
+        # Strip figured suffixes ("ii6") first; the refs point at the chord
+        # identity, which the figure does not change.
+        tokens = split_figured_pattern(list(p.get("pattern", [])))[0]
     elif spec.concept == "polyphonic_harmony":
         tokens = list(p.get("progression", []))
     if tokens:
         roman = normalise_pattern(tokens)
         for t in transpose_degree_pattern(roman, tonic, mode):
-            refs.append(degree_id(mode, t.roman))
-            refs.append(triad_id(tonic, mode, t.degree_index))
+            refs.append(degree_id(mode, _degree_roman(t)))
+            if not _is_tetrad(t):
+                refs.append(triad_id(tonic, mode, t.degree_index))
+                refs.append(quality_id(t.chord_quality))
             refs.append(function_id(mode, t.function_label))
-            refs.append(quality_id(t.chord_quality))
     return _dedup(refs)
 
 
@@ -328,7 +357,7 @@ def _circle_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
         refs.append(_circle_ref_key(key, hs.mode))
     compiled = compile_exercise(hs)
     for c in compiled.chords:
-        refs.append(_circle_ref_degree(hs.mode, c.triad.roman))
+        refs.append(_circle_ref_degree(hs.mode, _degree_roman(c.triad)))
     return _dedup(refs)
 
 
@@ -341,7 +370,7 @@ def _circle_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
     if spec.concept == "inversion":
         tokens = [str(p.get("degree", "I"))]
     elif spec.concept in ("cadence", "voice_leading"):
-        tokens = list(p.get("pattern", []))
+        tokens = split_figured_pattern(list(p.get("pattern", [])))[0]
     elif spec.concept == "polyphonic_harmony":
         tokens = list(p.get("progression", []))
     elif spec.concept == "motive":
@@ -352,7 +381,8 @@ def _circle_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
         refs.extend(_circle_ref_key(k, mode) for k in keys)
     if tokens:
         for r in normalise_pattern(tokens):
-            refs.append(_circle_ref_degree(mode, r))
+            refs.append(_circle_ref_degree(
+                mode, _base_roman(r) if parse_seventh_token(r) is not None else r))
     return _dedup(refs)
 
 
@@ -690,6 +720,71 @@ def _ii6_cadence_spec() -> LabExperimentSpec:
     )
     spec.validate()
     return spec
+
+
+# ---------------------------------------------------------------------------
+# Seventh chords (ticket 09 / plan G1a): the V7 tracer drills
+# ---------------------------------------------------------------------------
+#
+# The platform's first tetrad, in three drill families across all 12 major
+# keys: *add-the-7th* (play V, then V7 — hear the added dissonance), *tritone
+# resolution* (the two-voice 7̂→1̂ + 4̂→3̂ frame as a polyphonic experiment) and
+# the full *V7→I*.  Native patterns chunk by key-group exactly like
+# ``_function_specs`` (six 2-chord keys per 12-chord page).
+
+_SEVENTH_PATTERNS = [
+    (["V", "V7"], "V–V7", "add7",
+     "Play the dominant triad, then add the diatonic seventh: the added "
+     "note (scale degree 4) forms a tritone with the leading tone"),
+    (["V7", "I"], "V7–I", "v7_i",
+     "Resolve the full dominant seventh: its tritone closes as 7̂→1̂ and "
+     "4̂→3̂ into the tonic"),
+]
+
+
+def _seventh_pattern_specs(tokens, label, slug, blurb) -> List[HarmonyExerciseSpec]:
+    """The chunked 12-major-key specs of one seventh pattern family."""
+    keys = DEFAULT_MAJOR_KEYS
+    chunks = _chunk_keys(keys, len(tokens))
+    specs = []
+    for ci, chunk in enumerate(chunks, start=1):
+        keys_label = _keys_label(chunk, keys)
+        suffix = "" if len(chunks) == 1 else f" (set {ci})"
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"sevenths_{slug}_major_{ci}",
+            title=f"{label} — {keys_label} (major){suffix}",
+            drill="function", render="block", mode="major",
+            pattern=list(tokens), keys=list(chunk),
+            description=f"{blurb} ({keys_label})."))
+    return specs
+
+
+def _tritone_resolution_spec(tonic: str) -> LabExperimentSpec:
+    """The two-voice tritone frame of one major key (polyphonic experiment).
+
+    Slice 1 sounds only V7's tritone (bass 7̂, upper 4̂); slice 2 resolves it
+    (bass rises 7̂→1̂ while the upper voice falls 4̂→3̂ into the tonic third).
+    """
+    spec = LabExperimentSpec(
+        experiment_id=f"sevenths_tritone_{_key_slug(tonic)}",
+        title=f"Tritone resolution in {tonic} major",
+        concept="polyphonic_harmony", mode="major", key=f"{tonic} major",
+        render="polyphonic",
+        parameters={"progression": ["V7", "I"],
+                    "upper_degrees": [4, 3],
+                    "bass_degrees": [7, 8]},
+        description=("V7's engine as a bare two-voice frame: the bass plays "
+                     "the leading tone rising 7̂→1̂ while the upper voice "
+                     "resolves 4̂→3̂ — the tritone closing into the tonic "
+                     "third."),
+    )
+    spec.validate()
+    return spec
+
+
+def _tritone_curriculum_specs() -> List[LabExperimentSpec]:
+    """The tritone-resolution frame in all 12 major keys."""
+    return [_tritone_resolution_spec(tonic) for tonic in DEFAULT_MAJOR_KEYS]
 
 
 # ---------------------------------------------------------------------------
@@ -1093,7 +1188,62 @@ def build_curriculum() -> CurriculumNode:
             vl_minor)
 
     # ===================================================================
-    # 6. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
+    # 6. SEVENTH CHORDS  (ticket 09 / plan G1a: the V7 tracer — 16 leaves)
+    # ===================================================================
+    sevenths = cat("sevenths", "Seventh Chords",
+                   "The first tetrad: V7 and the tritone that drives tonal "
+                   "music home.",
+                   "Build the dominant seventh by adding a diatonic seventh to "
+                   "V, isolate its tritone, and resolve V7→I in every major "
+                   "key.", 3,
+                   keywords=["seventh", "seventh chord", "V7", "dominant seventh",
+                             "tetrad", "tritone", "resolution"],
+                   theory="A seventh chord stacks one more diatonic third on a "
+                          "triad (1–3–5–7). The dominant seventh (V7 = M3+m3+m3) "
+                          "is the first and most consequential: its third is the "
+                          "leading tone and its seventh is scale degree 4, a "
+                          "tritone apart — the dissonance whose resolution "
+                          "(7̂→1̂, 4̂→3̂) defines the sound of arriving home.")
+    l_v7 = lesson(sevenths, "dominant_seventh", "The dominant seventh (V7)",
+                  "Add the 7th, hear the tritone, resolve it to I — in all 12 "
+                  "major keys.",
+                  "Play V7 with its tritone under your fingers and resolve it "
+                  "correctly to the tonic in every major key.", 3,
+                  theory="V7 adds scale degree 4 to the dominant triad. That one "
+                         "note changes everything: with the leading tone it "
+                         "forms a tritone, so the chord stops being merely "
+                         "bright and starts *demanding* resolution — the "
+                         "leading tone rises 7̂→1̂ while the seventh falls "
+                         "4̂→3̂, landing on the tonic third. Minor keys need "
+                         "the raised leading tone (harmonic minor) for a true "
+                         "V7, a later lesson.",
+                  related=["lesson:cadence_progressions",
+                           "group:inv_major_dominant"],
+                  keywords=["V7", "dominant seventh", "tritone", "leading tone"])
+    fill_native(group(l_v7, "sevenths_add7", "Add the 7th (V → V7)",
+                      "Play V, then V7: hear the added dissonance arrive.", 3),
+                _seventh_pattern_specs(*_SEVENTH_PATTERNS[0]), 3)
+    fill_lab(group(l_v7, "sevenths_tritone", "Tritone resolution (two voices)",
+                   "The bare frame: bass 7̂→1̂ under upper 4̂→3̂, key by key.", 3),
+             _tritone_curriculum_specs(), 3)
+    fill_native(group(l_v7, "sevenths_v7_i", "Full resolution (V7 → I)",
+                      "The complete dominant seventh resolving to the tonic.", 4),
+                _seventh_pattern_specs(*_SEVENTH_PATTERNS[1]), 4)
+    l_7more = lesson(sevenths, "sevenths_more", "More seventh chords (reserved)",
+                     "ii7, Imaj7, IV7, vi7, the diminished sevenths — and V7's "
+                     "inversions.",
+                     "(Reserved) The remaining diatonic seventh qualities and "
+                     "the figured-bass inversions of V7.", 4,
+                     kind="reserved", reserved=True,
+                     theory="The engine's seventh-chord seam "
+                            "(SEVENTH_DEGREE_TOKENS) widens next to the five "
+                            "diatonic seventh qualities (plan G1b) and to "
+                            "V6/5–V4/3–V4/2 figured-bass grading (plan G1c).",
+                     keywords=["ii7", "maj7", "seventh quality", "reserved"])
+    l_7more.keywords.append("sevenths")
+
+    # ===================================================================
+    # 7. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
     # ===================================================================
     intervals = cat("intervals", "Intervals & Interval Layers",
                     "The stacked-thirds 'layer' beneath every triad quality.",
@@ -1115,7 +1265,7 @@ def build_curriculum() -> CurriculumNode:
     l_int.reserved = False
 
     # ===================================================================
-    # 7. INVERSIONS  (worked examples + systematic 12-key grid: Bug 3)
+    # 8. INVERSIONS  (worked examples + systematic 12-key grid: Bug 3)
     # ===================================================================
     inversions = cat("inversions", "Inversions",
                      "The same chord with a different note in the bass.",
@@ -1203,7 +1353,7 @@ def build_curriculum() -> CurriculumNode:
              [_ii6_cadence_spec()], 3)
 
     # ===================================================================
-    # 8. MOTIVES  (lab: 2)
+    # 9. MOTIVES  (lab: 2)
     # ===================================================================
     motives = cat("motives", "Motives",
                   "A scale-degree shape that survives transposition.",
@@ -1220,7 +1370,7 @@ def build_curriculum() -> CurriculumNode:
              lab_motive, 2)
 
     # ===================================================================
-    # 9. POLYPHONIC HARMONY  (lab: 3)
+    # 10. POLYPHONIC HARMONY  (lab: 3)
     # ===================================================================
     poly = cat("polyphony", "Polyphonic Harmony",
                "Two independent voices that together imply chords.",
@@ -1238,7 +1388,7 @@ def build_curriculum() -> CurriculumNode:
              lab_poly, 4)
 
     # ===================================================================
-    # 10. ATLAS  (bridge — opens the Interactive Harmony Atlas)
+    # 11. ATLAS  (bridge — opens the Interactive Harmony Atlas)
     # ===================================================================
     atlas_cat = cat("atlas", "Interactive Harmony Atlas",
                     "The map of the whole diatonic system.",
@@ -1258,7 +1408,7 @@ def build_curriculum() -> CurriculumNode:
     bridge_lesson.keywords = ["atlas", "open atlas"]
 
     # ===================================================================
-    # 11. CIRCLE OF FIFTHS  (bridge — opens the Interactive Circle)
+    # 12. CIRCLE OF FIFTHS  (bridge — opens the Interactive Circle)
     # ===================================================================
     circle_cat = cat("circle", "Circle of Fifths",
                      "Keys arranged by their signatures; relative minors inside.",
@@ -1276,20 +1426,19 @@ def build_curriculum() -> CurriculumNode:
     circle_lesson.keywords = ["circle", "open circle"]
 
     # ===================================================================
-    # 12. ADVANCED TOPICS  (reserved — the future-expansion seams)
+    # 13. ADVANCED TOPICS  (reserved — the future-expansion seams)
     # ===================================================================
     advanced = cat("advanced", "Advanced Topics (reserved)",
                    "Where the curriculum grows next.",
-                   "Preview the reserved expansion: 7th chords, harmonic minor, "
+                   "Preview the reserved expansion: harmonic minor, "
                    "modal & jazz harmony, secondary dominants.", 5,
                    kind="reserved", reserved=True,
                    theory="These topics are reserved. The data model already shapes "
                           "for them: a new LabExperimentSpec (or a new theory mode) "
-                          "is all each one needs.",
+                          "is all each one needs. (Seventh chords graduated to "
+                          "their own live category with the V7 tracer.)",
                    keywords=["advanced", "reserved", "future"])
     for i, (aid, title, blurb) in enumerate([
-        ("sevenths", "Seventh chords",
-         "Add the seventh: V7's tritone, the ii7–V7–I jazz cadence."),
         ("harmonic_minor", "Harmonic & melodic minor",
          "The raised leading tone, V (major) in minor, and III+."),
         ("modal", "Modal harmony",
@@ -1304,7 +1453,7 @@ def build_curriculum() -> CurriculumNode:
                     theory=blurb, keywords=[aid, "reserved"])
 
     # ===================================================================
-    # 13. RESERVED — Real-score analysis & reduction
+    # 14. RESERVED — Real-score analysis & reduction
     # ===================================================================
     reserved = cat("reserved", "Real Score Analysis & Reduction (reserved)",
                    "Analysing real music and its structural skeleton.",

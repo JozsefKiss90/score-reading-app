@@ -12,7 +12,7 @@ One landing surface for the whole platform, built on one progress owner:
   `last_played`), interleaving top-level categories;
 * a **home dashboard v0** — practice streak, "due today" strip, functional
   journey summary, and a mastery heatmap with one cell per exercise leaf
-  (231 today; the count is always derived, never hardcoded).
+  (247 today; the count is always derived, never hardcoded).
 
 ## 2. Architecture
 

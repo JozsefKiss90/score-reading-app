@@ -124,7 +124,8 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | `lab.lab_demo_specs` motive | 2 | Motives |
 | `lab.lab_demo_specs` polyphonic | 3 | Polyphonic Harmony |
 | block cadences from `_CADENCE_CATALOG` (6 two-chord types + 7 progressions) | 13 | Cadences |
-| **grand total** | **231 exercise leaves** | (~300 nodes total) |
+| seventh-chord tracer (ticket 09 / G1a): add-the-7th (2 chunked) + tritone resolution (12 keys) + V7→I (2 chunked) | 16 | Seventh Chords |
+| **grand total** | **247 exercise leaves** | (~320 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

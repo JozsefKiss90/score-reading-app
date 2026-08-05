@@ -4,27 +4,32 @@ This module is the *pedagogical contract* for the Diatonic Harmony Trainer.
 It is pure Python (standard library only) so it can be unit-tested without a
 display, MIDI device, Verovio, or Qt.
 
-Scope (first slice)
--------------------
-* Major and natural-minor diatonic triads only.
-* Root-position triads.
-* No harmonic/melodic minor, secondary dominants, cadences, or seventh chords
-  yet -- but the data model is designed so those extend without refactoring:
-  quality (and therefore Roman-numeral case, chord symbol, and function) is
-  always *derived* from the actual interval content, never hard-coded per mode.
+Scope
+-----
+* Major and natural-minor diatonic triads, root position.
+* One tetrad (ticket 09 / plan G1a): the **dominant seventh** (``V7``, major
+  keys only until harmonic minor ships).  :data:`SEVENTH_DEGREE_TOKENS` is the
+  seam the remaining diatonic sevenths (G1b) widen.
+* No harmonic/melodic minor, secondary dominants, or cadences yet -- but the
+  data model is designed so those extend without refactoring: quality (and
+  therefore Roman-numeral case, chord symbol, and function) is always
+  *derived* from the actual interval content, never hard-coded per mode.
   A future ``harmonic_minor`` mode only needs a new scale-step pattern.
 
-Triad interval layers (the canonical table)
+Chord interval layers (the canonical table)
 -------------------------------------------
-* major       = M3 + m3
-* minor       = m3 + M3
-* diminished  = m3 + m3
-* augmented   = M3 + M3
+* major            = M3 + m3
+* minor            = m3 + M3
+* diminished       = m3 + m3
+* augmented        = M3 + M3
+* dominant_seventh = M3 + m3 + m3
 
 Public API
 ----------
 * :func:`generate_scale`
 * :func:`generate_diatonic_triads`
+* :func:`build_dominant_seventh`
+* :func:`parse_seventh_token`
 * :func:`transpose_degree_pattern`
 * :func:`identify_triad_from_pitches`
 """
@@ -49,11 +54,14 @@ __all__ = [
     "TriadAnalysis",
     "generate_scale",
     "generate_diatonic_triads",
+    "build_dominant_seventh",
+    "parse_seventh_token",
     "transpose_degree_pattern",
     "identify_triad_from_pitches",
     "key_signature_fifths",
     "note_to_midi",
     "QUALITY_TO_INTERVAL_LAYER",
+    "SEVENTH_DEGREE_TOKENS",
 ]
 
 
@@ -107,12 +115,13 @@ _FUNCTION_LABELS_MINOR = [
     "dominant", "tonic", "dominant",
 ]
 
-#: Canonical interval-layer string per triad quality.
+#: Canonical interval-layer string per chord quality (triads + tetrads).
 QUALITY_TO_INTERVAL_LAYER = {
     "major": "M3+m3",
     "minor": "m3+M3",
     "diminished": "m3+m3",
     "augmented": "M3+M3",
+    "dominant_seventh": "M3+m3+m3",
 }
 
 #: chord-symbol suffix per quality.
@@ -121,7 +130,34 @@ _QUALITY_SYMBOL_SUFFIX = {
     "minor": "m",
     "diminished": "°",  # °
     "augmented": "+",
+    "dominant_seventh": "7",
 }
+
+#: Tetrad quality from the three stacked thirds (in semitones).  Ticket 09
+#: ships only the dominant seventh; G1b adds the remaining diatonic sevenths
+#: (mm7, MM7, half-/fully-diminished).
+_TETRAD_QUALITIES = {
+    (4, 3, 3): "dominant_seventh",
+}
+
+#: Roman-numeral seventh tokens the engine can build, mapped to their 0-based
+#: scale degree.  This is the single vocabulary source for "which seventh
+#: chords exist": the trainer's pattern normaliser and the Lab's roman gate
+#: both consult it, so a token is accepted exactly where a buildable chord
+#: exists (never silently downgraded to a triad).  G1b widens this table.
+SEVENTH_DEGREE_TOKENS = {
+    "V7": 4,
+}
+
+
+def parse_seventh_token(token: str) -> Optional[int]:
+    """0-based degree of a *supported* seventh token, else ``None``.
+
+    Exact-match on the canonical spelling (``"V7"``): case matters (``v7``
+    would name the minor seventh natural minor actually owns, which is not
+    supported yet), so nothing tolerant happens here.
+    """
+    return SEVENTH_DEGREE_TOKENS.get((token or "").strip())
 
 #: Roman-numeral suffix per quality.
 _QUALITY_ROMAN_SUFFIX = {
@@ -160,27 +196,32 @@ class Scale:
 
 @dataclass(frozen=True)
 class DiatonicTriad:
-    """A single diatonic triad with its full pedagogical annotation."""
+    """A single diatonic chord with its full pedagogical annotation.
+
+    Despite the name (kept for the many importers), this carries any stacked-
+    thirds diatonic chord: ``pitches`` is ``[root, third, fifth]`` for a triad
+    and ``[root, third, fifth, seventh]`` for a tetrad (ticket 09's V7).
+    """
 
     key: str                 # display label, e.g. "G major"
     mode: str                # "major" | "natural_minor"
     scale_pitches: List[str]  # the parent scale's 7 pitch classes
     degree_index: int        # 0-based scale-degree index
     degree_number: int       # 1-based scale-degree number
-    roman: str               # e.g. "ii", "V", "vii°"
+    roman: str               # e.g. "ii", "V", "vii°", "V7"
     root: str                # spelled root pitch class, e.g. "D"
-    chord_symbol: str        # e.g. "Dm", "G", "B°"
-    chord_quality: str       # "major" | "minor" | "diminished" | "augmented"
-    pitches: List[str]       # [root, third, fifth] spelled (no octave)
+    chord_symbol: str        # e.g. "Dm", "G", "B°", "G7"
+    chord_quality: str       # major | minor | diminished | augmented | dominant_seventh
+    pitches: List[str]       # [root, third, fifth(, seventh)] spelled (no octave)
     midi_pitches: List[int]  # root-position MIDI numbers (treble register)
-    interval_layer: str      # e.g. "m3+M3"
+    interval_layer: str      # e.g. "m3+M3", "M3+m3+m3"
     function_label: str      # broad T/S/D category (+mediant)
     scale_degree_name: str   # tonic/supertonic/.../leading-tone/subtonic
     explanation_text: str
 
     @property
     def pitch_classes(self) -> List[int]:
-        """The three chord-tone pitch classes (0-11), order root/third/fifth."""
+        """The chord-tone pitch classes (0-11), order root/third/fifth(/seventh)."""
         return [note_pc(p) for p in self.pitches]
 
 
@@ -411,23 +452,28 @@ def _layer_string(lower: int, upper: int) -> str:
 # Diatonic triad generation
 # ---------------------------------------------------------------------------
 
-def _triad_voicing_midi(root_name: str, third_name: str, fifth_name: str,
-                        base_octave: int = 4) -> List[int]:
+def _stack_voicing_midi(names: List[str], base_octave: int = 4) -> List[int]:
     """Root-position MIDI numbers, ascending, preserving letter spelling.
 
-    Octaves are assigned by stacking letters (root, +2 letters, +4 letters) so
-    that enharmonic spellings such as B#/Cb keep their notated octave while the
-    sounding pitches still ascend.
+    Octaves are assigned by stacking letters (root, +2 letters per chord tone)
+    so that enharmonic spellings such as B#/Cb keep their notated octave while
+    the sounding pitches still ascend.  Works for triads and tetrads alike.
     """
-    r_letter, r_alter = parse_pitch_class(root_name)
+    r_letter, _ = parse_pitch_class(names[0])
     r_idx = LETTER_INDEX[r_letter]
 
     out = []
-    for name, step in ((root_name, 0), (third_name, 2), (fifth_name, 4)):
+    for k, name in enumerate(names):
         letter, alter = parse_pitch_class(name)
-        octave = base_octave + (r_idx + step) // 7
+        octave = base_octave + (r_idx + 2 * k) // 7
         out.append((octave + 1) * 12 + LETTER_BASE_PC[letter] + alter)
     return out
+
+
+def _triad_voicing_midi(root_name: str, third_name: str, fifth_name: str,
+                        base_octave: int = 4) -> List[int]:
+    """Back-compat wrapper over :func:`_stack_voicing_midi` for triads."""
+    return _stack_voicing_midi([root_name, third_name, fifth_name], base_octave)
 
 
 def _build_triad(scale: Scale, i: int) -> DiatonicTriad:
@@ -492,6 +538,97 @@ def generate_diatonic_triads(key: str, mode: str) -> List[DiatonicTriad]:
 
 
 # ---------------------------------------------------------------------------
+# Diatonic tetrad (seventh chord) generation -- ticket 09 / plan G1
+# ---------------------------------------------------------------------------
+
+def _build_tetrad(scale: Scale, i: int) -> DiatonicTriad:
+    """The diatonic seventh chord on 0-based degree ``i`` (1-3-5-7 stack).
+
+    Quality is derived from the three stacked thirds via
+    :data:`_TETRAD_QUALITIES`; qualities that table does not know yet come back
+    as ``"unknown"`` (callers refuse them -- never mislabel).
+    """
+    pitches = scale.scale_pitches
+    tones = [pitches[(i + 2 * k) % 7] for k in range(4)]
+    pcs = [note_pc(p) for p in tones]
+    thirds = tuple((pcs[k + 1] - pcs[k]) % 12 for k in range(3))
+    quality = _TETRAD_QUALITIES.get(thirds, "unknown")
+    layer = "+".join(_interval_name(s) for s in thirds)
+
+    # Roman case follows the underlying triad (major/augmented upper case,
+    # minor/diminished lower case), then the seventh figure.
+    triad_quality = _classify_thirds(thirds[0], thirds[1])
+    roman = ROMAN_NUMERALS[i]
+    if triad_quality in ("minor", "diminished"):
+        roman = roman.lower()
+    roman += _QUALITY_ROMAN_SUFFIX.get(triad_quality, "") + "7"
+
+    root, third, fifth, seventh = tones
+    chord_symbol = root + _QUALITY_SYMBOL_SUFFIX.get(quality, "7")
+
+    if scale.mode == "major":
+        function_label = _FUNCTION_LABELS_MAJOR[i]
+        degree_name = _DEGREE_NAMES_MAJOR[i]
+    else:
+        function_label = _FUNCTION_LABELS_MINOR[i]
+        degree_name = _DEGREE_NAMES_MINOR[i]
+
+    mode_label = "major" if scale.mode == "major" else "natural minor"
+    explanation = (
+        f"In {scale.key}, {root} is scale degree {i + 1} ({degree_name}). "
+        f"Stacking diatonic thirds (1–3–5–7) from {root} in the "
+        f"{scale.tonic} {mode_label} scale gives {root}–{third}–{fifth}–{seventh}, "
+        f"a {quality.replace('_', ' ')} chord ({layer}). "
+    )
+    if quality == "dominant_seventh":
+        explanation += (
+            f"Its third ({third}) and seventh ({seventh}) form a tritone — the "
+            f"dissonance that drives the resolution "
+            f"{third}→{pitches[0]} and {seventh}→{pitches[(i + 6) % 7]}. "
+            f"Its harmonic function is {function_label}.")
+    else:
+        explanation += f"Its harmonic function is {function_label}."
+
+    return DiatonicTriad(
+        key=scale.key,
+        mode=scale.mode,
+        scale_pitches=list(pitches),
+        degree_index=i,
+        degree_number=i + 1,
+        roman=roman,
+        root=root,
+        chord_symbol=chord_symbol,
+        chord_quality=quality,
+        pitches=tones,
+        midi_pitches=_stack_voicing_midi(tones),
+        interval_layer=layer,
+        function_label=function_label,
+        scale_degree_name=degree_name,
+        explanation_text=explanation,
+    )
+
+
+def build_dominant_seventh(key: str, mode: str = "major") -> DiatonicTriad:
+    """The dominant seventh (``V7``) of ``key`` -- the platform's first tetrad.
+
+    Major keys only: natural minor's diatonic seventh on degree 5 is a *minor*
+    seventh (v7), and the true minor-key V7 needs harmonic minor's raised
+    leading tone (plan G2).  Refusing here keeps the engine honest -- it never
+    hands back a chord under a label it does not deserve.
+    """
+    mode = _canon_mode(mode)
+    scale = generate_scale(key, mode)
+    chord = _build_tetrad(scale, SEVENTH_DEGREE_TOKENS["V7"])
+    if chord.chord_quality != "dominant_seventh":
+        raise ValueError(
+            f"{scale.key} has no diatonic dominant seventh: its degree-5 "
+            f"seventh chord is {'–'.join(chord.pitches)} ({chord.interval_layer}), "
+            f"not a dominant seventh. The minor-key V7 needs harmonic minor's "
+            f"raised leading tone (a later lesson).")
+    return chord
+
+
+# ---------------------------------------------------------------------------
 # Transposition of degree / function patterns
 # ---------------------------------------------------------------------------
 
@@ -511,15 +648,22 @@ def roman_token_to_index(token: str) -> int:
 def transpose_degree_pattern(pattern: List[str], key: str, mode: str) -> List[DiatonicTriad]:
     """Render a pattern of scale-degree Roman numerals into a key.
 
-    Example::
+    Supported seventh tokens (:data:`SEVENTH_DEGREE_TOKENS`, e.g. ``"V7"``)
+    build their tetrad; every other token is a diatonic triad.  Example::
 
         transpose_degree_pattern(["ii", "V", "I"], "C", "major")
         # -> [Dm, G, C]
-        transpose_degree_pattern(["ii", "V", "I"], "G", "major")
-        # -> [Am, D, G]
+        transpose_degree_pattern(["ii", "V7", "I"], "G", "major")
+        # -> [Am, D7, G]
     """
     triads = generate_diatonic_triads(key, mode)
-    return [triads[roman_token_to_index(tok)] for tok in pattern]
+    out: List[DiatonicTriad] = []
+    for tok in pattern:
+        if parse_seventh_token(tok) is not None:
+            out.append(build_dominant_seventh(key, mode))
+        else:
+            out.append(triads[roman_token_to_index(tok)])
+    return out
 
 
 # ---------------------------------------------------------------------------

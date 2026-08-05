@@ -108,10 +108,11 @@ const PAYLOAD = loadPayload();
   const h = makeHarness(PAYLOAD);
   const r = h.ui.init(PAYLOAD);
   assert(r.ok, "init ok");
-  // 231 leaves = 102 native drills + 13 block cadences + 98 inversions
+  // 247 leaves = 102 native drills + 13 block cadences + 98 inversions
   // (96-key grid + 1 arpeggio worked example + 1 ii6 cadence bridge)
-  // + 13 SATB voice-leading cadences + 2 motives + 3 polyphonic examples.
-  assert(r.exercises === 231, "reports 231 exercise leaves, got " + r.exercises);
+  // + 13 SATB voice-leading cadences + 2 motives + 3 polyphonic examples
+  // + 16 seventh-chord drills (ticket 09: 2 add-the-7th + 12 tritone + 2 V7–I).
+  assert(r.exercises === 247, "reports 247 exercise leaves, got " + r.exercises);
   // first category auto-expanded -> its lesson rows are visible
   const rows = h.ui._visibleRows();
   assert(rows.length > PAYLOAD.tree.children.length, "first category expanded");

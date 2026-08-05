@@ -366,14 +366,27 @@ def _scene_edge_from_projedge(pe) -> Optional[GraphSceneEdge]:
         data={"canonicalEdgeId": pe.canonical_edge_id})
 
 
+def _chord_entity_type(quality) -> str:
+    """Scene entity type of a chord: ``triad`` / ``diminished`` / ``seventh``.
+
+    ``seventh`` is the contract's (formerly reserved) dominant-seventh entity
+    (``ENTITY_TYPES``, plan section 3) -- a V7 chord node must never be typed
+    as the triad that merely shares its root.
+    """
+    q = str(quality or "")
+    if q.startswith("dim"):
+        return "diminished"
+    if q.endswith("seventh"):
+        return "seventh"
+    return "triad"
+
+
 def _occurrence_entity_type(step) -> str:
     if step.source_kind == "score":
         return "score_slice"
     if step.inversion is not None and step.drill_family == "inversion":
         return "inversion"
-    if (step.quality or "").startswith("dim"):
-        return "diminished"
-    return "triad"
+    return _chord_entity_type(step.quality)
 
 
 def _edge_type_word(tr) -> str:
@@ -658,10 +671,14 @@ def build_functional_progression_scene(
     for i, c in enumerate(group):
         t = c.triad
         broad = BROAD_FUNCTION.get(t.function_label, "tonic")
-        etype = "diminished" if str(t.chord_quality).startswith("dim") else "triad"
+        etype = _chord_entity_type(t.chord_quality)
         x = -260.0 + (520.0 * (i / (n - 1)) if n > 1 else 0.0)
         mid = f"prog:{sid}:{gi}:{i}"
-        ref = _resolve_triad_ref(atlas, tonic, mode, t.degree_index)
+        # A tetrad has no canonical Atlas triad node -- claiming the V triad
+        # for a V7 marker is exactly the base_roman dishonesty; leave it
+        # scene-native instead.
+        ref = (None if etype == "seventh"
+               else _resolve_triad_ref(atlas, tonic, mode, t.degree_index))
         role_fields = _role_node_fields(mode, t.degree_index, t.roman,
                                         getattr(t, "scale_degree_name", None))
         srole = role_fields.get("specific_role", "")
@@ -811,7 +828,7 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
     for i, c in enumerate(chords):
         t = c.triad
         x, y = _spoke_xy(i, n, 300.0, 0.0)
-        etype = "diminished" if str(t.chord_quality).startswith("dim") else "triad"
+        etype = _chord_entity_type(t.chord_quality)
         ref = _resolve_triad_ref(atlas, _tonic_of(t.key), t.mode, t.degree_index)
         nodes.append(GraphSceneNode(
             id=ids[i], label=t.chord_symbol, entity_type=etype,
@@ -1044,13 +1061,14 @@ def build_voice_leading_scene(lab_spec, *, source_kind: str = "lab", source_id: 
         ann = m.annotation
         vs = _extract_voices(m, poly)
         broad = BROAD_FUNCTION.get(ann.function_label, "tonic")
-        etype = "diminished" if str(ann.quality or "").startswith("dim") else "triad"
+        etype = _chord_entity_type(ann.quality)
         x = -240.0 + (480.0 * (i / (n - 1)) if n > 1 else 0.0)
         y = (_FUNC_BAND.get(broad, 0.0) if not poly else 0.0)
         voice_pitches = " ".join(f"{nm[0]}:{getattr(nt, 'step', '')}{getattr(nt, 'octave', '')}"
                                  for nm, nt in vs)
         deg = getattr(getattr(m, "underlying", None), "degree_index", None)
-        ref = (_resolve_triad_ref(atlas, tonic, mode, deg) if deg is not None else None)
+        ref = (_resolve_triad_ref(atlas, tonic, mode, deg)
+               if deg is not None and etype != "seventh" else None)
         label = ann.chord_symbol or ann.roman or "?"
         nodes.append(GraphSceneNode(
             id=ids[i], label=label, entity_type=etype, sublabel=(ann.roman or ""),

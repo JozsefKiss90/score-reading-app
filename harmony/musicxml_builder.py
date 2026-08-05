@@ -4,9 +4,9 @@ The MusicXML style mirrors ``run_sight_notes_demo.py`` (2-staff piano part,
 ``divisions = 16``, 4/4) so it renders identically through Verovio /
 ``ScoreViewBeats``.  Each chord occupies its own measure:
 
-* **block**     -- the triad as a whole-note chord on the treble staff.
-* **arpeggio**  -- root / third / fifth as three quarter notes (beats 1-3),
-  beat 4 a rest.
+* **block**     -- the chord as a whole-note chord on the treble staff.
+* **arpeggio**  -- the chord tones as quarter notes from beat 1 (a triad
+  leaves beat 4 as a rest; a tetrad such as V7 fills all four beats).
 
 A single root note is written on the bass staff.  Text annotations are placed
 above each measure, e.g. ``"C major | ii | Dm | m3+M3 | predominant"``.
@@ -91,14 +91,11 @@ def _voiced_tone(name: str, root_letter_index: int, step_offset: int,
 def triad_treble_voicing(triad: DiatonicTriad,
                          base_octave: int = TREBLE_BASE_OCTAVE
                          ) -> List[Tuple[str, int, int]]:
-    """Root-position ``[(step, alter, octave), ...]`` for root, third, fifth."""
+    """Root-position ``[(step, alter, octave), ...]``: root, third, fifth(, seventh)."""
     r_letter, _ = parse_pitch_class(triad.root)
     ri = LETTER_INDEX[r_letter]
-    return [
-        _voiced_tone(triad.pitches[0], ri, 0, base_octave),
-        _voiced_tone(triad.pitches[1], ri, 2, base_octave),
-        _voiced_tone(triad.pitches[2], ri, 4, base_octave),
-    ]
+    return [_voiced_tone(name, ri, 2 * k, base_octave)
+            for k, name in enumerate(triad.pitches)]
 
 
 def triad_bass_note(triad: DiatonicTriad,
@@ -160,6 +157,7 @@ _HARMONY_KIND = {
     "minor": ("m", "minor"),
     "diminished": ("°", "diminished"),
     "augmented": ("+", "augmented"),
+    "dominant_seventh": ("7", "dominant"),
 }
 _ROMAN_VALUE = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7}
 
@@ -217,7 +215,10 @@ def _treble_arpeggio(triad: DiatonicTriad, fifths: int) -> str:
     for (step, alter, octave) in voicing:
         parts.append(_note_xml(step, alter, octave, QUARTER_TICKS, "quarter",
                                staff=1, voice=1, fifths=fifths))
-    parts.append(_rest_xml(QUARTER_TICKS, "quarter", staff=1, voice=1))
+    # Pad the 4/4 measure with rests (a triad leaves beat 4 free; a tetrad
+    # fills all four beats).
+    for _ in range(BEATS_PER_MEASURE - len(voicing)):
+        parts.append(_rest_xml(QUARTER_TICKS, "quarter", staff=1, voice=1))
     return "".join(parts)
 
 

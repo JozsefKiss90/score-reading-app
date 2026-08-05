@@ -222,12 +222,13 @@ def _treble_block_notes(triad: DiatonicTriad) -> Tuple[LabNote, ...]:
 
 
 def _treble_arpeggio_notes(triad: DiatonicTriad) -> Tuple[LabNote, ...]:
-    """Root/third/fifth as three quarters + a quarter rest (mirrors the trainer)."""
+    """Chord tones as quarters, rest-padded to the 4/4 bar (mirrors the trainer)."""
     notes = [
         _note_from_spelled(name, _treble_octave_for(triad, i), "quarter")
         for i, name in enumerate(triad.pitches)
     ]
-    notes.append(LabNote("C", 0, TREBLE_OCTAVE, "quarter", is_rest=True))
+    for _ in range(4 - len(notes)):
+        notes.append(LabNote("C", 0, TREBLE_OCTAVE, "quarter", is_rest=True))
     return tuple(notes)
 
 
@@ -257,7 +258,13 @@ def _nearest_octave(step: str, alter: int, target_midi: int) -> int:
 
 def _annotation_for(triad: DiatonicTriad, tonic: str, mode: str,
                     **extra) -> LabAnnotation:
-    """Base annotation derived 1:1 from a triad, with Atlas ids stamped."""
+    """Base annotation derived 1:1 from a chord, with Atlas ids stamped.
+
+    A tetrad (V7) claims NO Atlas degree/triad node: the Atlas's 168 chord
+    nodes are triads only, and honesty means refusing to land a seventh chord
+    on the triad node that merely shares its root (the ``base_roman`` rule).
+    """
+    is_tetrad = len(triad.pitches) > 3
     return LabAnnotation(
         key=triad.key, mode=mode, roman=triad.roman,
         chord_symbol=triad.chord_symbol, root=triad.root,
@@ -266,8 +273,9 @@ def _annotation_for(triad: DiatonicTriad, tonic: str, mode: str,
         scale_degree_name=triad.scale_degree_name, degree_number=triad.degree_number,
         explanation=triad.explanation_text,
         atlas_scale_id=scale_id(tonic, mode),
-        atlas_degree_id=degree_id(mode, triad.roman),
-        atlas_triad_id=triad_id(tonic, mode, triad.degree_index),
+        atlas_degree_id=(None if is_tetrad else degree_id(mode, triad.roman)),
+        atlas_triad_id=(None if is_tetrad
+                        else triad_id(tonic, mode, triad.degree_index)),
         **extra,
     )
 
@@ -609,10 +617,13 @@ def _gen_polyphonic(spec: LabExperimentSpec) -> List[LabMeasure]:
         upper_pc = upper.pitch_class
         prev_upper = upper.midi
 
-        # Bass voice = a requested degree, else the implied chord root.
+        # Bass voice = a requested degree, else the implied chord root.  An
+        # explicit degree keeps its scale octave (shifted one octave down into
+        # the bass register) so a rising line like 7̂→8̂ actually rises (B3→C4)
+        # instead of collapsing to a fixed octave.
         if bass_degrees is not None:
-            b_step, b_alter, _ = _scale_note(scale, bass_degrees[k])
-            lower = LabNote(b_step, b_alter, BASS_OCTAVE, "whole")
+            b_step, b_alter, b_oct = _scale_note(scale, bass_degrees[k])
+            lower = LabNote(b_step, b_alter, b_oct - 1, "whole")
         else:
             lower = _bass_note(implied.root)
         lower_pc = lower.pitch_class

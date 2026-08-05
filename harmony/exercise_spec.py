@@ -31,6 +31,7 @@ from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
     roman_token_to_index,
+    parse_seventh_token,
     key_signature_fifths,
     parse_key,
     _canon_mode,
@@ -159,8 +160,15 @@ class HarmonyExerciseSpec:
                 "means playing back what you hear; the identification answer "
                 "modes get their own aural drills in later A1 levels.")
         self.mode = _canon_mode(self.mode)
-        if self.drill == "horizontal_degree" and not self.degree:
-            raise ValueError("horizontal_degree drill requires 'degree'")
+        if self.drill == "horizontal_degree":
+            if not self.degree:
+                raise ValueError("horizontal_degree drill requires 'degree'")
+            if any(ch.isdigit() for ch in self.degree):
+                raise ValueError(
+                    f"horizontal_degree drills transpose triads; a seventh "
+                    f"degree drill ({self.degree!r}) arrives with the wider "
+                    f"seventh vocabulary (plan G1b). Use a function drill with "
+                    f"pattern=['V7'] per key meanwhile.")
         if self.drill == "full_key" and not self.key:
             raise ValueError("full_key drill requires 'key'")
         if self.drill == "quality":
@@ -175,8 +183,18 @@ class HarmonyExerciseSpec:
                     "drill would compile to zero chords and the score "
                     "builder would fail. Augmented drills arrive with "
                     "harmonic minor's III+.")
-        if self.drill == "function" and not self.pattern:
-            raise ValueError("function drill requires 'pattern'")
+        if self.drill == "function":
+            if not self.pattern:
+                raise ValueError("function drill requires 'pattern'")
+            # Raises on unsupported figured / seventh tokens (honesty: never
+            # silently downgrade "ii7" to a ii triad).
+            roman = normalise_pattern(self.pattern)
+            if self.mode != "major" and any(
+                    parse_seventh_token(t) is not None for t in roman):
+                raise ValueError(
+                    "V7 needs the raised leading tone; natural minor's "
+                    "degree-5 seventh is a minor seventh (v7). Minor-key "
+                    "dominant sevenths arrive with harmonic minor (plan G2).")
 
         # Reject theoretical keys that need more than 7 sharps/flats (e.g.
         # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
@@ -277,7 +295,12 @@ def normalise_pattern(pattern: List[str]) -> List[str]:
     """Translate a mixed Roman / functional pattern into Roman numerals.
 
     ``["T", "S", "D", "T"]`` -> ``["I", "IV", "V", "I"]``;
-    Roman tokens (``"ii"``, ``"V"``, ``"vii°"``) pass through unchanged.
+    Roman tokens (``"ii"``, ``"V"``, ``"vii°"``) pass through unchanged, as do
+    the supported seventh tokens (``"V7"``).  Any *other* digit-bearing token
+    (``"ii7"``, ``"V9"``, a figured ``"ii6"``) raises: the tolerant
+    ``roman_token_to_index`` would silently strip the digits and play a
+    root-position triad under a label it does not match -- exactly the
+    dishonesty the roman gate exists to prevent.
     """
     out: List[str] = []
     for tok in pattern:
@@ -286,6 +309,14 @@ def normalise_pattern(pattern: List[str]) -> List[str]:
         if upper in _FUNCTION_TOKEN_TO_ROMAN:
             out.append(_FUNCTION_TOKEN_TO_ROMAN[upper])
             continue
+        if parse_seventh_token(raw) is not None:
+            out.append(raw)
+            continue
+        if any(ch.isdigit() for ch in raw):
+            raise ValueError(
+                f"Unsupported chord token {raw!r}: the only seventh chord "
+                f"available is 'V7' (plan G1a); figured-bass suffixes (6, 6/4) "
+                f"belong to Lab cadence specs, not trainer patterns.")
         # Validate it is a parseable Roman token (raises otherwise).
         roman_token_to_index(raw)
         out.append(raw)

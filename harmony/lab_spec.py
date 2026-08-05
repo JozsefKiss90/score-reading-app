@@ -31,9 +31,11 @@ Design rules (shared with the rest of the project):
   measure count at the same value so every example renders on a single page.
 
 The schema is intentionally open (``parameters`` is a free dict) so the
-non-goals -- seventh chords, secondary dominants, harmonic/melodic minor, full
-counterpoint, Schenkerian reduction, real-score analysis -- extend without
-breaking existing fields.
+non-goals -- secondary dominants, harmonic/melodic minor, full counterpoint,
+Schenkerian reduction, real-score analysis -- extend without breaking existing
+fields.  The first seventh chord (``V7``, ticket 09 / plan G1a) is already in:
+the roman gate accepts exactly the tokens
+:data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS` knows how to build.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ from theory.diatonic_harmony import (
     parse_key,
     key_signature_fifths,
     roman_token_to_index,
+    parse_seventh_token,
     _canon_mode,
     _mode_word,
 )
@@ -124,19 +127,27 @@ def tonic_of(key: str) -> str:
 
 
 def is_diatonic_roman(token: str) -> bool:
-    """True iff ``token`` is a plain diatonic Roman numeral (no accidental/slash).
+    """True iff ``token`` is a Roman numeral the diatonic engine can build.
 
     Rejects chromatic / secondary tokens (``bII``, ``V/V``, ``#iv``) -- which are
     a non-goal of this slice and cannot be rendered by the diatonic engine -- while
-    accepting quality-decorated diatonic numerals (``vii°``, ``III+``).  Use it on
-    a token already passed through :func:`normalise_pattern` (so ``T``/``S``/``D``
-    shorthand has become Roman).
+    accepting quality-decorated diatonic numerals (``vii°``, ``III+``) and the
+    *supported* seventh tokens (``V7``, per
+    :data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS`).  Any other
+    digit-bearing token (``ii7``, ``V9``) is rejected explicitly rather than
+    tolerantly stripped down to its triad.  Use it on a token already passed
+    through :func:`normalise_pattern` (so ``T``/``S``/``D`` shorthand has become
+    Roman).
     """
     t = (token or "").strip()
     if any(c in t for c in "/()"):
         return False
+    if parse_seventh_token(t) is not None:
+        return True
     core = t.replace("°", "").replace("o", "").replace("+", "")
     if any(c in core for c in "b#♭♯"):       # flat / sharp accidental
+        return False
+    if any(ch.isdigit() for ch in core):     # unsupported seventh / figure
         return False
     try:
         roman_token_to_index(t)
@@ -330,6 +341,11 @@ class LabExperimentSpec:
                 raise ValueError(
                     f"chromatic/secondary token {orig!r} is not supported yet "
                     f"(a non-goal); use diatonic Roman numerals or T/S/D shorthand")
+            if parse_seventh_token(norm) is not None and self.mode != "major":
+                raise ValueError(
+                    f"{orig!r} needs the raised leading tone; natural minor's "
+                    f"degree-5 seventh is a minor seventh (v7). Minor-key "
+                    f"dominant sevenths arrive with harmonic minor (plan G2).")
 
     def _validate_params(self) -> None:
         p = self.parameters
@@ -356,14 +372,22 @@ class LabExperimentSpec:
                 raise ValueError(f"{self.concept} requires a non-empty 'pattern'")
             romans, figures = split_figured_pattern(cp.pattern)
             for orig, head in zip(cp.pattern, romans):
-                if any(ch.isdigit() for ch in head):
+                if (any(ch.isdigit() for ch in head)
+                        and parse_seventh_token(head) is None):
                     raise ValueError(
                         f"unrecognised figured-bass suffix in {orig!r}; the "
-                        f"understood triad figures are 5/3, 6 (6/3) and 6/4")
+                        f"understood triad figures are 5/3, 6 (6/3) and 6/4, "
+                        f"and the only seventh chord is V7 (plan G1a)")
             if any(figures) and self.render != "block":
                 raise ValueError(
                     "figured tokens (e.g. 'ii6') require render='block'; the "
                     "SATB voice-leading render voices root positions only")
+            if (any(parse_seventh_token(h) is not None for h in romans)
+                    and self.render != "block"):
+                raise ValueError(
+                    "seventh tokens (V7) require render='block'; the SATB "
+                    "voice-leading render voices triads only (plan G1b widens "
+                    "it to sevenths)")
             self._check_diatonic(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
             if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:
@@ -395,6 +419,8 @@ class LabExperimentSpec:
                     "polyphonic_harmony bass_degrees must match progression length")
             if any(not (1 <= d <= 14) for d in pp.upper_degrees):
                 raise ValueError("polyphonic upper_degrees must be in 1..14")
+            if pp.bass_degrees and any(not (1 <= d <= 14) for d in pp.bass_degrees):
+                raise ValueError("polyphonic bass_degrees must be in 1..14")
             self._check_len(len(pp.progression))
 
         elif self.concept == "reduction":
