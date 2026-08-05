@@ -48,6 +48,7 @@ from theory.diatonic_harmony import (
     key_signature_fifths,
     roman_token_to_index,
     parse_seventh_token,
+    seventh_tokens_for_mode,
     _canon_mode,
     _mode_word,
 )
@@ -341,11 +342,13 @@ class LabExperimentSpec:
                 raise ValueError(
                     f"chromatic/secondary token {orig!r} is not supported yet "
                     f"(a non-goal); use diatonic Roman numerals or T/S/D shorthand")
-            if parse_seventh_token(norm) is not None and self.mode != "major":
+            if (parse_seventh_token(norm) is not None
+                    and norm not in seventh_tokens_for_mode(self.mode)):
                 raise ValueError(
-                    f"{orig!r} needs the raised leading tone; natural minor's "
-                    f"degree-5 seventh is a minor seventh (v7). Minor-key "
-                    f"dominant sevenths arrive with harmonic minor (plan G2).")
+                    f"{orig!r} is not diatonic to {self.mode}: the seventh "
+                    f"vocabulary of this mode is "
+                    f"{seventh_tokens_for_mode(self.mode)}. (The minor-key V7 "
+                    f"needs harmonic minor's raised leading tone, plan G2.)")
 
     def _validate_params(self) -> None:
         p = self.parameters
@@ -377,7 +380,8 @@ class LabExperimentSpec:
                     raise ValueError(
                         f"unrecognised figured-bass suffix in {orig!r}; the "
                         f"understood triad figures are 5/3, 6 (6/3) and 6/4, "
-                        f"and the only seventh chord is V7 (plan G1a)")
+                        f"and the seventh chords are the diatonic vocabulary "
+                        f"(Imaj7, ii7, ..., viiø7; i7, ..., VII7)")
             if any(figures) and self.render != "block":
                 raise ValueError(
                     "figured tokens (e.g. 'ii6') require render='block'; the "
@@ -385,9 +389,9 @@ class LabExperimentSpec:
             if (any(parse_seventh_token(h) is not None for h in romans)
                     and self.render != "block"):
                 raise ValueError(
-                    "seventh tokens (V7) require render='block'; the SATB "
-                    "voice-leading render voices triads only (plan G1b widens "
-                    "it to sevenths)")
+                    "seventh tokens require render='block'; the SATB "
+                    "voice-leading render voices triads only (a later "
+                    "seventh slice widens it)")
             self._check_diatonic(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
             if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:

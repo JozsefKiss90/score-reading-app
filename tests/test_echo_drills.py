@@ -77,13 +77,14 @@ class PresentationSpecValidation(unittest.TestCase):
         with self.assertRaises(ValueError):
             spec.validate()
 
-    def test_echo_requires_midi_answer_mode(self):
-        # Echo-play means *play back what you hear*; the ID answer modes are
-        # later A1 levels and ship separately.
-        for mode in ("mcq", "card"):
-            spec = _full_key_spec(presentation="echo", answer_mode=mode)
-            with self.assertRaises(ValueError):
-                spec.validate()
+    def test_echo_answer_modes(self):
+        # Echo drills answer by midi (play back what you hear) or, since
+        # ticket 10's aural ID drills, by mcq (identify what you hear).  The
+        # card list IS the answer surface, so echo+card stays refused.
+        _full_key_spec(presentation="echo", answer_mode="mcq").validate()
+        spec = _full_key_spec(presentation="echo", answer_mode="card")
+        with self.assertRaises(ValueError):
+            spec.validate()
 
     def test_roundtrip_preserves_presentation(self):
         spec = _full_key_spec(presentation="echo")
@@ -179,11 +180,21 @@ class EchoEligibility(unittest.TestCase):
         return [l for l in self.leaves
                 if l.lab_spec is not None and l.lab_spec.concept == concept]
 
-    def test_every_native_drill_leaf_is_eligible(self):
+    def test_every_visual_midi_drill_leaf_is_eligible(self):
+        # A leaf owns an echo twin iff it is a visual play-it drill.  The
+        # natively aural leaves (ticket 10's echo+mcq quality-ID drills) ARE
+        # ear drills already — no twin.
         drills = self._leaves_of_concept("drill")
         self.assertTrue(drills)
+        aural = 0
         for leaf in drills:
-            self.assertTrue(is_echo_eligible(leaf.lab_spec), leaf.id)
+            inner = HarmonyExerciseSpec.from_dict(
+                leaf.lab_spec.parameters["exercise"])
+            expect = (inner.answer_mode == "midi"
+                      and inner.presentation == "visual")
+            self.assertEqual(is_echo_eligible(leaf.lab_spec), expect, leaf.id)
+            aural += 0 if expect else 1
+        self.assertGreater(aural, 0)   # the ear drills exist and are exempt
 
     def test_triad_and_cadence_families_have_echo_twins(self):
         ids = {l.id for l in self._leaves_of_concept("drill")

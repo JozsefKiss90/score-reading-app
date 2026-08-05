@@ -48,8 +48,15 @@ def echo_variant(spec: HarmonyExerciseSpec) -> HarmonyExerciseSpec:
     Same drill content (it compiles to the identical chord list), distinct
     identity (``*_echo`` id, "Echo: " title) so the two variants can coexist
     in a launcher list.  Raises ``ValueError`` for specs that cannot be
-    echoed (non-``midi`` answer modes — you cannot play back an MCQ).
+    echoed (non-``midi`` answer modes — a *twin* means playing back what you
+    hear; the aural ID drills of ticket 10 are authored as echo+mcq specs
+    directly, not derived from a visual twin).
     """
+    if spec.answer_mode != "midi":
+        raise ValueError(
+            f"cannot derive an echo twin of an answer_mode="
+            f"{spec.answer_mode!r} spec: echo twins play back what you hear "
+            f"(midi grading only)")
     twin = replace(
         spec,
         exercise_id=spec.exercise_id + "_echo",

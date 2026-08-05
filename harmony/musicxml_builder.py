@@ -34,6 +34,7 @@ from theory.diatonic_harmony import (
     parse_pitch_class,
     LETTER_INDEX,
     LETTER_BASE_PC,
+    SEVENTH_QUALITY_LABELS,
 )
 
 
@@ -158,6 +159,10 @@ _HARMONY_KIND = {
     "diminished": ("°", "diminished"),
     "augmented": ("+", "augmented"),
     "dominant_seventh": ("7", "dominant"),
+    "major_seventh": ("maj7", "major-seventh"),
+    "minor_seventh": ("m7", "minor-seventh"),
+    "half_diminished_seventh": ("ø7", "half-diminished"),
+    "diminished_seventh": ("°7", "diminished-seventh"),
 }
 _ROMAN_VALUE = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7}
 
@@ -338,13 +343,34 @@ def _target_for(chord: CompiledChord) -> Dict:
     }
 
 
-def _mcq_for(target: Dict) -> Dict:
+def _mcq_for(target: Dict, focus: str = "roman") -> Dict:
     """The multiple-choice block of one ``answer_mode="mcq"`` target (plan U2).
 
-    v1 asks for the Roman numeral; the option vocabulary is the mode's seven
-    degree labels, which match ``DiatonicTriad.roman`` spelling exactly (the
-    ``°`` decoration included), so ``answer`` is always one of ``options``.
+    ``focus="roman"`` asks for the Roman numeral; the option vocabulary is the
+    mode's seven degree labels, which match ``DiatonicTriad.roman`` spelling
+    exactly (the ``°`` decoration included), so ``answer`` is always one of
+    ``options``.
+
+    ``focus="quality"`` (ticket 10) asks for the chord quality.  A tetrad
+    target offers the five seventh-quality labels (Mm7 / mm7 / MM7 / ø7 / °7
+    — °7 is a distractor until harmonic minor ships a buildable one); a triad
+    target offers the four triad qualities (augmented likewise never sounds
+    diatonically).
     """
+    if focus == "quality":
+        if len(target["pitchClasses"]) > 3:
+            # option order = SEVENTH_QUALITY_LABELS' declaration order
+            # (Mm7, mm7, MM7, ø7, °7) — one table, never restated
+            return {
+                "prompt": "Which seventh-chord quality do you hear?",
+                "options": list(SEVENTH_QUALITY_LABELS.values()),
+                "answer": SEVENTH_QUALITY_LABELS[target["quality"]],
+            }
+        return {
+            "prompt": "Which triad quality do you hear?",
+            "options": ["major", "minor", "diminished", "augmented"],
+            "answer": target["quality"],
+        }
     return {
         "prompt": f"Which chord of {target['key']} is this?",
         "options": degree_labels_for_mode(target["mode"]),
@@ -364,7 +390,7 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     answer_mode = compiled.spec.answer_mode
     if answer_mode == "mcq":
         for t in targets:
-            t["mcq"] = _mcq_for(t)
+            t["mcq"] = _mcq_for(t, compiled.spec.mcq_focus)
 
     target_by_measure: Dict[str, Dict] = {str(t["absMeasure"]): t for t in targets}
 

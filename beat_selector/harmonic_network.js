@@ -1225,8 +1225,11 @@
     slate: "#64748b", teal: "#14b8a6", amber: "#f59e0b", green: "#22c55e",
     rose: "#f43f5e", purple: "#a855f7", pink: "#ec4899", blue: "#38bdf8", yellow: "#facc15",
   };
+  // "seventh" covers ALL seventh-chord qualities since G1b (the node's own
+  // sublabel/quality names the specific one) — a "Dominant seventh" caption
+  // would mislabel ii7 / Imaj7 / viiø7 nodes.
   var SCENE_ENTITY_LABEL = {
-    key: "Key context", triad: "Diatonic triad", seventh: "Dominant seventh",
+    key: "Key context", triad: "Diatonic triad", seventh: "Seventh chord",
     diminished: "Diminished", degree: "Abstract degree", function: "Function family",
     quality: "Quality class", inversion: "Inversion voicing", occurrence: "Overlay chord",
     score_slice: "Score chord",

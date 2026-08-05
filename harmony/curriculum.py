@@ -49,6 +49,8 @@ from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
     parse_seventh_token,
+    seventh_tokens_for_mode,
+    SEVENTH_QUALITY_LABELS,
     _mode_word,
 )
 from harmony.harmonic_roles import (
@@ -63,12 +65,14 @@ from harmony.exercise_spec import (
     compile_exercise,
     normalise_pattern,
     default_exercise_groups,
+    degree_labels_for_mode,
     MAX_CHORDS_PER_SPEC,
     DEFAULT_MAJOR_KEYS,
     DEFAULT_MINOR_KEYS,
     _key_slug,
     _chunk_keys,
     _keys_label,
+    _triads_of_quality,
     GROUP_MAJOR_FULL_KEY,
     GROUP_MINOR_FULL_KEY,
     GROUP_DEGREE,
@@ -278,19 +282,21 @@ def _dedup(seq) -> List[str]:
     return out
 
 
-def _base_roman(roman: str) -> str:
-    """``"V7" -> "V"``: the scale degree a seventh chord is built on."""
-    return roman.replace("7", "")
-
-
 def _is_tetrad(t) -> bool:
     return len(t.pitches) > 3
 
 
 def _degree_roman(t) -> str:
     """The Roman the DEGREE refs may claim: a tetrad projects onto its base
-    degree (V7 is genuinely built on degree 5), never onto a triad node."""
-    return _base_roman(t.roman) if _is_tetrad(t) else t.roman
+    degree (V7 is genuinely built on degree 5), never onto a triad node.
+
+    The base-degree label comes from the mode's degree vocabulary by INDEX
+    (``viiø7`` -> ``vii°``, ``Imaj7`` -> ``I``) — stripping characters from
+    the tetrad's roman would fabricate labels no degree node owns.
+    """
+    if _is_tetrad(t):
+        return degree_labels_for_mode(t.mode)[t.degree_index]
+    return t.roman
 
 
 def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
@@ -381,8 +387,9 @@ def _circle_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
         refs.extend(_circle_ref_key(k, mode) for k in keys)
     if tokens:
         for r in normalise_pattern(tokens):
+            d = parse_seventh_token(r)
             refs.append(_circle_ref_degree(
-                mode, _base_roman(r) if parse_seventh_token(r) is not None else r))
+                mode, degree_labels_for_mode(mode)[d] if d is not None else r))
     return _dedup(refs)
 
 
@@ -499,8 +506,10 @@ def _native_objective(hs: HarmonyExerciseSpec) -> str:
         return (f"Recognise and play the {hs.degree} triad in every "
                 f"{_mode_word(hs.mode)} key (transpositional fluency).")
     if hs.drill == "quality":
-        return (f"Identify and play every {hs.quality} triad across the keys in "
-                f"this set.")
+        q = (hs.quality or "").replace("_", " ")
+        noun = "chord" if "seventh" in q else f"{q} triad"
+        label = f"{q} {noun}" if noun == "chord" else noun
+        return f"Identify and play every {label} across the keys in this set."
     if hs.drill == "function":
         return (f"Play the {'-'.join(hs.pattern or [])} progression and hear its "
                 f"functional motion (T / S / D).")
@@ -739,23 +748,100 @@ _SEVENTH_PATTERNS = [
     (["V7", "I"], "V7–I", "v7_i",
      "Resolve the full dominant seventh: its tritone closes as 7̂→1̂ and "
      "4̂→3̂ into the tonic"),
+    # ticket 10 (G1b): the classic two-five-one with both sevenths sounding
+    (["ii7", "V7", "I"], "ii7–V7–I", "ii7_v7_i",
+     "The predominant seventh flows into the dominant seventh and resolves: "
+     "ii7's seventh (1̂) is V7's fifth away from 7̂→1̂; the smoothest "
+     "progression in tonal music"),
 ]
 
 
-def _seventh_pattern_specs(tokens, label, slug, blurb) -> List[HarmonyExerciseSpec]:
-    """The chunked 12-major-key specs of one seventh pattern family."""
+def _seventh_pattern_specs(tokens, label, slug, blurb,
+                           render: str = "block") -> List[HarmonyExerciseSpec]:
+    """The chunked 12-major-key specs of one seventh pattern family.
+
+    ``render="block"`` keeps the ticket-09 exercise ids stable (progress
+    records point at them); arpeggio variants get their own ``_arp`` ids.
+    """
     keys = DEFAULT_MAJOR_KEYS
     chunks = _chunk_keys(keys, len(tokens))
+    render_slug = "" if render == "block" else "_arp"
+    render_word = "" if render == "block" else ", arpeggio"
     specs = []
     for ci, chunk in enumerate(chunks, start=1):
         keys_label = _keys_label(chunk, keys)
         suffix = "" if len(chunks) == 1 else f" (set {ci})"
         specs.append(HarmonyExerciseSpec(
-            exercise_id=f"sevenths_{slug}_major_{ci}",
-            title=f"{label} — {keys_label} (major){suffix}",
-            drill="function", render="block", mode="major",
+            exercise_id=f"sevenths_{slug}{render_slug}_major_{ci}",
+            title=f"{label} — {keys_label} (major{render_word}){suffix}",
+            drill="function", render=render, mode="major",
             pattern=list(tokens), keys=list(chunk),
             description=f"{blurb} ({keys_label})."))
+    return specs
+
+
+#: The four seventh qualities the supported modes actually contain, in the
+#: MCQ label order (Mm7, MM7, mm7, ø7).  The fully diminished °7 is absent on
+#: purpose: it arrives with harmonic minor (plan G2).
+_SEVENTH_QUALITY_ORDER = [
+    "dominant_seventh", "major_seventh", "minor_seventh",
+    "half_diminished_seventh",
+]
+
+
+def _seventh_quality_specs() -> List[HarmonyExerciseSpec]:
+    """Seventh-quality drills across all 12 major keys (mirrors _quality_specs).
+
+    One family per diatonic quality, chunked by key-group where the per-key
+    chord count would overflow the one-page cap (MM7 has two per key, mm7
+    three).
+    """
+    specs = []
+    for quality in _SEVENTH_QUALITY_ORDER:
+        label = SEVENTH_QUALITY_LABELS[quality]
+        pretty = quality.replace("_", " ")
+        per_key = len(_triads_of_quality(DEFAULT_MAJOR_KEYS[0], "major", quality))
+        chunks = _chunk_keys(DEFAULT_MAJOR_KEYS, per_key)
+        for ci, chunk in enumerate(chunks, start=1):
+            keys_label = _keys_label(chunk, DEFAULT_MAJOR_KEYS)
+            suffix = "" if len(chunks) == 1 else f" (set {ci})"
+            specs.append(HarmonyExerciseSpec(
+                exercise_id=f"sevenths_quality_{quality}_{ci}",
+                title=f"{pretty.capitalize()} ({label}) chords — "
+                      f"{keys_label} (major){suffix}",
+                drill="quality", render="block", mode="major",
+                quality=quality, keys=list(chunk),
+                description=(f"Every diatonic {pretty} ({label}) chord "
+                             f"across {keys_label}.")))
+    return specs
+
+
+#: Keys of the hear-a-seventh drills: three signatures (natural, sharp-side,
+#: flat-side) — quality ID is key-independent, so variety beats coverage.
+_SEVENTH_EAR_KEYS = ["C", "G", "Eb"]
+
+
+def _seventh_ear_specs() -> List[HarmonyExerciseSpec]:
+    """The hear-a-seventh quality-ID drills (echo + MCQ, ticket 10).
+
+    All seven diatonic sevenths of one key, notation veiled; the learner
+    names each quality from the five-option strip (Mm7 / mm7 / MM7 / ø7 /
+    °7).  °7 is a distractor: no diatonic °7 exists until harmonic minor.
+    """
+    tokens = seventh_tokens_for_mode("major")
+    specs = []
+    for tonic in _SEVENTH_EAR_KEYS:
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"sevenths_ear_quality_{_key_slug(tonic)}",
+            title=f"Name that seventh — {tonic} major (by ear)",
+            drill="function", render="block", mode="major",
+            pattern=list(tokens), keys=[tonic],
+            presentation="echo", answer_mode="mcq", mcq_focus="quality",
+            description=(f"Listen to each diatonic seventh chord of {tonic} "
+                         f"major and name its quality from the strip "
+                         f"(Mm7 / mm7 / MM7 / ø7 / °7). The °7 option never "
+                         f"sounds here — no diatonic fully diminished "
+                         f"seventh exists until harmonic minor.")))
     return specs
 
 
@@ -1188,22 +1274,25 @@ def build_curriculum() -> CurriculumNode:
             vl_minor)
 
     # ===================================================================
-    # 6. SEVENTH CHORDS  (ticket 09 / plan G1a: the V7 tracer — 16 leaves)
+    # 6. SEVENTH CHORDS  (tickets 09+10 / plan G1a+G1b — 32 leaves)
     # ===================================================================
     sevenths = cat("sevenths", "Seventh Chords",
-                   "The first tetrad: V7 and the tritone that drives tonal "
-                   "music home.",
-                   "Build the dominant seventh by adding a diatonic seventh to "
-                   "V, isolate its tritone, and resolve V7→I in every major "
-                   "key.", 3,
+                   "V7's tritone, the full quality vocabulary, and ii7–V7–I.",
+                   "Build every diatonic seventh chord, tell the five "
+                   "qualities apart by eye and ear, and resolve ii7–V7–I in "
+                   "every major key.", 3,
                    keywords=["seventh", "seventh chord", "V7", "dominant seventh",
-                             "tetrad", "tritone", "resolution"],
+                             "tetrad", "tritone", "resolution", "ii7",
+                             "maj7", "half-diminished"],
                    theory="A seventh chord stacks one more diatonic third on a "
                           "triad (1–3–5–7). The dominant seventh (V7 = M3+m3+m3) "
                           "is the first and most consequential: its third is the "
                           "leading tone and its seventh is scale degree 4, a "
                           "tritone apart — the dissonance whose resolution "
-                          "(7̂→1̂, 4̂→3̂) defines the sound of arriving home.")
+                          "(7̂→1̂, 4̂→3̂) defines the sound of arriving home. "
+                          "Around it sit the other diatonic qualities: major "
+                          "sevenths on I and IV, minor sevenths on ii, iii and "
+                          "vi, and the half-diminished seventh on vii.")
     l_v7 = lesson(sevenths, "dominant_seventh", "The dominant seventh (V7)",
                   "Add the 7th, hear the tritone, resolve it to I — in all 12 "
                   "major keys.",
@@ -1229,17 +1318,60 @@ def build_curriculum() -> CurriculumNode:
     fill_native(group(l_v7, "sevenths_v7_i", "Full resolution (V7 → I)",
                       "The complete dominant seventh resolving to the tonic.", 4),
                 _seventh_pattern_specs(*_SEVENTH_PATTERNS[1]), 4)
-    l_7more = lesson(sevenths, "sevenths_more", "More seventh chords (reserved)",
-                     "ii7, Imaj7, IV7, vi7, the diminished sevenths — and V7's "
-                     "inversions.",
-                     "(Reserved) The remaining diatonic seventh qualities and "
-                     "the figured-bass inversions of V7.", 4,
+    l_q7 = lesson(sevenths, "seventh_qualities", "The five seventh qualities",
+                  "Mm7, MM7, mm7, ø7 — and the °7 that is not diatonic yet.",
+                  "Tell the seventh-chord qualities apart under your fingers "
+                  "and by ear, across every major key.", 4,
+                  theory="Each diatonic degree owns one seventh quality, and "
+                         "the quality is the stacked thirds: Mm7 (dominant, "
+                         "M3+m3+m3) only on V; MM7 (major seventh, M3+m3+M3) "
+                         "on I and IV; mm7 (minor seventh, m3+M3+m3) on ii, "
+                         "iii and vi; ø7 (half-diminished, m3+m3+M3) on vii. "
+                         "The fully diminished °7 (m3+m3+m3) is NOT diatonic "
+                         "to major or natural minor — it arrives with "
+                         "harmonic minor's raised leading tone.",
+                  related=["lesson:dominant_seventh", "lesson:interval_layers"],
+                  keywords=["seventh quality", "Mm7", "MM7", "mm7",
+                            "half-diminished", "ø7", "maj7", "m7"])
+    fill_native(group(l_q7, "sevenths_quality", "Quality drills (play)",
+                      "Every chord of one seventh quality, key by key.", 4),
+                _seventh_quality_specs(), 4)
+    fill_native(group(l_q7, "sevenths_quality_ear", "Name that seventh (ear)",
+                      "🎧 Hear each seventh chord and name its quality "
+                      "(MCQ).", 4),
+                _seventh_ear_specs(), 4)
+    l_251 = lesson(sevenths, "sevenths_ii_v_i", "ii7–V7–I in every key",
+                   "The smoothest progression in tonal music, block and "
+                   "arpeggiated.",
+                   "Play ii7–V7–I fluently in all 12 major keys.", 4,
+                   theory="ii7 adds 1̂ to the predominant; that tone is held "
+                          "into V7 (as its fifth) while the tritone forms, "
+                          "then resolves 7̂→1̂ and 4̂→3̂. Every voice moves "
+                          "by step or stays — which is why ii7–V7–I anchors "
+                          "everything from chorales to jazz.",
+                   related=["lesson:seventh_qualities",
+                            "lesson:cadence_progressions"],
+                   keywords=["ii7", "V7", "ii-V-I", "two-five-one",
+                             "progression"])
+    fill_native(group(l_251, "sevenths_ii7_v7_i_block", "Block chords",
+                      "ii7–V7–I as block chords, key-group by key-group.", 4),
+                _seventh_pattern_specs(*_SEVENTH_PATTERNS[2]), 4)
+    fill_native(group(l_251, "sevenths_ii7_v7_i_arp", "Arpeggiated",
+                      "ii7–V7–I arpeggiated: hear each chord tone arrive.", 4),
+                _seventh_pattern_specs(*_SEVENTH_PATTERNS[2],
+                                       render="arpeggio"), 4)
+    l_7more = lesson(sevenths, "sevenths_more", "Seventh inversions (reserved)",
+                     "V6/5, V4/3, V4/2 — figured-bass sevenths; and the °7.",
+                     "(Reserved) The figured-bass inversions of the seventh "
+                     "chords (plan G1c) and the fully diminished seventh "
+                     "(with harmonic minor, plan G2).", 4,
                      kind="reserved", reserved=True,
-                     theory="The engine's seventh-chord seam "
-                            "(SEVENTH_DEGREE_TOKENS) widens next to the five "
-                            "diatonic seventh qualities (plan G1b) and to "
-                            "V6/5–V4/3–V4/2 figured-bass grading (plan G1c).",
-                     keywords=["ii7", "maj7", "seventh quality", "reserved"])
+                     theory="The seventh vocabulary is live (G1b); next the "
+                            "figures 7–6/5–4/3–4/2 become graded performance "
+                            "instructions (plan G1c, with G4's bass grading), "
+                            "and harmonic minor legitimises vii°7 (plan G2).",
+                     keywords=["V65", "V43", "V42", "inversion",
+                               "diminished seventh", "reserved"])
     l_7more.keywords.append("sevenths")
 
     # ===================================================================

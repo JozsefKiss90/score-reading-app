@@ -79,6 +79,23 @@ _MAP_HTML = _BEAT / "lab_mapping.html"
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
+def _is_aural_drill(spec: LabExperimentSpec) -> bool:
+    """Is this curriculum leaf natively ear-first (embedded presentation="echo")?
+
+    Ticket 10's quality-ID drills are authored aural (echo + mcq) rather than
+    derived echo twins, so the scene pane must withhold the routed graph for
+    them exactly as it does on the echo-button path — the graph would name
+    the very chords the learner is asked to identify by ear.
+    """
+    if spec.concept != "drill":
+        return False
+    try:
+        inner = HarmonyExerciseSpec.from_dict(spec.parameters["exercise"])
+    except Exception:
+        return False
+    return inner.presentation == "echo"
+
 #: The concept selector catalog (presentational; the experiments come from
 #: harmony.lab.lab_demo_specs()).  ``real_score_analysis`` is the reserved
 #: placeholder for Phase 6 (no experiments yet).  Each entry is enriched with its
@@ -617,10 +634,13 @@ class HarmonyLabWindow(QWidget):
             self._launch_drill(node_id, spec, echo=echo)
         else:
             self._launch_experiment(node_id, spec)
-        if echo:
+        if echo or _is_aural_drill(spec):
             # No scene during the listen phase: the routed graph names the
-            # very chords the learner must find by ear.  The reveal loads it
-            # at completion (_record_completion).
+            # very chords the learner must find by ear.  This covers both the
+            # echo-button twins and the natively aural leaves (ticket 10's
+            # echo+mcq quality-ID drills, whose embedded spec is already
+            # presentation="echo").  The reveal loads it at completion
+            # (_record_completion).
             self._echo_scene_pending = (node_id, spec)
             self._scene_active = None
             self.scene_view.clear_scene("echo drill — listen first")

@@ -274,4 +274,42 @@ function assert(cond, msg) {
   console.log("Test H (playback flash under veil): PASS");
 })();
 
+// === Test I: echo + mcq — the aural quality-ID drill (ticket 10) ============
+(function testEchoMcqQualityId() {
+  const p = echoPayload({ ANSWER_MODE: "mcq" });
+  p.TARGET_CHORDS.forEach((t, i) => {
+    t.mcq = { prompt: "Which seventh-chord quality do you hear?",
+              options: ["Mm7", "mm7", "MM7", "ø7", "°7"],
+              answer: i === 0 ? "Mm7" : "ø7" };
+  });
+  const h = makeHarness(p);
+  h.HT.init(p);
+  assert(h.HT.state().veiled === true, "echo+mcq starts veiled");
+  assert(h.HT.state().answerMode === "mcq", "answer mode reaches state()");
+  const cur = h.nodes.get("htCurrent")._innerHTML;
+  ["SYM_SECRET_0", "TONE_SECRET_0", "EXPLAIN_SECRET_0"].forEach((secret) => {
+    assert(cur.indexOf(secret) === -1, "veiled mcq panel must not leak " + secret);
+  });
+  assert(cur.indexOf("answer strip") !== -1,
+         "the veiled prompt says to answer from the strip, not the keyboard");
+  assert(h.nodes.get("htTitle").textContent.indexOf("identify") !== -1,
+         "the veiled header says listen-then-identify");
+  assert(h.nodes.get("htList").children.length === 0,
+         "no chord-card list in mcq mode (it would hand out answers)");
+  const strip = h.nodes.get("htAnswer");
+  const opts = strip.children.find((c) => c.className === "opts");
+  assert(opts && opts.children.length === 5, "five quality options render");
+  const wrong = h.HT.answer("MM7");
+  assert(wrong && wrong.correct === false, "a wrong quality is rejected");
+  assert(h.HT.state().idx === 0, "wrong answers do not advance");
+  const right = h.HT.answer("Mm7");
+  assert(right && right.correct === true, "the right quality is accepted");
+  assert(h.HT.state().idx === 1, "a correct answer advances");
+  assert(h.HT.state().veiled === true, "still veiled mid-drill");
+  h.HT.answer("ø7");
+  assert(h.HT.state().finished === true, "answering every target finishes");
+  assert(h.HT.state().veiled === false, "finishing lifts the veil (reveal)");
+  console.log("Test I (echo + mcq quality ID): PASS");
+})();
+
 console.log("\nAll echo-presentation checks passed (" + passed + " assertions).");

@@ -25,10 +25,12 @@ from harmony.exercise_spec import (
 
 
 class TestSeventhToken(unittest.TestCase):
-    def test_v7_is_the_only_supported_token(self):
+    def test_v7_parses_and_wrong_figures_are_rejected(self):
+        # Ticket 10 (G1b) widened the vocabulary to all diatonic sevenths
+        # (see tests/test_seventh_qualities.py); tokens outside it still fail.
         self.assertEqual(parse_seventh_token("V7"), 4)
         self.assertEqual(parse_seventh_token(" V7 "), 4)
-        for bad in ("v7", "ii7", "V9", "V65", "V7/V", "I7", "VII7", "7", ""):
+        for bad in ("V9", "V65", "V7/V", "I7", "vii°7", "7", ""):
             self.assertIsNone(parse_seventh_token(bad), bad)
 
 
@@ -98,7 +100,8 @@ class TestPatternHonesty(unittest.TestCase):
         self.assertEqual(normalise_pattern(["ii", "V7", "I"]), ["ii", "V7", "I"])
 
     def test_normalise_rejects_unsupported_digit_tokens(self):
-        for bad in ("ii7", "V9", "I64", "ii6", "v7"):
+        # ii7/v7 became real tokens with G1b; these figures still are not.
+        for bad in ("V9", "I64", "ii6", "I7", "vii°7"):
             with self.assertRaises(ValueError, msg=bad):
                 normalise_pattern([bad])
 
@@ -185,9 +188,11 @@ class TestLabRomanGate(unittest.TestCase):
         self.assertTrue(is_diatonic_roman("V7"))
 
     def test_gate_still_rejects_unsupported_tokens(self):
+        # ii7 / Imaj7 / v7 etc. became real tokens with G1b; chromatic,
+        # secondary, figured and mislabelled tokens still fail the gate.
         from harmony.lab_spec import is_diatonic_roman
-        for bad in ("v7", "ii7", "V9", "V7/V", "V/V", "bII", "#iv", "IV7",
-                    "vii°7", "I64", "Imaj7"):
+        for bad in ("V9", "V7/V", "V/V", "bII", "#iv", "I7", "IV7",
+                    "vii°7", "I64"):
             self.assertFalse(is_diatonic_roman(bad), bad)
 
     def test_cadence_concept_accepts_v7_block(self):
@@ -269,7 +274,9 @@ class TestCurriculumLeaves(unittest.TestCase):
     def test_category_exists_and_is_live(self):
         self.assertIsNotNone(self.cat)
         self.assertFalse(self.cat.reserved)
-        self.assertEqual(self.cat.exercise_count, 16)   # 2 + 12 + 2
+        # 16 G1a leaves (2 + 12 + 2) + 16 G1b leaves (7 quality + 3 ear +
+        # 6 ii7–V7–I) — see tests/test_seventh_qualities.py
+        self.assertEqual(self.cat.exercise_count, 32)
 
     def test_reserved_seam_named(self):
         more = self.root.find("lesson:sevenths_more")

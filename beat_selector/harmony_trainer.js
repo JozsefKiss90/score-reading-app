@@ -634,14 +634,19 @@
     // Echo listen phase: everything that names the chord IS the answer —
     // show only the key context, the position, and how to listen.
     if (isVeiled()) {
+      // Echo + mcq (ticket 10): the learner IDENTIFIES what they hear from
+      // the answer strip instead of playing it back.
+      var listenHow = answerMode === "mcq"
+        ? "hear the chord, then name it from the answer strip below."
+        : "hear the target, then play it back on the keyboard. It is " +
+          "graded exactly like the visual drill";
       el.innerHTML =
         '<div class="row big">' + esc(t.key) + " — echo by ear</div>" +
         '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
         '<div class="row"><span class="lbl">Where</span>bar ' +
         esc(t.measureNumber) + " (highlighted)</div>" +
         '<div class="exp">🎧 Notation is hidden. Press ▶ Play to ' +
-        "hear the target, then play it back on the keyboard. It is graded " +
-        "exactly like the visual drill; finishing reveals the notation.</div>";
+        listenHow + "; finishing reveals the notation.</div>";
       return;
     }
     // Identification (MCQ): the Roman numeral, function, tones etc. ARE the
@@ -806,7 +811,9 @@
       // drill is veiled the header stays neutral; the finish reveal brings
       // the full title back alongside the notation.
       title.textContent = isVeiled()
-        ? "🎧 Echo drill — listen, then play it back  —  " + renderWord
+        ? (answerMode === "mcq"
+            ? "🎧 Ear drill — listen, then identify  —  " + renderWord
+            : "🎧 Echo drill — listen, then play it back  —  " + renderWord)
         : (data.title || "Exercise") + "  —  " + renderWord;
     }
     renderList();

@@ -29,9 +29,12 @@ from typing import Dict, List, Optional
 from theory.diatonic_harmony import (
     DiatonicTriad,
     generate_diatonic_triads,
+    generate_diatonic_sevenths,
     transpose_degree_pattern,
     roman_token_to_index,
     parse_seventh_token,
+    seventh_tokens_for_mode,
+    SEVENTH_QUALITY_LABELS,
     key_signature_fifths,
     parse_key,
     _canon_mode,
@@ -53,7 +56,12 @@ DEFAULT_MINOR_KEYS = [
 
 _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
-_VALID_QUALITY = {"major", "minor", "diminished", "augmented"}
+#: Seventh-chord qualities the quality drill accepts (ticket 10 / plan G1b),
+#: derived from the theory module's canonical label table so the two can
+#: never drift.  ``diminished_seventh`` is refused at validation: no diatonic
+#: °7 exists in the supported modes (it arrives with harmonic minor, plan G2).
+_SEVENTH_QUALITIES = frozenset(SEVENTH_QUALITY_LABELS)
+_VALID_QUALITY = {"major", "minor", "diminished", "augmented"} | _SEVENTH_QUALITIES
 #: How the learner answers a drill (plan U2, ticket 06).  ``midi`` is the
 #: classic play-the-chord flow (hardware, on-screen piano, or QWERTY — all
 #: three feed the same grader); ``mcq`` renders a multiple-choice strip for
@@ -63,10 +71,17 @@ _VALID_ANSWER_MODES = {"midi", "mcq", "card"}
 
 #: How the exercise is presented (plan A1, ticket 07).  ``visual`` is the
 #: classic notation-first drill; ``echo`` is its aural twin — the target plays
-#: with the notation hidden and the learner plays it back by ear.  Echo-play
-#: keeps the ``midi`` grading contract, so it is only valid with
-#: ``answer_mode="midi"`` (the ID answer modes are later A1 levels).
+#: with the notation hidden.  With ``answer_mode="midi"`` the learner plays
+#: back what they hear; with ``answer_mode="mcq"`` they *identify* what they
+#: hear from the answer strip (the A1 ID drills, ticket 10).  ``card`` cannot
+#: be echoed: the card list is the answer surface and is withheld while the
+#: notation is veiled.
 _VALID_PRESENTATIONS = {"visual", "echo"}
+
+#: What an ``mcq`` answer strip asks for (ticket 10).  ``roman`` is the
+#: classic which-degree-is-this question; ``quality`` asks for the chord
+#: quality (the hear-a-seventh drill's Mm7 / mm7 / MM7 / ø7 / °7).
+_VALID_MCQ_FOCUS = {"roman", "quality"}
 
 #: Readability cap: the maximum number of chords (== measures) in a single
 #: spec.  It matches the project's existing shipped demo ("all V across the
@@ -140,6 +155,7 @@ class HarmonyExerciseSpec:
     keys: Optional[List[str]] = None     # explicit key list (else mode default)
     answer_mode: str = "midi"            # one of _VALID_ANSWER_MODES (plan U2)
     presentation: str = "visual"         # one of _VALID_PRESENTATIONS (plan A1)
+    mcq_focus: str = "roman"             # one of _VALID_MCQ_FOCUS (ticket 10)
 
     def validate(self) -> None:
         if self.drill not in _VALID_DRILLS:
@@ -154,21 +170,30 @@ class HarmonyExerciseSpec:
             raise ValueError(
                 f"Unknown presentation {self.presentation!r}; expected "
                 f"{sorted(_VALID_PRESENTATIONS)}")
-        if self.presentation == "echo" and self.answer_mode != "midi":
+        if self.presentation == "echo" and self.answer_mode == "card":
             raise ValueError(
-                "presentation='echo' requires answer_mode='midi': echo-play "
-                "means playing back what you hear; the identification answer "
-                "modes get their own aural drills in later A1 levels.")
+                "presentation='echo' cannot use answer_mode='card': the card "
+                "list is the answer surface and is withheld while the "
+                "notation is veiled. Echo drills answer by midi (play back "
+                "what you hear) or mcq (identify what you hear).")
+        if self.mcq_focus not in _VALID_MCQ_FOCUS:
+            raise ValueError(
+                f"Unknown mcq_focus {self.mcq_focus!r}; expected "
+                f"{sorted(_VALID_MCQ_FOCUS)}")
+        if self.mcq_focus != "roman" and self.answer_mode != "mcq":
+            raise ValueError(
+                "mcq_focus is an mcq-only knob: set answer_mode='mcq' or "
+                "leave mcq_focus at its default")
         self.mode = _canon_mode(self.mode)
         if self.drill == "horizontal_degree":
             if not self.degree:
                 raise ValueError("horizontal_degree drill requires 'degree'")
             if any(ch.isdigit() for ch in self.degree):
                 raise ValueError(
-                    f"horizontal_degree drills transpose triads; a seventh "
-                    f"degree drill ({self.degree!r}) arrives with the wider "
-                    f"seventh vocabulary (plan G1b). Use a function drill with "
-                    f"pattern=['V7'] per key meanwhile.")
+                    f"horizontal_degree drills transpose triads; for a "
+                    f"seventh chord across the keys ({self.degree!r}) use a "
+                    f"quality drill (e.g. quality='dominant_seventh') or a "
+                    f"function drill with a seventh-token pattern.")
         if self.drill == "full_key" and not self.key:
             raise ValueError("full_key drill requires 'key'")
         if self.drill == "quality":
@@ -183,18 +208,32 @@ class HarmonyExerciseSpec:
                     "drill would compile to zero chords and the score "
                     "builder would fail. Augmented drills arrive with "
                     "harmonic minor's III+.")
+            if self.quality == "diminished_seventh":
+                raise ValueError(
+                    "quality='diminished_seventh' is not drillable yet: no "
+                    "fully diminished seventh is diatonic to major or "
+                    "natural minor (viiø7 / iiø7 are HALF-diminished), so "
+                    "the drill would compile to zero chords. The °7 arrives "
+                    "with harmonic minor's raised leading tone (plan G2).")
         if self.drill == "function":
             if not self.pattern:
                 raise ValueError("function drill requires 'pattern'")
             # Raises on unsupported figured / seventh tokens (honesty: never
             # silently downgrade "ii7" to a ii triad).
             roman = normalise_pattern(self.pattern)
-            if self.mode != "major" and any(
-                    parse_seventh_token(t) is not None for t in roman):
-                raise ValueError(
-                    "V7 needs the raised leading tone; natural minor's "
-                    "degree-5 seventh is a minor seventh (v7). Minor-key "
-                    "dominant sevenths arrive with harmonic minor (plan G2).")
+            allowed = None
+            for t in roman:
+                if parse_seventh_token(t) is None:
+                    continue
+                if allowed is None:
+                    allowed = set(seventh_tokens_for_mode(self.mode))
+                if t not in allowed:
+                    raise ValueError(
+                        f"{t!r} is not diatonic to {_mode_word(self.mode)}: "
+                        f"the {_mode_word(self.mode)} seventh vocabulary is "
+                        f"{seventh_tokens_for_mode(self.mode)}. (The "
+                        f"minor-key V7 needs harmonic minor's raised leading "
+                        f"tone, plan G2.)")
 
         # Reject theoretical keys that need more than 7 sharps/flats (e.g.
         # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
@@ -314,9 +353,10 @@ def normalise_pattern(pattern: List[str]) -> List[str]:
             continue
         if any(ch.isdigit() for ch in raw):
             raise ValueError(
-                f"Unsupported chord token {raw!r}: the only seventh chord "
-                f"available is 'V7' (plan G1a); figured-bass suffixes (6, 6/4) "
-                f"belong to Lab cadence specs, not trainer patterns.")
+                f"Unsupported chord token {raw!r}: the buildable seventh "
+                f"tokens are the diatonic vocabulary (Imaj7, ii7, ..., viiø7 "
+                f"and natural minor's i7 ... VII7); figured-bass suffixes "
+                f"(6, 6/4) belong to Lab cadence specs, not trainer patterns.")
         # Validate it is a parseable Roman token (raises otherwise).
         roman_token_to_index(raw)
         out.append(raw)
@@ -330,14 +370,18 @@ def _keys_for(spec: HarmonyExerciseSpec) -> List[str]:
 
 
 def _triads_of_quality(key: str, mode: str, quality: str) -> List[DiatonicTriad]:
-    """The diatonic triads of ``key``/``mode`` with ``quality``, in degree order.
+    """The diatonic chords of ``key``/``mode`` with ``quality``, in degree order.
 
-    The single definition of "which triads a quality drill selects": the
-    compiler, the validation chord count, and the default spec builders all
-    call this, so they cannot drift apart.
+    A triad quality selects from the seven diatonic triads; a seventh quality
+    (ticket 10) from the seven diatonic seventh chords.  The single definition
+    of "which chords a quality drill selects": the compiler, the validation
+    chord count, and the default spec builders all call this, so they cannot
+    drift apart.
     """
-    return [t for t in generate_diatonic_triads(key, mode)
-            if t.chord_quality == quality]
+    chords = (generate_diatonic_sevenths(key, mode)
+              if quality in _SEVENTH_QUALITIES
+              else generate_diatonic_triads(key, mode))
+    return [t for t in chords if t.chord_quality == quality]
 
 
 def _key_label(key: str, mode: str) -> str:

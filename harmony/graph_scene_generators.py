@@ -809,17 +809,26 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
     quality = spec.quality or chords[0].triad.chord_quality
     interval = _QUALITY_INTERVALS.get(quality, chords[0].triad.interval_layer or "")
     atlas = build_atlas()
-    is_dim = quality == "diminished"
+    is_dim = "diminished" in quality
+    # Seventh-quality drills (ticket 10): the instances are tetrads.  The
+    # Atlas has TRIAD quality nodes only, so neither the anchor nor the
+    # instances may claim a canonical ref — same honesty rule as the V7
+    # tracer's scene nodes.
+    is_seventh = quality.endswith("seventh")
+    q_word = quality.replace("_", " ")
+    noun = "chord" if is_seventh else "triad"
 
     qid = f"qcls:quality:{quality}"
-    q_ref = _present(atlas, quality_id(quality))
+    q_ref = None if is_seventh else _present(atlas, quality_id(quality))
+    anchor_label = (f"{q_word.capitalize()} chords" if is_seventh
+                    else f"{quality.title()} triads")
     nodes: List[GraphSceneNode] = [GraphSceneNode(
-        id=qid, label=f"{quality.title()} triads", entity_type="quality", entity_role="reference",
+        id=qid, label=anchor_label, entity_type="quality", entity_role="reference",
         semantic_level="class", quality=quality, sublabel=interval,
         visual_class=("purple" if is_dim else "amber"), x=0.0, y=0.0, radius=26.0,
         canonical_refs=((q_ref,) if q_ref else ()),
         data={"quality": quality, "intervalLayer": interval},
-        explanation=(f"The {quality} triad class (interval structure {interval}). A quality "
+        explanation=(f"The {q_word} {noun} class (interval structure {interval}). A quality "
                      f"classification, not a progression."))]
     edges: List[GraphSceneEdge] = []
     occurrences: List[SceneOccurrence] = []
@@ -829,7 +838,9 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
         t = c.triad
         x, y = _spoke_xy(i, n, 300.0, 0.0)
         etype = _chord_entity_type(t.chord_quality)
-        ref = _resolve_triad_ref(atlas, _tonic_of(t.key), t.mode, t.degree_index)
+        # A tetrad never claims the triad node that merely shares its root.
+        ref = (None if len(t.pitches) > 3 else
+               _resolve_triad_ref(atlas, _tonic_of(t.key), t.mode, t.degree_index))
         nodes.append(GraphSceneNode(
             id=ids[i], label=t.chord_symbol, entity_type=etype,
             sublabel=f"{t.roman} in {_tonic_of(t.key)}", semantic_level="chord",
@@ -839,13 +850,13 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
             canonical_refs=((ref,) if ref else ()),
             data={"key": t.key, "roman": t.roman, "quality": t.chord_quality,
                   "intervalLayer": t.interval_layer, "globalIndex": c.index},
-            explanation=f"{t.chord_symbol} is a {quality} triad ({t.roman} in {t.key}).",
+            explanation=f"{t.chord_symbol} is a {q_word} {noun} ({t.roman} in {t.key}).",
             **_role_node_fields(t.mode, t.degree_index, t.roman,
                                 getattr(t, "scale_degree_name", None))))
         edges.append(GraphSceneEdge(
             id=f"qcls:mem:{i}", source=ids[i], target=qid, relation="instance_of",
             layer="structure", directed=True,
-            explanation=f"{t.chord_symbol} is an instance of the {quality} class.",
+            explanation=f"{t.chord_symbol} is an instance of the {q_word} class.",
             visual_class="membership"))
         if i < n - 1:
             edges.append(GraphSceneEdge(
@@ -858,7 +869,7 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
             entity_type=etype, mapping_status="exact", group_index=0, index_in_group=i,
             primary_node_id=ids[i], context_node_ids=(qid,), roman=t.roman,
             chord_symbol=t.chord_symbol, key_context=t.key, quality=t.chord_quality,
-            mapping_reason=f"exact {quality} triad {t.chord_symbol} ({t.roman} in {t.key})",
+            mapping_reason=f"exact {q_word} {noun} {t.chord_symbol} ({t.roman} in {t.key})",
             next_sequence_relation=("enumerate_next" if i < n - 1 else None),
             next_theory_relation=None,          # NEVER a theory edge: this is a classification
             next_relation_status=("sequence_only" if i < n - 1 else None),
@@ -867,7 +878,7 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
             detail={"keyContext": t.key, "roman": t.roman, "chordSymbol": t.chord_symbol,
                     "chordTones": list(t.pitches), "quality": t.chord_quality,
                     "intervalLayer": t.interval_layer, "broadFunction": "", "functionLabel": "",
-                    "whyBelongs": f"an instance of the {quality} triad class ({interval})",
+                    "whyBelongs": f"an instance of the {q_word} {noun} class ({interval})",
                     "relationToNext": "classification, not a progression",
                     "edgeType": "sequence only (enumeration)", "globalIndex": c.index,
                     **_role_detail(t.mode, t.degree_index, t.roman,
@@ -876,7 +887,7 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
     scene = GraphScene(
         scene_id=(scene_id or f"scene:triad_quality_class:{sid}"),
         scene_type="triad_quality_class", title=spec.title,
-        subtitle=f"{quality.title()} triads · {interval}", source_kind=source_kind, source_id=sid,
+        subtitle=f"{anchor_label} · {interval}", source_kind=source_kind, source_id=sid,
         pedagogical_goal=SCENE_GOAL["triad_quality_class"], semantic_scope="class",
         key_context=None, mode=mode, nodes=nodes, edges=edges, paths=[],
         occurrence_map=occurrences, layer_definitions=_layer_defs(edges, "triad_quality_class"),
