@@ -302,12 +302,14 @@ def _degree_roman(t) -> str:
 def _key_context_mode(mode: str) -> str:
     """The Atlas/Circle KEY-context mode of a drill.
 
-    A harmonic-minor drill still happens in the same minor *key* (the raised
-    7th is a scale form, not a new key signature), so its key-level claims
-    stay natural minor -- the Score Soul precedent: key context is claimed,
-    chord nodes only on an exact match.
+    A harmonic- or melodic-minor drill still happens in the same minor *key*
+    (the raised degrees are a scale form, not a new key signature), so its
+    key-level claims stay natural minor -- the Score Soul precedent: key
+    context is claimed, chord nodes only on an exact match.
     """
-    return "natural_minor" if mode == "harmonic_minor" else mode
+    if mode in ("harmonic_minor", "melodic_minor"):
+        return "natural_minor"
+    return mode
 
 
 def _natural_minor_twin(t) -> Optional["DiatonicTriad"]:
@@ -363,7 +365,9 @@ def _atlas_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
     """Atlas node ids a lab experiment highlights -- derived from its parameters."""
     mode = spec.mode
     tonic = spec.key.split()[0]
-    refs: List[str] = [scale_id(tonic, mode)]
+    # The Atlas has no melodic/harmonic-minor scale nodes: the KEY context is
+    # claimed on the natural-minor node (see _key_context_mode).
+    refs: List[str] = [scale_id(tonic, _key_context_mode(mode))]
     p = spec.parameters
     tokens: List[str] = []
     if spec.concept == "inversion":
@@ -411,8 +415,9 @@ def _circle_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
 
 def _circle_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
     mode = spec.mode
+    ctx_mode = _key_context_mode(mode)       # circle keys are major/natural only
     tonic = spec.key.split()[0]
-    refs = [_circle_ref_key(tonic, mode)]
+    refs = [_circle_ref_key(tonic, ctx_mode)]
     p = spec.parameters
     tokens: List[str] = []
     if spec.concept == "inversion":
@@ -426,7 +431,7 @@ def _circle_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
         from harmony.exercise_spec import DEFAULT_MAJOR_KEYS, DEFAULT_MINOR_KEYS
         keys = list(p.get("keys") or
                     (DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS))
-        refs.extend(_circle_ref_key(k, mode) for k in keys)
+        refs.extend(_circle_ref_key(k, ctx_mode) for k in keys)
     if tokens:
         for r in normalise_pattern(tokens):
             d = parse_seventh_token(r)
@@ -979,6 +984,74 @@ def _hm_ab_specs(pair_slug: str) -> List[HarmonyExerciseSpec]:
     return specs
 
 
+# ---------------------------------------------------------------------------
+# Melodic minor + III+ (ticket 14 / plan G2b)
+# ---------------------------------------------------------------------------
+#
+# Melodic minor ships as what it IS -- a direction-dependent melodic scale
+# form -- so its drills are motive cells (the Lab's melody render), never
+# chord drills: the ascent raises 6̂/7̂, the descent restores the naturals,
+# and the turn cell sounds both forms inside one bar.  III+ is the other half
+# of G2b: the first legitimate augmented-triad drill, a native quality drill
+# in harmonic minor (where III+ is genuinely diatonic).
+
+_MELODIC_MINOR_CELLS = [
+    ([1, 2, 3, 4, 5, 6, 7, 8], "ascent", "The ascent (1̂–8̂)",
+     "Climbing to the tonic, melodic minor raises 6̂ and 7̂ so the last three "
+     "steps run whole–whole–half, exactly like major — no augmented-second "
+     "gap"),
+    ([8, 7, 6, 5, 4, 3, 2, 1], "descent", "The descent (8̂–1̂)",
+     "Falling away from the tonic there is nothing to lead to, so both "
+     "accidentals dissolve: the descent is plain natural minor"),
+    ([5, 6, 7, 8, 7, 6, 5], "turn", "The turn (5̂–8̂–5̂)",
+     "One bar, both forms: raised 6̂/7̂ carry the line up to the tonic, and "
+     "the same degrees come back down natural"),
+]
+
+
+def _melodic_minor_motive_specs() -> List[LabExperimentSpec]:
+    """The ascent / descent / turn motive cells, each swept through the 12
+    minor keys (12 measures -- exactly the one-page cap)."""
+    specs = []
+    for degrees, slug, title, blurb in _MELODIC_MINOR_CELLS:
+        spec = LabExperimentSpec(
+            experiment_id=f"mminor_motive_{slug}",
+            title=f"Melodic minor — {title.lower()} across the minor keys",
+            concept="motive", mode="melodic_minor", key="A minor",
+            render="melody",
+            parameters={"degrees": list(degrees)},
+            description=f"{blurb}. Transposed through all 12 minor keys.",
+        )
+        spec.validate()
+        specs.append(spec)
+    return specs
+
+
+def _augmented_quality_specs() -> List[HarmonyExerciseSpec]:
+    """The III+ quality drill (plan G2b): every augmented diatonic triad
+    across the 12 harmonic-minor keys.
+
+    Mirrors ``_quality_specs``' chunking; one III+ per key means the full
+    12-key sweep fits a single one-page spec.
+    """
+    keys = DEFAULT_MINOR_KEYS
+    per_key = len(_triads_of_quality(keys[0], "harmonic_minor", "augmented"))
+    chunks = _chunk_keys(keys, per_key)
+    specs = []
+    for ci, chunk in enumerate(chunks, start=1):
+        keys_label = _keys_label(chunk, keys)
+        suffix = "" if len(chunks) == 1 else f" (set {ci})"
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"quality_augmented_in_harmonic_minor_{ci}",
+            title=f"Augmented triads (III+) across harmonic-minor keys{suffix}",
+            drill="quality", render="block", mode="harmonic_minor",
+            quality="augmented", keys=list(chunk),
+            description=(f"Every augmented diatonic triad — the III+ that "
+                         f"harmonic minor's raised 7̂ builds on the mediant — "
+                         f"across {keys_label}.")))
+    return specs
+
+
 def _tritone_resolution_spec(tonic: str) -> LabExperimentSpec:
     """The two-voice tritone frame of one major key (polyphonic experiment).
 
@@ -1347,7 +1420,7 @@ def build_curriculum() -> CurriculumNode:
                  "and on the staff.", 2,
                  keywords=["triad", "quality", "chord"])
     l_qual = lesson(chords, "triad_qualities", "Triad qualities",
-                    "Major, minor, diminished — and the reserved augmented.",
+                    "Major, minor, diminished — and harmonic minor's III+.",
                     "Sort diatonic triads by quality across the keys.", 2,
                     theory="Triad quality is the stacking of thirds: major = M3+m3, "
                            "minor = m3+M3, diminished = m3+m3, augmented = M3+M3.")
@@ -1360,13 +1433,20 @@ def build_curriculum() -> CurriculumNode:
     fill_native(group(l_qual, "triads_dim", "Diminished triads",
                       "Every diminished triad (the vii° / ii°) across the keys.", 3),
                 _by(quality_specs, quality="diminished"), 3)
-    # Augmented is non-diatonic — reserved until harmonic minor (III+) ships.
-    group_aug = group(l_qual, "triads_aug", "Augmented triads (reserved)",
-                      "Non-diatonic; appears with harmonic minor (III+).", 4)
-    group_aug.reserved = True
+    # Augmented arrived with harmonic minor's III+ (ticket 14 / plan G2b) —
+    # the group predicted it while reserved, and now owns the real drill.
+    group_aug = group(l_qual, "triads_aug", "Augmented triads (III+)",
+                      "Harmonic minor's raised 7̂ builds the first legitimate "
+                      "augmented triad.", 4)
     group_aug.theory = ("The augmented triad (M3+M3) is not diatonic to the major "
-                        "or natural-minor scale; it arrives with harmonic minor's "
-                        "III+ and is reserved for that future lesson.")
+                        "or natural-minor scale. It arrives with harmonic minor: "
+                        "raising the 7th degree stretches the mediant triad's top "
+                        "third, so degree 3 carries III+ — in A minor, C–E–G#. "
+                        "Its two identical major thirds make it the only triad "
+                        "quality with no perfect fifth to anchor the ear.")
+    group_aug.related = ["cat:harmonic_minor", "cat:melodic_minor",
+                         "lesson:interval_layers"]
+    fill_native(group_aug, _augmented_quality_specs(), 4)
 
     # ===================================================================
     # 3. DEGREES / TRANSPOSITION  (horizontal_degree: 28, block + arpeggio)
@@ -1637,7 +1717,7 @@ def build_curriculum() -> CurriculumNode:
                         "the same pull as V–I. The price of the raised 7̂ is "
                         "the augmented III+ mediant and an augmented-second "
                         "gap in the scale — melodic minor smooths that ascent "
-                        "(a later lesson).")
+                        "(the Melodic Minor category).")
     l_hm_ab = lesson(hminor, "hm_one_accidental",
                      "One accidental changes everything",
                      "The same cadence twice: ♭7 (modal), then ♮7 (tonal) — "
@@ -1706,6 +1786,49 @@ def build_curriculum() -> CurriculumNode:
     fill_native(group(l_hm_cad, "hm_i_iv_v_i", "i–iv–V–i",
                       "The full cadence, three keys per page.", 4),
                 _harmonic_minor_pattern_specs(*_HARMONIC_MINOR_PATTERNS[2]), 4)
+
+    # ===================================================================
+    # 6c. MELODIC MINOR  (ticket 14 / plan G2b — 3 leaves)
+    # ===================================================================
+    mminor = cat("melodic_minor", "Melodic Minor",
+                 "The two-way scale: raised on the way up, natural on the way "
+                 "down.",
+                 "Play the melodic-minor ascent and descent as motives in "
+                 "every minor key.", 4,
+                 keywords=["melodic minor", "raised sixth", "raised 6",
+                           "ascent", "descent", "scale form", "two-way"],
+                 theory="Harmonic minor buys its leading tone at a melodic "
+                        "price: an augmented-second gap between ♭6̂ and ♮7̂. "
+                        "Melodic minor smooths it by raising BOTH degrees on "
+                        "the way up — the ascent's last three steps run "
+                        "whole–whole–half, like major — and restoring the "
+                        "naturals on the way down, where nothing needs to "
+                        "lead. It is a scale FORM, not a new key: the "
+                        "signature stays the minor key's, every raised note "
+                        "is an accidental, and because the 6th and 7th "
+                        "degrees change with melodic direction it has no "
+                        "single diatonic chord set — chords stay with "
+                        "natural and harmonic minor, and melodic minor is "
+                        "drilled as what it is: a melody.")
+    l_mm = lesson(mminor, "mm_scale_forms", "Ascent and descent",
+                  "The same degrees, two spellings — direction decides.",
+                  "Hear and play melodic minor's raised ascent and natural "
+                  "descent in all 12 minor keys.", 4,
+                  theory="Sing the A melodic-minor ascent: A B C D E F♯ G♯ A "
+                         "— the raised 6̂ removes the augmented second, the "
+                         "raised 7̂ leads home. Now descend: A G♮ F♮ E D C B "
+                         "A — pure natural minor. The turn cell (5̂ up to 8̂ "
+                         "and back) sounds both forms inside one bar, which "
+                         "is why examiners love it: every accidental is "
+                         "earned by direction alone.",
+                  related=["cat:harmonic_minor", "group:triads_aug",
+                           "lesson:motive_transposition"],
+                  keywords=["ascending", "descending", "F#", "G#",
+                            "natural", "turn"])
+    fill_lab(group(l_mm, "mm_motives", "Ascent, descent and the turn",
+                   "Three motive cells across the 12 minor keys — the "
+                   "accidentals follow the direction.", 4),
+             _melodic_minor_motive_specs(), 4)
 
     # ===================================================================
     # 7. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
@@ -1917,18 +2040,16 @@ def build_curriculum() -> CurriculumNode:
     # ===================================================================
     advanced = cat("advanced", "Advanced Topics (reserved)",
                    "Where the curriculum grows next.",
-                   "Preview the reserved expansion: melodic minor, "
-                   "modal & jazz harmony, secondary dominants.", 5,
+                   "Preview the reserved expansion: modal & jazz harmony, "
+                   "secondary dominants.", 5,
                    kind="reserved", reserved=True,
                    theory="These topics are reserved. The data model already shapes "
                           "for them: a new LabExperimentSpec (or a new theory mode) "
                           "is all each one needs. (Seventh chords graduated with "
-                          "the V7 tracer; harmonic minor with ticket 13.)",
+                          "the V7 tracer; harmonic minor with ticket 13; melodic "
+                          "minor & III+ with ticket 14.)",
                    keywords=["advanced", "reserved", "future"])
     for i, (aid, title, blurb) in enumerate([
-        ("melodic_minor", "Melodic minor & III+",
-         "The ascending/descending scale forms and the first legitimate "
-         "augmented-triad drill."),
         ("modal", "Modal harmony",
          "Dorian, Phrygian, Lydian, Mixolydian colour."),
         ("jazz", "Jazz harmony",

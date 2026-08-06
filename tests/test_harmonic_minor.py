@@ -80,13 +80,21 @@ class TestHarmonicMinorSpecs(unittest.TestCase):
         with self.assertRaises(ValueError):
             _function_spec(["V7", "i"], ["A"], mode="natural_minor").validate()
 
-    def test_quality_drills_still_reserved_for_g2b(self):
+    def test_quality_drills_unreserved_by_g2b(self):
+        # Ticket 14 (plan G2b) lifted the reservation: the III+ / vii°7
+        # quality drills validate in harmonic minor (compile assertions live
+        # in tests/test_melodic_minor.py) and still refuse everywhere else.
         for quality in ("augmented", "diminished_seventh"):
             spec = HarmonyExerciseSpec(
                 exercise_id=f"t_hm_{quality}", title="t", drill="quality",
                 mode="harmonic_minor", quality=quality, keys=["A"])
-            with self.assertRaises(ValueError, msg=quality):
-                spec.validate()
+            spec.validate()   # must not raise
+            for mode in ("major", "natural_minor"):
+                bad = HarmonyExerciseSpec(
+                    exercise_id=f"t_{mode}_{quality}", title="t",
+                    drill="quality", mode=mode, quality=quality, keys=["C"])
+                with self.assertRaises(ValueError, msg=f"{quality}/{mode}"):
+                    bad.validate()
 
 
 class TestHarmonicMinorMcqPayload(unittest.TestCase):

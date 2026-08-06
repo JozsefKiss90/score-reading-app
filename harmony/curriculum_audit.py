@@ -54,8 +54,10 @@ _CATEGORIES = [
       "tests/test_harmony_musicxml.py"],
      "48 full-key drills (12 major + 12 minor, block + arpeggio)."),
     ("chords", "Chords / Triad quality", ["cat:chords"],
-     ["tests/test_curriculum.py", "tests/test_harmony_atlas.py"],
-     "Major / minor / diminished quality drills (augmented reserved)."),
+     ["tests/test_curriculum.py", "tests/test_harmony_atlas.py",
+      "tests/test_melodic_minor.py"],
+     "Major / minor / diminished quality drills, plus the III+ augmented "
+     "drill in harmonic minor (ticket 14 / plan G2b)."),
     ("degrees", "Degrees & Transposition", ["cat:degrees"],
      ["tests/test_curriculum.py", "tests/test_harmony_exercise.py"],
      "Each degree across all 12 keys, both modes, block + arpeggio (28)."),
@@ -76,6 +78,10 @@ _CATEGORIES = [
      ["tests/test_harmonic_minor.py", "tests/test_curriculum.py"],
      "A real V in minor (ticket 13 / plan G2a): the A/B one-accidental lesson "
      "plus V–i, vii°–i and i–iv–V–i across all 12 minor keys (12 leaves)."),
+    ("melodic_minor", "Melodic Minor", ["cat:melodic_minor"],
+     ["tests/test_melodic_minor.py", "tests/test_curriculum.py"],
+     "The two-way scale form (ticket 14 / plan G2b): ascent, descent and "
+     "turn motive cells across the 12 minor keys (3 leaves)."),
     ("intervals", "Intervals & Interval Layers", ["cat:intervals"],
      ["tests/test_harmony_atlas.py"],
      "Theory + cross-links to quality groups (owns no exercise by design)."),
@@ -95,9 +101,9 @@ _CATEGORIES = [
      "Bridge categories opening the Atlas / Circle (reserved leaves)."),
     ("reserved", "Reserved topics", ["cat:advanced", "cat:reserved"],
      ["tests/test_curriculum.py"],
-     "Melodic minor, modal, jazz, secondary dominants, real-score analysis, "
-     "reduction (all reserved; seventh chords went live with G1a, harmonic "
-     "minor with G2a)."),
+     "Modal, jazz, secondary dominants, real-score analysis, reduction (all "
+     "reserved; seventh chords went live with G1a, harmonic minor with G2a, "
+     "melodic minor & III+ with G2b)."),
 ]
 
 

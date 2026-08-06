@@ -520,7 +520,8 @@
       }
     }
     var modeWord = t.mode === "natural_minor" ? "natural minor"
-      : t.mode === "harmonic_minor" ? "harmonic minor" : "major";
+      : t.mode === "harmonic_minor" ? "harmonic minor"
+      : t.mode === "melodic_minor" ? "melodic minor" : "major";
     add("Key", (t.key || "") + " (" + modeWord + ")");
     // Echo listen phase (ticket 07): the trainer redacts the target, so the
     // guide names only the key and says why the rest is hidden.

@@ -17,11 +17,16 @@ Scope
   diminished ``vii°7`` (and shares ``iiø7``/``iv7``/``V7``/``VImaj7``); its
   tonic and mediant tetrads (minor-major / augmented-major sevenths) have no
   supported quality and therefore no token.
-* No melodic minor, secondary dominants, or cadences yet -- but the
-  data model is designed so those extend without refactoring: quality (and
-  therefore Roman-numeral case, chord symbol, and function) is always
-  *derived* from the actual interval content, never hard-coded per mode.
-  A future ``melodic_minor`` mode only needs a new scale-step pattern.
+* Melodic minor (ticket 14 / plan G2b) is a *scale form*, not a harmony
+  mode: :func:`generate_scale` builds its ascending form (raised 6th and
+  7th), the descending form IS natural minor, and the direction-dependent
+  choice per melody note is :func:`melodic_minor_raised`.  Chord generation
+  refuses the mode -- a two-way scale has no single honest diatonic chord
+  set (drills use natural or harmonic minor for harmony).
+* No secondary dominants or cadences yet -- but the data model is designed
+  so those extend without refactoring: quality (and therefore Roman-numeral
+  case, chord symbol, and function) is always *derived* from the actual
+  interval content, never hard-coded per mode.
 
 Chord interval layers (the canonical table)
 -------------------------------------------
@@ -57,7 +62,8 @@ from typing import List, Optional
 try:  # Python 3.8+ has Literal in typing
     from typing import Literal
 
-    Mode = Literal["major", "natural_minor", "harmonic_minor"]
+    Mode = Literal["major", "natural_minor", "harmonic_minor",
+                   "melodic_minor"]
 except Exception:  # pragma: no cover - defensive only
     Mode = str  # type: ignore
 
@@ -67,6 +73,7 @@ __all__ = [
     "DiatonicTriad",
     "TriadAnalysis",
     "generate_scale",
+    "melodic_minor_raised",
     "generate_diatonic_triads",
     "generate_diatonic_sevenths",
     "build_seventh_chord",
@@ -97,11 +104,15 @@ LETTER_BASE_PC = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11]
 NATURAL_MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10]
 HARMONIC_MINOR_STEPS = [0, 2, 3, 5, 7, 8, 11]  # natural minor + raised 7th
+#: Melodic minor's ASCENDING form (raised 6th and 7th); its descending form
+#: is natural minor -- the per-note choice is :func:`melodic_minor_raised`.
+MELODIC_MINOR_STEPS = [0, 2, 3, 5, 7, 9, 11]
 
 _MODE_STEPS = {
     "major": MAJOR_STEPS,
     "natural_minor": NATURAL_MINOR_STEPS,
     "harmonic_minor": HARMONIC_MINOR_STEPS,
+    "melodic_minor": MELODIC_MINOR_STEPS,
 }
 
 #: How a key tonic letter maps onto the circle of fifths (count of sharps,
@@ -421,10 +432,11 @@ def parse_key(key: str) -> "tuple[str, Optional[str]]":
     """Split a key string into ``(tonic, mode_or_None)``.
 
     Accepts ``"C"``, ``"Eb"``, ``"C major"``, ``"A minor"``,
-    ``"A natural minor"``, ``"A harmonic minor"``.  The mode (when present) is
-    returned canonicalised to ``"major"`` / ``"natural_minor"`` /
-    ``"harmonic_minor"``; otherwise ``None``.  A plain ``"minor"`` stays
-    natural minor -- the raised leading tone is opted into, never implied.
+    ``"A natural minor"``, ``"A harmonic minor"``, ``"A melodic minor"``.
+    The mode (when present) is returned canonicalised to ``"major"`` /
+    ``"natural_minor"`` / ``"harmonic_minor"`` / ``"melodic_minor"``;
+    otherwise ``None``.  A plain ``"minor"`` stays natural minor -- a raised
+    degree is opted into, never implied.
     """
     m = _TONIC_RE.match(key or "")
     if not m:
@@ -435,6 +447,8 @@ def parse_key(key: str) -> "tuple[str, Optional[str]]":
     if rest:
         if "harmonic" in rest and "minor" in rest:
             mode = "harmonic_minor"
+        elif "melodic" in rest and "minor" in rest:
+            mode = "melodic_minor"
         elif "minor" in rest:
             mode = "natural_minor"
         elif "major" in rest:
@@ -450,9 +464,11 @@ def _canon_mode(mode: str) -> str:
         return "natural_minor"
     if m in ("harmonic_minor", "harmonic"):
         return "harmonic_minor"
+    if m in ("melodic_minor", "melodic"):
+        return "melodic_minor"
     raise ValueError(
-        f"Unsupported mode: {mode!r} (use 'major', 'natural_minor' or "
-        f"'harmonic_minor')")
+        f"Unsupported mode: {mode!r} (use 'major', 'natural_minor', "
+        f"'harmonic_minor' or 'melodic_minor')")
 
 
 def _mode_word(mode: str) -> str:
@@ -530,6 +546,34 @@ def generate_scale(key: str, mode: str) -> Scale:
         midi_pitches=midis,
         fifths=fifths,
     )
+
+
+def melodic_minor_raised(degrees: List[int]) -> List[bool]:
+    """Which notes of a melodic cell take melodic minor's RAISED form.
+
+    ``degrees`` are 1-based scale degrees (values past 7 fold by octave, as in
+    the motive lab).  Only 6th- and 7th-degree notes can be raised, and the
+    choice follows the scale form's direction rule: raised while the line
+    ascends, natural while it descends.  Direction is read from the next
+    differing degree; a final (or trailing-repeat) note continues its
+    direction of arrival, and a cell with no motion at all stays natural --
+    natural minor is the rest form, the raise is always earned by an ascent.
+    """
+    ds = [int(d) for d in degrees]
+    out: List[bool] = []
+    for i, d in enumerate(ds):
+        if (d - 1) % 7 not in (5, 6):        # not a 6th/7th degree
+            out.append(False)
+            continue
+        nxt = next((x for x in ds[i + 1:] if x != d), None)
+        prv = next((x for x in reversed(ds[:i]) if x != d), None)
+        if nxt is not None:
+            out.append(nxt > d)
+        elif prv is not None:
+            out.append(prv < d)
+        else:
+            out.append(False)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -640,9 +684,29 @@ def _build_triad(scale: Scale, i: int) -> DiatonicTriad:
     )
 
 
+def _refuse_melodic_minor_harmony(mode: str) -> str:
+    """Canonicalise ``mode``, refusing melodic minor for chord generation.
+
+    Melodic minor is a direction-dependent *scale form* (raised 6th/7th
+    ascending, natural descending), so no single set of seven diatonic chords
+    is honest -- picking the ascending form would claim chords (II, IV, vi°)
+    this curriculum does not teach, and the descending form is simply natural
+    minor.  Chord drills use ``natural_minor`` or ``harmonic_minor``; melodic
+    minor is drilled melodically (the motive lab).
+    """
+    mode = _canon_mode(mode)
+    if mode == "melodic_minor":
+        raise ValueError(
+            "melodic minor has no single diatonic chord set (its 6th and 7th "
+            "degrees change with melodic direction); build chords in "
+            "'natural_minor' or 'harmonic_minor', and drill melodic minor as "
+            "a melody (the ascent/descent motive drill).")
+    return mode
+
+
 def generate_diatonic_triads(key: str, mode: str) -> List[DiatonicTriad]:
     """All seven diatonic triads of ``key``/``mode`` (degrees I..vii)."""
-    scale = generate_scale(key, mode)
+    scale = generate_scale(key, _refuse_melodic_minor_harmony(mode))
     return [_build_triad(scale, i) for i in range(7)]
 
 
@@ -719,7 +783,7 @@ def _build_tetrad(scale: Scale, i: int) -> DiatonicTriad:
 
 def generate_diatonic_sevenths(key: str, mode: str) -> List[DiatonicTriad]:
     """All seven diatonic seventh chords of ``key``/``mode`` (1-3-5-7 stacks)."""
-    mode = _canon_mode(mode)
+    mode = _refuse_melodic_minor_harmony(mode)
     scale = generate_scale(key, mode)
     return [_build_tetrad(scale, i) for i in range(7)]
 

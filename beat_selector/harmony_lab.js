@@ -110,7 +110,8 @@
       }
     }
     var modeWord = t.mode === "natural_minor" ? "natural minor"
-      : t.mode === "harmonic_minor" ? "harmonic minor" : "major";
+      : t.mode === "harmonic_minor" ? "harmonic minor"
+      : t.mode === "melodic_minor" ? "melodic minor" : "major";
     add("Key", (t.key || "") + " (" + modeWord + ")");
     if (t.concept === "melody") {
       add("Motive", t.motiveLabel);

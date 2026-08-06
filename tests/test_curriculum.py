@@ -113,10 +113,13 @@ class TestCoverage(unittest.TestCase):
                                  sum(c.exercise_count for c in n.children), n.id)
 
     def test_native_partition_counts(self):
-        # Scales(48) + Chords(7) + Degrees(28) + Functions(19) = 102 native
+        # Scales(48) + Chords(7) + Degrees(28) + Functions(19) = 102 native.
+        # Chords additionally owns the III+ quality drill (ticket 14 / plan
+        # G2b) — a curriculum-authored native spec OUTSIDE the load-bearing
+        # 102 default drills, like the harmonic-minor drills of ticket 13.
         by_title = {c.title: c.exercise_count for c in self.root.children}
         self.assertEqual(by_title["Scales"], 48)
-        self.assertEqual(by_title["Chords (Triads)"], 7)
+        self.assertEqual(by_title["Chords (Triads)"], 7 + 1)
         self.assertEqual(by_title["Degrees & Transposition"], 28)
         self.assertEqual(by_title["Functions"], 19)
 

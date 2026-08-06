@@ -58,9 +58,10 @@ _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
 #: Seventh-chord qualities the quality drill accepts (ticket 10 / plan G1b),
 #: derived from the theory module's canonical label table so the two can
-#: never drift.  ``diminished_seventh`` is refused at validation: harmonic
-#: minor's vii°7 exists in the engine (ticket 13), but the °7 quality drill
-#: is un-reserved by plan G2b.
+#: never drift.  ``diminished_seventh`` (like ``augmented``) is diatonic to
+#: harmonic minor only -- validate() enforces the mode (ticket 14 / plan
+#: G2b): vii°7 / III+ compile for real there, and refuse elsewhere, where
+#: they would compile to zero chords.
 _SEVENTH_QUALITIES = frozenset(SEVENTH_QUALITY_LABELS)
 _VALID_QUALITY = {"major", "minor", "diminished", "augmented"} | _SEVENTH_QUALITIES
 #: How the learner answers a drill (plan U2, ticket 06).  ``midi`` is the
@@ -187,6 +188,17 @@ class HarmonyExerciseSpec:
                 "mcq_focus is an mcq-only knob: set answer_mode='mcq' or "
                 "leave mcq_focus at its default")
         self.mode = _canon_mode(self.mode)
+        if self.mode == "melodic_minor":
+            # A trainer drill is a CHORD drill, and melodic minor has no
+            # single honest chord set (its 6th/7th degrees change with
+            # melodic direction).  The melodic-minor material is the Lab's
+            # ascent/descent motive drill (ticket 14 / plan G2b).
+            raise ValueError(
+                "mode='melodic_minor' is not a chord-drill mode: the scale's "
+                "6th/7th degrees depend on melodic direction, so no chord "
+                "set is honest. Use natural_minor or harmonic_minor for "
+                "chord drills; melodic minor is drilled as a melody (the "
+                "Lab's ascent/descent motive drill).")
         if self.drill == "horizontal_degree":
             if not self.degree:
                 raise ValueError("horizontal_degree drill requires 'degree'")
@@ -203,33 +215,26 @@ class HarmonyExerciseSpec:
                 raise ValueError("quality drill requires 'quality'")
             if self.quality not in _VALID_QUALITY:
                 raise ValueError(f"Unknown quality {self.quality!r}")
-            if self.quality == "augmented":
-                if self.mode == "harmonic_minor":
-                    raise ValueError(
-                        "quality='augmented' is not drillable yet: harmonic "
-                        "minor's III+ exists in the engine (ticket 13), but "
-                        "the augmented quality drill is un-reserved by plan "
-                        "G2b (melodic minor + III+).")
+            # The raised-leading-tone qualities (ticket 14 / plan G2b): III+
+            # and vii°7 are diatonic to harmonic minor ONLY -- anywhere else
+            # the drill would compile to zero chords and the score builder
+            # would fail (plan F5).
+            if self.quality == "augmented" and self.mode != "harmonic_minor":
                 raise ValueError(
-                    "quality='augmented' is not drillable yet: no augmented "
-                    "triad is diatonic to major or natural minor, so the "
-                    "drill would compile to zero chords and the score "
-                    "builder would fail. Augmented drills arrive with "
-                    "harmonic minor's III+.")
-            if self.quality == "diminished_seventh":
-                if self.mode == "harmonic_minor":
-                    raise ValueError(
-                        "quality='diminished_seventh' is not drillable yet: "
-                        "harmonic minor's vii°7 exists in the engine (ticket "
-                        "13; pattern drills may use the 'vii°7' token), but "
-                        "the °7 quality drill is un-reserved by plan G2b.")
+                    "quality='augmented' requires mode='harmonic_minor': no "
+                    "augmented triad is diatonic to major or natural minor, "
+                    "so the drill would compile to zero chords. Harmonic "
+                    "minor's raised 7th builds the III+ this drill "
+                    "practises.")
+            if (self.quality == "diminished_seventh"
+                    and self.mode != "harmonic_minor"):
                 raise ValueError(
-                    "quality='diminished_seventh' is not drillable yet: no "
-                    "fully diminished seventh is diatonic to major or "
-                    "natural minor (viiø7 / iiø7 are HALF-diminished), so "
-                    "the drill would compile to zero chords. The °7 needs "
-                    "harmonic minor's raised leading tone "
-                    "(mode 'harmonic_minor').")
+                    "quality='diminished_seventh' requires "
+                    "mode='harmonic_minor': no fully diminished seventh is "
+                    "diatonic to major or natural minor (viiø7 / iiø7 are "
+                    "HALF-diminished), so the drill would compile to zero "
+                    "chords. Harmonic minor's raised leading tone builds "
+                    "the vii°7 this drill practises.")
         if self.drill == "function":
             if not self.pattern:
                 raise ValueError("function drill requires 'pattern'")

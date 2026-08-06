@@ -263,7 +263,8 @@ _DRILL_THEORY = {
         "and harmonic function stay put — that invariance is the point."),
     "quality": (
         "Triad quality is the order of two stacked thirds: major = M3+m3, "
-        "minor = m3+M3, diminished = m3+m3. A quality drill collects every triad "
+        "minor = m3+M3, diminished = m3+m3, augmented = M3+M3 (diatonic only "
+        "as harmonic minor's III+). A quality drill collects every triad "
         "of one quality so the ear learns the colour independent of key."),
     # Generated from the shared two-level vocabulary (ticket 01 / plan F1).
     "function": function_families_prose("major"),
@@ -365,6 +366,10 @@ _CATEGORY_OBJECTIVES = {
     "cat:harmonic_minor": {
         "audio": "Hear the raised leading tone turn a modal close tonal.",
         "visual": "Spot the one accidental (♮7) that makes V major."},
+    "cat:melodic_minor": {
+        "audio": "Hear the raised ascent relax into the natural descent.",
+        "visual": "Watch the 6̂/7̂ accidentals appear going up and vanish "
+                  "coming down."},
     "cat:motives": {"audio": "Recognise a motive transposed to a new key.",
                     "visual": "See the same contour re-spelled."},
     "cat:polyphony": {"audio": "Hear two lines imply a chord progression.",

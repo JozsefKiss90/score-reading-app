@@ -129,7 +129,9 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | V7 figured bass (ticket 11 / G1c): figured-bass inversions (7 · 6/5 · 4/3 · 4/2, 12 keys) + resolution walks (V6/5→I, V4/3→I, V4/2→I6, 12 keys) | 24 | Seventh Chords |
 | bass-line dictation (ticket 11 / A1 level 5): roots + ii6 + V7-figure bass lines × C/G/Eb, ear-first (`dictation: "bass"`) | 9 | Inversions › Bass-line dictation |
 | harmonic minor (ticket 13 / G2a): A/B one-accidental pairs (v–i vs V–i, i–iv–v–i vs i–iv–V–i in A minor) + V–i (2 chunked) + vii°–i (2 chunked) + i–iv–V–i (4 chunked) across the 12 minor keys | 12 | Harmonic Minor |
-| **grand total** | **308 exercise leaves** | (~390 nodes total) |
+| III+ quality drill (ticket 14 / G2b): every augmented diatonic triad across the 12 harmonic-minor keys (un-reserves `group:triads_aug`) | 1 | Chords (Triads) › Triad qualities › Augmented triads (III+) |
+| melodic minor (ticket 14 / G2b): ascent / descent / turn motive cells (`mode="melodic_minor"`, motive-only) across the 12 minor keys | 3 | Melodic Minor |
+| **grand total** | **312 exercise leaves** | (~395 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

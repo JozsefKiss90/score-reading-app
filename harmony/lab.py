@@ -44,6 +44,7 @@ from theory.diatonic_harmony import (
     build_seventh_chord,
     generate_diatonic_triads,
     generate_scale,
+    melodic_minor_raised,
     transpose_degree_pattern,
     roman_token_to_index,
     parse_seventh_token,
@@ -577,15 +578,26 @@ def _gen_motive(spec: LabExperimentSpec) -> List[LabMeasure]:
     motive_label = "–".join(_CARET.get(d, f"^{d}") for d in degrees)
     degree_label_tuple = tuple(_CARET.get(d, f"^{d}") for d in degrees)
 
+    # Melodic minor (ticket 14 / plan G2b) is the direction-dependent scale
+    # form: each 6th/7th-degree note takes the ASCENDING (raised) form or the
+    # natural form per melodic_minor_raised.  The measure's key context stays
+    # natural minor (same rule as harmonic minor: raised notes are per-note
+    # accidentals, never a new key), so `scale` below is the natural form and
+    # only raised notes read from the ascending form.
+    directional = (mode == "melodic_minor")
+    raised = melodic_minor_raised(degrees) if directional else [False] * n
+    mode_keys_word = "melodic minor" if directional else _mode_word(mode)
+
     measures: List[LabMeasure] = []
     for k, key in enumerate(keys):
-        scale = generate_scale(key, mode)
+        scale = generate_scale(key, "natural_minor" if directional else mode)
+        ascending = generate_scale(key, mode) if directional else scale
         tonic = scale.tonic
         notes: List[LabNote] = []
         pcs: List[int] = []
         spelled: List[str] = []
-        for d in degrees:
-            step, alter, octave = _scale_note(scale, d)
+        for d, r in zip(degrees, raised):
+            step, alter, octave = _scale_note(ascending if r else scale, d)
             notes.append(LabNote(step, alter, octave, dtype))
             pcs.append((_midi(step, alter, octave)) % 12)
             spelled.append(f"{step}{_alter_str(alter)}{octave}")
@@ -594,16 +606,19 @@ def _gen_motive(spec: LabExperimentSpec) -> List[LabMeasure]:
 
         expected = {i + 1: [pc] for i, pc in enumerate(pcs)}
         lab_note = (f"Motive {motive_label} in {scale.key}: {'–'.join(spelled)}.")
+        if directional:
+            lab_note += (" Melodic minor: 6th and 7th raised on the way up, "
+                         "natural on the way down.")
         ann = LabAnnotation(
             key=scale.key, mode=mode, roman=motive_label, chord_tones=(),
             scale_degree_name="motive", degree_number=degrees[0],
             explanation=lab_note, motive_label=motive_label,
             degree_labels=degree_label_tuple, lab_note=lab_note,
-            atlas_scale_id=scale_id(tonic, mode),
+            atlas_scale_id=scale_id(tonic, scale.mode),
         )
         measures.append(LabMeasure(
             index=k, render="melody",
-            group=f"Motive {motive_label} across {_mode_word(mode)} keys",
+            group=f"Motive {motive_label} across {mode_keys_word} keys",
             key_display=scale.key, tonic=tonic, mode=mode, fifths=scale.fifths,
             scale_pitches=tuple(scale.scale_pitches),
             staff1=tuple(notes),

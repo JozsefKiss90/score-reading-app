@@ -94,7 +94,9 @@ CONCEPTS = {
 #: draws two independent voices; ``melody`` draws a single melodic line.
 RENDERS = {"block", "arpeggio", "voice_leading", "polyphonic", "melody"}
 
-MODES = {"major", "natural_minor", "harmonic_minor"}
+#: ``melodic_minor`` is motive-only (ticket 14 / plan G2b): the two-way scale
+#: form is drilled as a melody; every chordal concept refuses it (validate).
+MODES = {"major", "natural_minor", "harmonic_minor", "melodic_minor"}
 
 #: Which render styles are legal for each concept (``validate`` enforces).
 _CONCEPT_RENDERS = {
@@ -352,6 +354,13 @@ class LabExperimentSpec:
         if self.concept not in CONCEPTS:
             raise ValueError(f"Unknown concept {self.concept!r}; expected {CONCEPTS}")
         self.mode = _canon_mode(self.mode)
+        if self.mode == "melodic_minor" and self.concept != "motive":
+            raise ValueError(
+                "mode='melodic_minor' is motive-only: the scale form is "
+                "direction-dependent (raised 6th/7th ascending, natural "
+                "descending), so it has no honest chord set. Chordal "
+                "concepts use natural_minor or harmonic_minor; melodic "
+                "minor is drilled by the ascent/descent motive lab.")
         if self.render not in RENDERS:
             raise ValueError(f"Unknown render {self.render!r}; expected {RENDERS}")
         if self.render not in _CONCEPT_RENDERS[self.concept]:
