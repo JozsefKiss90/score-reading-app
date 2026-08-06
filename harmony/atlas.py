@@ -151,7 +151,11 @@ def _mode_short(mode: str) -> str:
 
 
 def _mode_long(mode: str) -> str:
-    return "major" if mode == "major" else "natural minor"
+    if mode == "major":
+        return "major"
+    if mode == "harmonic_minor":
+        return "harmonic minor"
+    return "natural minor"
 
 
 def _keys_for(mode: str) -> List[str]:

@@ -6,18 +6,22 @@ display, MIDI device, Verovio, or Qt.
 
 Scope
 -----
-* Major and natural-minor diatonic triads, root position.
+* Major, natural-minor and harmonic-minor diatonic triads, root position.
+  Harmonic minor (ticket 13 / plan G2a) raises the 7th degree, giving minor
+  keys a real major ``V``, a leading-tone ``vii°`` -- and the first
+  ``III+`` augmented triad (drilled later, plan G2b).
 * Every diatonic seventh chord of the supported modes (ticket 10 / plan G1b):
   :data:`SEVENTH_DEGREE_TOKENS` is the full vocabulary — one token per degree
   per mode, spelled exactly as the engine builds it (``Imaj7``, ``ii7``,
-  ``viiø7``; minor's ``i7`` … ``VII7``).  The fully diminished seventh (°7) is
-  *classified* but never built: no diatonic scale here contains one (it
-  arrives with harmonic minor, plan G2).
-* No harmonic/melodic minor, secondary dominants, or cadences yet -- but the
+  ``viiø7``; minor's ``i7`` … ``VII7``).  Harmonic minor adds the fully
+  diminished ``vii°7`` (and shares ``iiø7``/``iv7``/``V7``/``VImaj7``); its
+  tonic and mediant tetrads (minor-major / augmented-major sevenths) have no
+  supported quality and therefore no token.
+* No melodic minor, secondary dominants, or cadences yet -- but the
   data model is designed so those extend without refactoring: quality (and
   therefore Roman-numeral case, chord symbol, and function) is always
   *derived* from the actual interval content, never hard-coded per mode.
-  A future ``harmonic_minor`` mode only needs a new scale-step pattern.
+  A future ``melodic_minor`` mode only needs a new scale-step pattern.
 
 Chord interval layers (the canonical table)
 -------------------------------------------
@@ -53,7 +57,7 @@ from typing import List, Optional
 try:  # Python 3.8+ has Literal in typing
     from typing import Literal
 
-    Mode = Literal["major", "natural_minor"]
+    Mode = Literal["major", "natural_minor", "harmonic_minor"]
 except Exception:  # pragma: no cover - defensive only
     Mode = str  # type: ignore
 
@@ -92,10 +96,12 @@ LETTER_BASE_PC = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 #: Semitone offsets from the tonic for each supported mode.
 MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11]
 NATURAL_MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10]
+HARMONIC_MINOR_STEPS = [0, 2, 3, 5, 7, 8, 11]  # natural minor + raised 7th
 
 _MODE_STEPS = {
     "major": MAJOR_STEPS,
     "natural_minor": NATURAL_MINOR_STEPS,
+    "harmonic_minor": HARMONIC_MINOR_STEPS,
 }
 
 #: How a key tonic letter maps onto the circle of fifths (count of sharps,
@@ -115,6 +121,11 @@ _DEGREE_NAMES_MINOR = [
     "tonic", "supertonic", "mediant", "subdominant",
     "dominant", "submediant", "subtonic",
 ]
+#: Harmonic minor's raised 7th is a true leading tone, not a subtonic.
+_DEGREE_NAMES_HARMONIC_MINOR = [
+    "tonic", "supertonic", "mediant", "subdominant",
+    "dominant", "submediant", "leading-tone",
+]
 
 #: Broad harmonic-function category per scale degree, following the trainer's
 #: pedagogical contract (Tonic / Predominant / Subdominant / Dominant groups).
@@ -126,6 +137,12 @@ _FUNCTION_LABELS_MAJOR = [
 ]
 _FUNCTION_LABELS_MINOR = [
     "tonic", "predominant", "tonic", "subdominant",
+    "dominant", "tonic", "dominant",
+]
+#: Harmonic minor: III+ (augmented) cannot claim natural minor's relative-major
+#: tonic grouping -- it is labelled the mediant, as in major.
+_FUNCTION_LABELS_HARMONIC_MINOR = [
+    "tonic", "predominant", "mediant", "subdominant",
     "dominant", "tonic", "dominant",
 ]
 
@@ -156,8 +173,10 @@ _QUALITY_SYMBOL_SUFFIX = {
 }
 
 #: Tetrad quality from the three stacked thirds (in semitones).  All five
-#: seventh qualities are classified; the fully diminished (3,3,3) never occurs
-#: diatonically in the supported modes — it arrives with harmonic minor (G2).
+#: seventh qualities are classified; the fully diminished (3,3,3) occurs
+#: diatonically only in harmonic minor (vii°7).  Harmonic minor's tonic and
+#: mediant tetrads (minor-major / augmented-major sevenths) are deliberately
+#: absent: callers refuse ``"unknown"`` rather than mislabel them.
 _TETRAD_QUALITIES = {
     (4, 3, 3): "dominant_seventh",
     (4, 3, 4): "major_seventh",
@@ -181,9 +200,9 @@ _TETRAD_ROMAN_SUFFIX = {
 
 #: Short pedagogical quality labels (third-stack shorthand: triad quality +
 #: seventh quality).  This is the MCQ option vocabulary of the hear-a-seventh
-#: quality-ID drills (ticket 10): °7 appears as an option even though no
-#: supported scale can sound it yet — a distractor, honestly never the answer
-#: until harmonic minor ships.
+#: quality-ID drills (ticket 10): in the major/natural-minor drills °7 is a
+#: distractor, but harmonic minor (ticket 13) can now genuinely sound it
+#: (vii°7).
 SEVENTH_QUALITY_LABELS = {
     "dominant_seventh": "Mm7",
     "minor_seventh": "mm7",
@@ -208,6 +227,11 @@ SEVENTH_DEGREE_TOKENS = {
     # natural minor
     "i7": 0, "iiø7": 1, "IIImaj7": 2, "iv7": 3, "v7": 4, "VImaj7": 5,
     "VII7": 6,
+    # harmonic minor adds the fully diminished leading-tone seventh; its other
+    # buildable tetrads (iiø7 / iv7 / V7 / VImaj7) already appear above with
+    # the same degree numbers -- the roman-match gate in
+    # :func:`build_seventh_chord` does the per-mode filtering.
+    "vii°7": 6,
 }
 
 
@@ -397,8 +421,10 @@ def parse_key(key: str) -> "tuple[str, Optional[str]]":
     """Split a key string into ``(tonic, mode_or_None)``.
 
     Accepts ``"C"``, ``"Eb"``, ``"C major"``, ``"A minor"``,
-    ``"A natural minor"``.  The mode (when present) is returned canonicalised to
-    ``"major"`` / ``"natural_minor"``; otherwise ``None``.
+    ``"A natural minor"``, ``"A harmonic minor"``.  The mode (when present) is
+    returned canonicalised to ``"major"`` / ``"natural_minor"`` /
+    ``"harmonic_minor"``; otherwise ``None``.  A plain ``"minor"`` stays
+    natural minor -- the raised leading tone is opted into, never implied.
     """
     m = _TONIC_RE.match(key or "")
     if not m:
@@ -407,7 +433,9 @@ def parse_key(key: str) -> "tuple[str, Optional[str]]":
     rest = (m.group(3) or "").strip().lower()
     mode: Optional[str] = None
     if rest:
-        if "minor" in rest:
+        if "harmonic" in rest and "minor" in rest:
+            mode = "harmonic_minor"
+        elif "minor" in rest:
             mode = "natural_minor"
         elif "major" in rest:
             mode = "major"
@@ -420,12 +448,34 @@ def _canon_mode(mode: str) -> str:
         return "major"
     if m in ("natural_minor", "minor", "min", "aeolian", "natural"):
         return "natural_minor"
-    raise ValueError(f"Unsupported mode: {mode!r} (use 'major' or 'natural_minor')")
+    if m in ("harmonic_minor", "harmonic"):
+        return "harmonic_minor"
+    raise ValueError(
+        f"Unsupported mode: {mode!r} (use 'major', 'natural_minor' or "
+        f"'harmonic_minor')")
 
 
 def _mode_word(mode: str) -> str:
-    """Short label used in key strings: major -> 'major', minor -> 'minor'."""
+    """Short label used in key strings: major -> 'major', minor -> 'minor'.
+
+    Both minors share ``"minor"``: the *key* of a harmonic-minor drill is
+    still "A minor"; the raised leading tone is a scale form, not a new key.
+    """
     return "major" if mode == "major" else "minor"
+
+
+def _mode_label(mode: str) -> str:
+    """Long prose label: 'major' / 'natural minor' / 'harmonic minor'."""
+    return "major" if mode == "major" else mode.replace("_", " ")
+
+
+def _mode_tables(mode: str) -> "tuple[List[str], List[str]]":
+    """``(function_labels, degree_names)`` for a canonical mode."""
+    if mode == "major":
+        return _FUNCTION_LABELS_MAJOR, _DEGREE_NAMES_MAJOR
+    if mode == "harmonic_minor":
+        return _FUNCTION_LABELS_HARMONIC_MINOR, _DEGREE_NAMES_HARMONIC_MINOR
+    return _FUNCTION_LABELS_MINOR, _DEGREE_NAMES_MINOR
 
 
 def key_signature_fifths(key: str, mode: str) -> int:
@@ -557,16 +607,13 @@ def _build_triad(scale: Scale, i: int) -> DiatonicTriad:
 
     chord_symbol = root + _QUALITY_SYMBOL_SUFFIX.get(quality, "")
 
-    if scale.mode == "major":
-        function_label = _FUNCTION_LABELS_MAJOR[i]
-        degree_name = _DEGREE_NAMES_MAJOR[i]
-    else:
-        function_label = _FUNCTION_LABELS_MINOR[i]
-        degree_name = _DEGREE_NAMES_MINOR[i]
+    function_labels, degree_names = _mode_tables(scale.mode)
+    function_label = function_labels[i]
+    degree_name = degree_names[i]
 
     midis = _triad_voicing_midi(root, third, fifth)
 
-    mode_label = "major" if scale.mode == "major" else "natural minor"
+    mode_label = _mode_label(scale.mode)
     explanation = (
         f"In {scale.key}, {root} is scale degree {i + 1} ({degree_name}). "
         f"Stacking diatonic thirds (1–3–5) from {root} in the "
@@ -631,14 +678,11 @@ def _build_tetrad(scale: Scale, i: int) -> DiatonicTriad:
     root, third, fifth, seventh = tones
     chord_symbol = root + _QUALITY_SYMBOL_SUFFIX.get(quality, "7")
 
-    if scale.mode == "major":
-        function_label = _FUNCTION_LABELS_MAJOR[i]
-        degree_name = _DEGREE_NAMES_MAJOR[i]
-    else:
-        function_label = _FUNCTION_LABELS_MINOR[i]
-        degree_name = _DEGREE_NAMES_MINOR[i]
+    function_labels, degree_names = _mode_tables(scale.mode)
+    function_label = function_labels[i]
+    degree_name = degree_names[i]
 
-    mode_label = "major" if scale.mode == "major" else "natural minor"
+    mode_label = _mode_label(scale.mode)
     explanation = (
         f"In {scale.key}, {root} is scale degree {i + 1} ({degree_name}). "
         f"Stacking diatonic thirds (1–3–5–7) from {root} in the "
@@ -681,15 +725,19 @@ def generate_diatonic_sevenths(key: str, mode: str) -> List[DiatonicTriad]:
 
 
 def seventh_tokens_for_mode(mode: str) -> List[str]:
-    """The seven seventh-chord Roman tokens of ``mode``, in degree order.
+    """The buildable seventh-chord Roman tokens of ``mode``, in degree order.
 
     Derived by actually building the chords (in an exemplar key -- the roman
     spellings are key-independent), so the list can never drift from what the
-    engine produces.
+    engine produces.  Degrees whose tetrad quality is unsupported are omitted
+    rather than listed under a dishonest label: major and natural minor keep
+    all seven, harmonic minor yields five (its tonic minor-major and mediant
+    augmented-major sevenths have no token).
     """
     mode = _canon_mode(mode)
     exemplar = "C" if mode == "major" else "A"
-    return [c.roman for c in generate_diatonic_sevenths(exemplar, mode)]
+    return [c.roman for c in generate_diatonic_sevenths(exemplar, mode)
+            if c.chord_quality in _TETRAD_ROMAN_SUFFIX]
 
 
 def build_seventh_chord(token: str, key: str, mode: str = "major") -> DiatonicTriad:
@@ -698,9 +746,9 @@ def build_seventh_chord(token: str, key: str, mode: str = "major") -> DiatonicTr
     The built chord's roman must MATCH the requested token exactly: asking for
     ``V7`` in natural minor builds the degree-5 seventh and finds ``v7`` (a
     minor seventh -- the true minor-key V7 needs harmonic minor's raised
-    leading tone, plan G2), so it refuses rather than hand back a chord under
-    a label it does not deserve.  Same honesty in the other direction
-    (``v7`` in major is really ``V7``).
+    leading tone), so it refuses rather than hand back a chord under a label
+    it does not deserve.  Same honesty in the other direction (``v7`` in
+    major is really ``V7``).
     """
     degree = parse_seventh_token(token)
     if degree is None:
@@ -712,7 +760,7 @@ def build_seventh_chord(token: str, key: str, mode: str = "major") -> DiatonicTr
     chord = _build_tetrad(scale, degree)
     if chord.roman != token or chord.chord_quality not in _TETRAD_ROMAN_SUFFIX:
         hint = (" The minor-key V7 needs harmonic minor's raised leading tone "
-                "(a later lesson).") if token == "V7" else ""
+                "(mode 'harmonic_minor').") if token == "V7" else ""
         raise ValueError(
             f"{scale.key} has no diatonic {token}: its degree-{degree + 1} "
             f"seventh chord is {chord.roman} = {'–'.join(chord.pitches)} "
@@ -721,8 +769,8 @@ def build_seventh_chord(token: str, key: str, mode: str = "major") -> DiatonicTr
 
 
 def build_dominant_seventh(key: str, mode: str = "major") -> DiatonicTriad:
-    """The dominant seventh (``V7``) of ``key`` -- major keys only (see
-    :func:`build_seventh_chord` for why natural minor refuses)."""
+    """The dominant seventh (``V7``) of ``key`` -- major or harmonic minor
+    (see :func:`build_seventh_chord` for why natural minor refuses)."""
     return build_seventh_chord("V7", key, mode)
 
 

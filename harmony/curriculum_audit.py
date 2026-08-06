@@ -72,6 +72,10 @@ _CATEGORIES = [
      "The V7 tracer (plan G1a): add-the-7th + V7→I chunked across the 12 major "
      "keys, and the two-voice tritone-resolution frame per key (16 leaves; the "
      "remaining seventh qualities and V7 inversions are reserved)."),
+    ("harmonic_minor", "Harmonic Minor", ["cat:harmonic_minor"],
+     ["tests/test_harmonic_minor.py", "tests/test_curriculum.py"],
+     "A real V in minor (ticket 13 / plan G2a): the A/B one-accidental lesson "
+     "plus V–i, vii°–i and i–iv–V–i across all 12 minor keys (12 leaves)."),
     ("intervals", "Intervals & Interval Layers", ["cat:intervals"],
      ["tests/test_harmony_atlas.py"],
      "Theory + cross-links to quality groups (owns no exercise by design)."),
@@ -91,8 +95,9 @@ _CATEGORIES = [
      "Bridge categories opening the Atlas / Circle (reserved leaves)."),
     ("reserved", "Reserved topics", ["cat:advanced", "cat:reserved"],
      ["tests/test_curriculum.py"],
-     "Harmonic/melodic minor, modal, jazz, secondary dominants, real-score "
-     "analysis, reduction (all reserved; seventh chords went live with G1a)."),
+     "Melodic minor, modal, jazz, secondary dominants, real-score analysis, "
+     "reduction (all reserved; seventh chords went live with G1a, harmonic "
+     "minor with G2a)."),
 ]
 
 

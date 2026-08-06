@@ -109,7 +109,8 @@
         rows.push({ label: label, value: Array.isArray(value) ? value.join(", ") : value });
       }
     }
-    var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
+    var modeWord = t.mode === "natural_minor" ? "natural minor"
+      : t.mode === "harmonic_minor" ? "harmonic minor" : "major";
     add("Key", (t.key || "") + " (" + modeWord + ")");
     if (t.concept === "melody") {
       add("Motive", t.motiveLabel);

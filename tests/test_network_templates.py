@@ -288,12 +288,39 @@ class TestPhase8Templates(unittest.TestCase):
         rels = {e.relation for e in net.edges}
         self.assertEqual(rels, {"member_of_function", "substitutes_for", "same_function"})
 
-    def test_functional_equivalence_rejects_minor_mode(self):
-        # review finding: the V/V7/vii° equivalence has no honest natural-minor reading, so
-        # building it in minor must raise rather than emit a self-contradictory graph.
-        with self.assertRaises(ValueError):
-            build_network(get_template("functional_equivalence_network_v1"),
-                          context=NetworkBuildContext(key="A", mode="natural_minor"))
+    def test_functional_equivalence_minor_uses_harmonic_minor_dominants(self):
+        # Ticket 13 (G2a): minor keys no longer refuse -- the dominant trio is
+        # drawn from HARMONIC minor (raised leading tone), never from the
+        # natural-minor degrees (minor v / subtonic VII), which would be the
+        # dishonest reading the old major-only refusal prevented.
+        from harmony.exercise_spec import HarmonyExerciseSpec as _Spec
+        net = build_network(get_template("functional_equivalence_network_v1"),
+                            context=NetworkBuildContext(key="A", mode="natural_minor"))
+        self.assertEqual(net.counts()["nodesByKind"],
+                         {"function_family": 1, "diatonic_triad": 1,
+                          "dominant_seventh": 1, "diminished_triad": 1})
+        v = net.node("hn:triad:A:harmonic_minor:4")
+        self.assertEqual(v.label, "E")            # E major, not E minor
+        self.assertEqual(v.quality, "major")
+        v_spec = _Spec.from_dict(v.trainer_specs[0]["spec"])
+        self.assertEqual(v_spec.mode, "harmonic_minor")
+        self.assertEqual(v_spec.pattern, ["V", "i"])
+        v7 = net.node("hn:dom7:E")
+        self.assertEqual(v7.trainer_specs[0]["status"], "launchable")
+        v7_spec = _Spec.from_dict(v7.trainer_specs[0]["spec"])
+        self.assertEqual(v7_spec.pattern, ["V7", "i"])
+        self.assertEqual(v7_spec.mode, "harmonic_minor")
+        dim = net.node("hn:dim:G#")
+        self.assertEqual(dim.label, "G#°")        # raised leading tone
+        self.assertEqual(dim.trainer_specs[0]["status"], "launchable")
+        # No chord node may claim a natural-minor atlas TRIAD (Em / G are
+        # different chords); the family node's natural-minor dominant
+        # *function* ref is honest -- the key itself is still A minor.
+        for n in net.nodes:
+            for ref in n.atlas_refs:
+                self.assertFalse(
+                    ref.startswith("triad:") and ":natural_minor:" in ref,
+                    f"{n.id} claims natural-minor triad {ref}")
 
     def test_deterministic(self):
         for tid in ("transposition_orbit_network_v1", "quality_class_network_v1",

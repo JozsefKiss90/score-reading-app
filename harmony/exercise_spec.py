@@ -58,8 +58,9 @@ _VALID_DRILLS = {"horizontal_degree", "full_key", "quality", "function"}
 _VALID_RENDER = {"block", "arpeggio"}
 #: Seventh-chord qualities the quality drill accepts (ticket 10 / plan G1b),
 #: derived from the theory module's canonical label table so the two can
-#: never drift.  ``diminished_seventh`` is refused at validation: no diatonic
-#: °7 exists in the supported modes (it arrives with harmonic minor, plan G2).
+#: never drift.  ``diminished_seventh`` is refused at validation: harmonic
+#: minor's vii°7 exists in the engine (ticket 13), but the °7 quality drill
+#: is un-reserved by plan G2b.
 _SEVENTH_QUALITIES = frozenset(SEVENTH_QUALITY_LABELS)
 _VALID_QUALITY = {"major", "minor", "diminished", "augmented"} | _SEVENTH_QUALITIES
 #: How the learner answers a drill (plan U2, ticket 06).  ``midi`` is the
@@ -98,6 +99,7 @@ MAX_CHORDS_PER_SPEC = 12
 #: the ``°`` decoration, so e.g. "vii°" and "ii°" resolve to the right index).
 _MAJOR_DEGREE_LABELS = ["I", "ii", "iii", "IV", "V", "vi", "vii°"]
 _MINOR_DEGREE_LABELS = ["i", "ii°", "III", "iv", "v", "VI", "VII"]
+_HARMONIC_MINOR_DEGREE_LABELS = ["i", "ii°", "III+", "iv", "V", "VI", "vii°"]
 
 #: Functional shorthand accepted inside ``function`` patterns.  Derived from the single
 #: function vocabulary (ticket 01 / plan F1): each alias resolves to the exemplar degree its
@@ -144,7 +146,7 @@ class HarmonyExerciseSpec:
     title: str
     drill: str                      # one of _VALID_DRILLS
     render: str = "block"           # "block" | "arpeggio"
-    mode: str = "major"             # "major" | "natural_minor"
+    mode: str = "major"             # "major" | "natural_minor" | "harmonic_minor"
     description: str = ""
 
     # drill-specific parameters (only the relevant ones are used)
@@ -202,6 +204,12 @@ class HarmonyExerciseSpec:
             if self.quality not in _VALID_QUALITY:
                 raise ValueError(f"Unknown quality {self.quality!r}")
             if self.quality == "augmented":
+                if self.mode == "harmonic_minor":
+                    raise ValueError(
+                        "quality='augmented' is not drillable yet: harmonic "
+                        "minor's III+ exists in the engine (ticket 13), but "
+                        "the augmented quality drill is un-reserved by plan "
+                        "G2b (melodic minor + III+).")
                 raise ValueError(
                     "quality='augmented' is not drillable yet: no augmented "
                     "triad is diatonic to major or natural minor, so the "
@@ -209,12 +217,19 @@ class HarmonyExerciseSpec:
                     "builder would fail. Augmented drills arrive with "
                     "harmonic minor's III+.")
             if self.quality == "diminished_seventh":
+                if self.mode == "harmonic_minor":
+                    raise ValueError(
+                        "quality='diminished_seventh' is not drillable yet: "
+                        "harmonic minor's vii°7 exists in the engine (ticket "
+                        "13; pattern drills may use the 'vii°7' token), but "
+                        "the °7 quality drill is un-reserved by plan G2b.")
                 raise ValueError(
                     "quality='diminished_seventh' is not drillable yet: no "
                     "fully diminished seventh is diatonic to major or "
                     "natural minor (viiø7 / iiø7 are HALF-diminished), so "
-                    "the drill would compile to zero chords. The °7 arrives "
-                    "with harmonic minor's raised leading tone (plan G2).")
+                    "the drill would compile to zero chords. The °7 needs "
+                    "harmonic minor's raised leading tone "
+                    "(mode 'harmonic_minor').")
         if self.drill == "function":
             if not self.pattern:
                 raise ValueError("function drill requires 'pattern'")
@@ -233,7 +248,7 @@ class HarmonyExerciseSpec:
                         f"the {_mode_word(self.mode)} seventh vocabulary is "
                         f"{seventh_tokens_for_mode(self.mode)}. (The "
                         f"minor-key V7 needs harmonic minor's raised leading "
-                        f"tone, plan G2.)")
+                        f"tone: mode 'harmonic_minor'.)")
 
         # Reject theoretical keys that need more than 7 sharps/flats (e.g.
         # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
@@ -413,7 +428,12 @@ def compile_exercise(spec: HarmonyExerciseSpec) -> CompiledExercise:
     elif spec.drill == "full_key":
         key = spec.key
         _, parsed_mode = parse_key(key)
-        if parsed_mode:
+        # The key string wins when it names a mode -- except that a plain
+        # "minor" key must not strip an explicit harmonic-minor spec of its
+        # raised leading tone (the *key* of a harmonic-minor drill is still
+        # "A minor"; the scale form lives in spec.mode).
+        if parsed_mode and not (mode == "harmonic_minor"
+                                and parsed_mode == "natural_minor"):
             mode = parsed_mode
         for triad in generate_diatonic_triads(key, mode):
             add(triad, _key_label(key, mode))
@@ -535,7 +555,11 @@ def _label_slug(label: str) -> str:
 
 def _mode_words(mode: str) -> "tuple[str, str]":
     """``(short, long)`` mode words: major->("major","major"); minor->("minor","natural minor")."""
-    return ("major", "major") if mode == "major" else ("minor", "natural minor")
+    if mode == "major":
+        return ("major", "major")
+    if mode == "harmonic_minor":
+        return ("minor", "harmonic minor")
+    return ("minor", "natural minor")
 
 
 def _keys_label(chunk: List[str], all_keys: List[str]) -> str:
@@ -672,8 +696,12 @@ def degree_labels_for_mode(mode: str) -> List[str]:
     (plan U2): the labels match ``DiatonicTriad.roman`` exactly, so a target's
     ``roman`` is always one of them.
     """
-    return list(_MAJOR_DEGREE_LABELS if _canon_mode(mode) == "major"
-                else _MINOR_DEGREE_LABELS)
+    canon = _canon_mode(mode)
+    if canon == "major":
+        return list(_MAJOR_DEGREE_LABELS)
+    if canon == "harmonic_minor":
+        return list(_HARMONIC_MINOR_DEGREE_LABELS)
+    return list(_MINOR_DEGREE_LABELS)
 
 
 def identification_demo_specs() -> List[HarmonyExerciseSpec]:

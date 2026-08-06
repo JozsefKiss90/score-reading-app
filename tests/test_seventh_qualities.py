@@ -5,9 +5,9 @@ modes (major and natural minor), the quality drill widens to seventh
 qualities, ii7–V7–I lands in all 12 major keys, and a hear-a-seventh
 quality-ID drill answers by MCQ (Mm7 / mm7 / MM7 / ø7 / °7).
 
-The fully diminished seventh (°7) is *classified* (label, interval layer)
-but no diatonic scale in the supported modes contains one — it arrives with
-harmonic minor (plan G2), so nothing here ever builds or sounds it.
+The fully diminished seventh (°7) is *classified* (label, interval layer);
+since harmonic minor landed (ticket 13 / G2a) the engine can genuinely build
+one (vii°7), but the major/natural-minor drills here still never sound it.
 """
 
 import unittest
@@ -26,7 +26,8 @@ from theory.diatonic_harmony import (
 
 
 class TestSeventhTokenVocabulary(unittest.TestCase):
-    """14 tokens: one per degree per mode, spelled as the engine builds them."""
+    """15 tokens: one per buildable degree per mode, spelled as the engine
+    builds them (harmonic minor adds vii°7 and shares the rest)."""
 
     def test_major_tokens(self):
         self.assertEqual(
@@ -43,15 +44,16 @@ class TestSeventhTokenVocabulary(unittest.TestCase):
             for i, tok in enumerate(seventh_tokens_for_mode(mode)):
                 self.assertEqual(parse_seventh_token(tok), i, tok)
 
-    def test_table_carries_exactly_the_fourteen_tokens(self):
-        expected = set(seventh_tokens_for_mode("major")) | set(
-            seventh_tokens_for_mode("natural_minor"))
+    def test_table_carries_exactly_the_mode_vocabularies(self):
+        expected = (set(seventh_tokens_for_mode("major"))
+                    | set(seventh_tokens_for_mode("natural_minor"))
+                    | set(seventh_tokens_for_mode("harmonic_minor")))
         self.assertEqual(set(SEVENTH_DEGREE_TOKENS), expected)
 
     def test_unsupported_tokens_still_rejected(self):
-        # I7 would claim a dominant quality the tonic seventh does not have;
-        # vii°7 would mislabel the HALF-diminished leading-tone seventh.
-        for bad in ("I7", "IV7", "vii°7", "ii°7", "V9", "V65", "ii6",
+        # I7 would claim a dominant quality the tonic seventh does not have.
+        # (vii°7 left this list when harmonic minor landed, ticket 13.)
+        for bad in ("I7", "IV7", "ii°7", "V9", "V65", "ii6",
                     "V7/V", "Imaj", "maj7", "7", ""):
             self.assertIsNone(parse_seventh_token(bad), bad)
 

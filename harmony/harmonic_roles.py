@@ -21,7 +21,9 @@ Backward-compatibility (plan section 3.2): the INTERNAL 3-family key
 Mode awareness (plan section 2.4): major-mode family strength is NOT generalised blindly to natural
 minor.  The natural-minor ``v`` (minor, no leading tone) and ``VII`` (modal subtonic) are marked
 ``contextual`` and given honest, weaker family memberships rather than being asserted as strong
-dominants.
+dominants.  Harmonic minor (ticket 13 / plan G2a) flips exactly those two: its raised leading tone
+makes ``V`` a strong primary dominant and ``vii°`` a strong leading-tone chord, while its ``III+``
+(augmented) loses natural minor's relative-major tonic grouping and becomes a contextual mediant.
 
 Pure / headless: no Qt, JS, MusicXML or file I/O; deterministic.
 """
@@ -34,8 +36,11 @@ from typing import Dict, Optional
 # Reuse the theory engine's degree-name tables rather than duplicating them (plan section 10 "Do
 # not duplicate chord spellings or scale tables. Reuse theory.diatonic_harmony.").
 from theory.diatonic_harmony import (
+    _canon_mode,
+    _DEGREE_NAMES_HARMONIC_MINOR,
     _DEGREE_NAMES_MAJOR,
     _DEGREE_NAMES_MINOR,
+    _FUNCTION_LABELS_HARMONIC_MINOR,
     _FUNCTION_LABELS_MAJOR,
     _FUNCTION_LABELS_MINOR,
 )
@@ -123,9 +128,11 @@ def broad_family_label(broad_family: str) -> str:
 # Derived vocabulary (ticket 01 / plan F1, section 9.5): the single source everyone else maps from
 # --------------------------------------------------------------------------------------------- #
 
-#: The theory engine's fine ``function_label`` vocabulary (both mode tables).  Derived from the
+#: The theory engine's fine ``function_label`` vocabulary (all mode tables).  Derived from the
 #: engine so this module can never disagree with it.
-ENGINE_FUNCTION_LABELS = frozenset(_FUNCTION_LABELS_MAJOR) | frozenset(_FUNCTION_LABELS_MINOR)
+ENGINE_FUNCTION_LABELS = (frozenset(_FUNCTION_LABELS_MAJOR)
+                          | frozenset(_FUNCTION_LABELS_MINOR)
+                          | frozenset(_FUNCTION_LABELS_HARMONIC_MINOR))
 
 #: Presentation broad family -> INTERNAL 3-family key (the inverse of
 #: :data:`INTERNAL_FAMILY_TO_BROAD`; ``modal_or_contextual`` has no internal key by design).
@@ -302,16 +309,64 @@ _MINOR_ROLES = {
         "III rather than functioning as a dominant of i; its family is contextual.", True),
 }
 
+# HARMONIC MINOR mode (ticket 13 / plan G2a) -- the raised leading tone makes the dominant
+# machinery real: V is a strong primary dominant and vii° a strong leading-tone chord, exactly
+# what natural minor's contextual v / subtonic VII honestly could not claim.  III+ (augmented)
+# is a contextual mediant, not the relative-major tonic substitute natural minor's III is.
+_HARMONIC_MINOR_ROLES = {
+    0: _MINOR_ROLES[0],
+    1: _MINOR_ROLES[1],
+    2: ("mediant", "Mediant (augmented)", "tonic_related", "related", "context_dependent",
+        "III+ is the augmented mediant of harmonic minor -- a colour chord whose raised 7th "
+        "denies it natural minor's relative-major identity; its grouping is contextual.", True),
+    3: _MINOR_ROLES[3],
+    4: ("dominant", "Dominant", "dominant", "primary", "strong",
+        "V is a true major dominant: harmonic minor's raised 7th is a leading tone, so V-i "
+        "resolves with the same pull as in major.", False),
+    5: _MINOR_ROLES[5],
+    6: ("leading-tone diminished", "Leading-tone diminished", "dominant", "leading_tone",
+        "strong",
+        "vii° is the leading-tone diminished chord on harmonic minor's raised 7th -- a rootless "
+        "dominant resolving up a semitone to i (vii° -> i).", False),
+}
+
+#: Per-mode role tables, keyed by the canonical mode (same keys as
+#: :data:`_DEGREE_NAME_TABLES`).
+_ROLE_TABLES = {
+    "major": _MAJOR_ROLES,
+    "natural_minor": _MINOR_ROLES,
+    "harmonic_minor": _HARMONIC_MINOR_ROLES,
+}
+
+
+def _canon(mode: str) -> str:
+    """Canonical mode key, via the theory engine's own canonicaliser (never a
+    second normalisation).  An unrecognised mode string falls back by its
+    minor-ness, preserving this module's historical tolerance."""
+    try:
+        return _canon_mode(mode or "major")
+    except ValueError:
+        # historical tolerance: anything not recognisably major reads as minor
+        return "natural_minor"
+
+
+#: Per-mode degree-name and role tables, keyed by the canonical mode.
+_DEGREE_NAME_TABLES = {
+    "major": _DEGREE_NAMES_MAJOR,
+    "natural_minor": _DEGREE_NAMES_MINOR,
+    "harmonic_minor": _DEGREE_NAMES_HARMONIC_MINOR,
+}
+
 
 def _degree_name(mode: str, degree_index: int) -> str:
-    table = _DEGREE_NAMES_MAJOR if _is_major(mode) else _DEGREE_NAMES_MINOR
+    table = _DEGREE_NAME_TABLES[_canon(mode)]
     if 0 <= degree_index < len(table):
         return table[degree_index]
     return ""
 
 
 def _is_major(mode: str) -> bool:
-    return (mode or "major").strip().lower() in ("major", "maj", "ionian")
+    return _canon(mode) == "major"
 
 
 def role_profile(mode: str, degree_index: int, roman: str = "",
@@ -322,14 +377,14 @@ def role_profile(mode: str, degree_index: int, roman: str = "",
     omitted it is looked up from the theory engine's degree tables so the two levels stay
     consistent with the rest of the app.
     """
-    major = _is_major(mode)
-    table = _MAJOR_ROLES if major else _MINOR_ROLES
+    canon_mode = _canon(mode)
+    table = _ROLE_TABLES[canon_mode]
     sdn = scale_degree_name or _degree_name(mode, degree_index)
     entry = table.get(degree_index)
     if entry is None:
         # Out-of-range / non-diatonic degree: honest contextual profile, never a false tonic.
         return HarmonicRoleProfile(
-            mode=("major" if major else "natural_minor"), roman=roman, degree_index=degree_index,
+            mode=canon_mode, roman=roman, degree_index=degree_index,
             scale_degree_name=sdn, specific_role=(sdn or "contextual"),
             specific_role_label=(sdn.title() if sdn else "Contextual"),
             broad_family="modal_or_contextual",
@@ -339,7 +394,7 @@ def role_profile(mode: str, degree_index: int, roman: str = "",
             contextual=True)
     role, role_label, broad, mtype, strength, expl, contextual = entry
     return HarmonicRoleProfile(
-        mode=("major" if major else "natural_minor"), roman=roman, degree_index=degree_index,
+        mode=canon_mode, roman=roman, degree_index=degree_index,
         scale_degree_name=sdn, specific_role=role, specific_role_label=role_label,
         broad_family=broad, broad_family_label=broad_family_label(broad),
         family_membership_type=mtype, family_membership_strength=strength,

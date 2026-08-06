@@ -30,7 +30,8 @@ class TestSeventhToken(unittest.TestCase):
         # (see tests/test_seventh_qualities.py); tokens outside it still fail.
         self.assertEqual(parse_seventh_token("V7"), 4)
         self.assertEqual(parse_seventh_token(" V7 "), 4)
-        for bad in ("V9", "V65", "V7/V", "I7", "vii°7", "7", ""):
+        # vii°7 joined the vocabulary with harmonic minor (ticket 13).
+        for bad in ("V9", "V65", "V7/V", "I7", "7", ""):
             self.assertIsNone(parse_seventh_token(bad), bad)
 
 
@@ -100,8 +101,9 @@ class TestPatternHonesty(unittest.TestCase):
         self.assertEqual(normalise_pattern(["ii", "V7", "I"]), ["ii", "V7", "I"])
 
     def test_normalise_rejects_unsupported_digit_tokens(self):
-        # ii7/v7 became real tokens with G1b; these figures still are not.
-        for bad in ("V9", "I64", "ii6", "I7", "vii°7"):
+        # ii7/v7 became real tokens with G1b, vii°7 with G2a's harmonic
+        # minor; these figures still are not.
+        for bad in ("V9", "I64", "ii6", "I7"):
             with self.assertRaises(ValueError, msg=bad):
                 normalise_pattern([bad])
 
@@ -188,11 +190,11 @@ class TestLabRomanGate(unittest.TestCase):
         self.assertTrue(is_diatonic_roman("V7"))
 
     def test_gate_still_rejects_unsupported_tokens(self):
-        # ii7 / Imaj7 / v7 etc. became real tokens with G1b; chromatic,
-        # secondary, figured and mislabelled tokens still fail the gate.
+        # ii7 / Imaj7 / v7 etc. became real tokens with G1b, vii°7 with
+        # G2a's harmonic minor; chromatic, secondary, figured and
+        # mislabelled tokens still fail the gate.
         from harmony.lab_spec import is_diatonic_roman
-        for bad in ("V9", "V7/V", "V/V", "bII", "#iv", "I7", "IV7",
-                    "vii°7", "I64"):
+        for bad in ("V9", "V7/V", "V/V", "bII", "#iv", "I7", "IV7", "I64"):
             self.assertFalse(is_diatonic_roman(bad), bad)
 
     def test_cadence_concept_accepts_v7_block(self):

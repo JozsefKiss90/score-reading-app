@@ -15,12 +15,16 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from theory.diatonic_harmony import (  # noqa: E402
+    build_dominant_seventh,
+    build_seventh_chord,
     generate_scale,
     generate_diatonic_triads,
     transpose_degree_pattern,
     identify_triad_from_pitches,
     key_signature_fifths,
     note_to_midi,
+    parse_key,
+    seventh_tokens_for_mode,
 )
 
 
@@ -154,6 +158,150 @@ class TestANaturalMinorTriads(unittest.TestCase):
             ["Ab", "C", "Eb"],  # VI
             ["Bb", "D", "F"],   # VII
         ])
+
+
+class TestHarmonicMinor(unittest.TestCase):
+    """Ticket 13 / plan G2a: the harmonic minor mode (raised leading tone)."""
+
+    def test_a_harmonic_minor_scale(self):
+        s = generate_scale("A", "harmonic_minor")
+        self.assertEqual(s.scale_pitches, ["A", "B", "C", "D", "E", "F", "G#"])
+        self.assertEqual(s.fifths, 0)  # raised 7th is an accidental, not in the signature
+
+    def test_c_harmonic_minor_scale(self):
+        s = generate_scale("C", "harmonic_minor")
+        self.assertEqual(s.scale_pitches, ["C", "D", "Eb", "F", "G", "Ab", "B"])
+        self.assertEqual(s.fifths, -3)
+
+    def test_gsharp_harmonic_minor_needs_double_sharp(self):
+        s = generate_scale("G#", "harmonic_minor")
+        self.assertEqual(
+            s.scale_pitches, ["G#", "A#", "B", "C#", "D#", "E", "F##"])
+
+    def test_mode_alias_with_space(self):
+        self.assertEqual(
+            generate_scale("A", "harmonic minor").scale_pitches,
+            generate_scale("A", "harmonic_minor").scale_pitches,
+        )
+
+    def test_plain_minor_alias_still_natural(self):
+        self.assertEqual(
+            generate_scale("A", "minor").scale_pitches,
+            ["A", "B", "C", "D", "E", "F", "G"],
+        )
+
+    def test_parse_key_harmonic_minor(self):
+        self.assertEqual(parse_key("A harmonic minor"), ("A", "harmonic_minor"))
+        self.assertEqual(parse_key("A minor"), ("A", "natural_minor"))
+
+    def test_a_harmonic_minor_symbols(self):
+        self.assertEqual(symbols("A", "harmonic_minor"),
+                         ["Am", "B°", "C+", "Dm", "E", "F", "G#°"])
+
+    def test_a_harmonic_minor_romans(self):
+        self.assertEqual(romans("A", "harmonic_minor"),
+                         ["i", "ii°", "III+", "iv", "V", "VI", "vii°"])
+
+    def test_a_harmonic_minor_qualities(self):
+        quals = [t.chord_quality
+                 for t in generate_diatonic_triads("A", "harmonic_minor")]
+        self.assertEqual(
+            quals,
+            ["minor", "diminished", "augmented", "minor",
+             "major", "major", "diminished"],
+        )
+
+    def test_v_is_a_real_major_dominant(self):
+        v = generate_diatonic_triads("A", "harmonic_minor")[4]
+        self.assertEqual(v.pitches, ["E", "G#", "B"])
+        self.assertEqual(v.chord_quality, "major")
+        self.assertEqual(v.roman, "V")
+        self.assertEqual(v.function_label, "dominant")
+
+    def test_vii_is_leading_tone_diminished(self):
+        vii = generate_diatonic_triads("A", "harmonic_minor")[6]
+        self.assertEqual(vii.pitches, ["G#", "B", "D"])
+        self.assertEqual(vii.chord_quality, "diminished")
+        self.assertEqual(vii.roman, "vii°")
+        self.assertEqual(vii.scale_degree_name, "leading-tone")
+        self.assertEqual(vii.function_label, "dominant")
+
+    def test_function_labels_harmonic_minor(self):
+        labels = [t.function_label
+                  for t in generate_diatonic_triads("A", "harmonic_minor")]
+        self.assertEqual(
+            labels,
+            ["tonic", "predominant", "mediant", "subdominant",
+             "dominant", "tonic", "dominant"],
+        )
+
+    def test_i_iv_v_i_pattern_in_all_12_minor_keys(self):
+        for key in ["A", "E", "B", "F#", "C#", "G#",
+                    "Eb", "Bb", "F", "C", "G", "D"]:
+            chords = transpose_degree_pattern(
+                ["i", "iv", "V", "i"], key, "harmonic_minor")
+            self.assertEqual(
+                [c.chord_quality for c in chords],
+                ["minor", "minor", "major", "minor"],
+                f"{key} harmonic minor i–iv–V–i has wrong qualities")
+            self.assertEqual([c.roman for c in chords], ["i", "iv", "V", "i"])
+
+    def test_i_iv_v_i_in_a(self):
+        chords = transpose_degree_pattern(["i", "iv", "V", "i"], "A", "harmonic_minor")
+        self.assertEqual([c.chord_symbol for c in chords], ["Am", "Dm", "E", "Am"])
+
+    def test_natural_minor_unchanged(self):
+        self.assertEqual(romans("A", "natural_minor"),
+                         ["i", "ii°", "III", "iv", "v", "VI", "VII"])
+
+    def test_key_signature_fifths_harmonic_minor(self):
+        self.assertEqual(key_signature_fifths("A", "harmonic_minor"), 0)
+        self.assertEqual(key_signature_fifths("C", "harmonic_minor"), -3)
+
+
+class TestHarmonicMinorSevenths(unittest.TestCase):
+    def test_v7_builds_in_harmonic_minor(self):
+        chord = build_seventh_chord("V7", "A", "harmonic_minor")
+        self.assertEqual(chord.pitches, ["E", "G#", "B", "D"])
+        self.assertEqual(chord.chord_quality, "dominant_seventh")
+        self.assertEqual(chord.roman, "V7")
+
+    def test_build_dominant_seventh_harmonic_minor(self):
+        chord = build_dominant_seventh("C", "harmonic_minor")
+        self.assertEqual(chord.pitches, ["G", "B", "D", "F"])
+        self.assertEqual(chord.chord_symbol, "G7")
+
+    def test_v7_still_refuses_natural_minor(self):
+        with self.assertRaises(ValueError):
+            build_seventh_chord("V7", "A", "natural_minor")
+
+    def test_vii_dim7_builds_in_harmonic_minor(self):
+        chord = build_seventh_chord("vii°7", "A", "harmonic_minor")
+        self.assertEqual(chord.pitches, ["G#", "B", "D", "F"])
+        self.assertEqual(chord.chord_quality, "diminished_seventh")
+        self.assertEqual(chord.roman, "vii°7")
+
+    def test_vii_dim7_refuses_major_and_natural_minor(self):
+        with self.assertRaises(ValueError):
+            build_seventh_chord("vii°7", "C", "major")       # viiø7, not °7
+        with self.assertRaises(ValueError):
+            build_seventh_chord("vii°7", "A", "natural_minor")  # VII7
+
+    def test_seventh_tokens_for_harmonic_minor_are_honest(self):
+        # Degrees 1/3/4/5/6 classify cleanly; the tonic (minor-major 7th) and
+        # mediant (augmented-major 7th) tetrads have no supported quality and
+        # therefore no token -- the vocabulary never lists a chord the engine
+        # would refuse to build.
+        self.assertEqual(seventh_tokens_for_mode("harmonic_minor"),
+                         ["iiø7", "iv7", "V7", "VImaj7", "vii°7"])
+
+    def test_seventh_tokens_other_modes_unchanged(self):
+        self.assertEqual(
+            seventh_tokens_for_mode("major"),
+            ["Imaj7", "ii7", "iii7", "IVmaj7", "V7", "vi7", "viiø7"])
+        self.assertEqual(
+            seventh_tokens_for_mode("natural_minor"),
+            ["i7", "iiø7", "IIImaj7", "iv7", "v7", "VImaj7", "VII7"])
 
 
 class TestIntervalLayers(unittest.TestCase):

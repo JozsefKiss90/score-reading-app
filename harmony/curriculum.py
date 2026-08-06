@@ -299,6 +299,25 @@ def _degree_roman(t) -> str:
     return t.roman
 
 
+def _key_context_mode(mode: str) -> str:
+    """The Atlas/Circle KEY-context mode of a drill.
+
+    A harmonic-minor drill still happens in the same minor *key* (the raised
+    7th is a scale form, not a new key signature), so its key-level claims
+    stay natural minor -- the Score Soul precedent: key context is claimed,
+    chord nodes only on an exact match.
+    """
+    return "natural_minor" if mode == "harmonic_minor" else mode
+
+
+def _natural_minor_twin(t) -> Optional["DiatonicTriad"]:
+    """The natural-minor diatonic triad a harmonic-minor chord exactly equals,
+    else ``None`` (the raised-leading-tone chords III+ / V / vii° match none)."""
+    key = t.key.split()[0]
+    nat = generate_diatonic_triads(key, "natural_minor")[t.degree_index]
+    return nat if nat.pitches == t.pitches else None
+
+
 def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
     """Atlas node ids a native drill highlights -- derived from its compiled chords.
 
@@ -307,13 +326,30 @@ def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
     function family.  It never claims the triad / quality / layer nodes -- the
     Atlas has no seventh-chord node kind, and landing G7 on the G-triad node
     would be exactly the dishonesty the ``base_roman`` rule forbids.
+
+    A harmonic-minor drill (ticket 13) claims its minor KEY context plus, per
+    chord, either the natural-minor node it exactly equals (i / ii° / iv / VI)
+    or -- for the raised-leading-tone chords -- only the mode-less quality and
+    layer classes.  The Atlas has no harmonic-minor scale/degree/triad nodes,
+    and the natural-minor v / VII are different chords.
     """
     refs: List[str] = []
     compiled = compile_exercise(hs)
+    ctx_mode = _key_context_mode(hs.mode)
     for c in compiled.chords:
         t = c.triad
         key = t.key.split()[0]
-        refs.append(scale_id(key, hs.mode))
+        refs.append(scale_id(key, ctx_mode))
+        if hs.mode == "harmonic_minor":
+            nat = None if _is_tetrad(t) else _natural_minor_twin(t)
+            if nat is not None:
+                refs.append(degree_id(ctx_mode, nat.roman))
+                refs.append(triad_id(key, ctx_mode, t.degree_index))
+                refs.append(function_id(ctx_mode, nat.function_label))
+            if not _is_tetrad(t):
+                refs.append(quality_id(t.chord_quality))
+                refs.append(layer_id(t.interval_layer))
+            continue
         refs.append(degree_id(hs.mode, _degree_roman(t)))
         if not _is_tetrad(t):
             refs.append(triad_id(key, hs.mode, t.degree_index))
@@ -359,10 +395,16 @@ def _circle_ref_degree(mode: str, roman: str) -> str:
 
 def _circle_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
     refs: List[str] = []
+    ctx_mode = _key_context_mode(hs.mode)
     for key in _spec_keys(hs):
-        refs.append(_circle_ref_key(key, hs.mode))
+        refs.append(_circle_ref_key(key, ctx_mode))
     compiled = compile_exercise(hs)
     for c in compiled.chords:
+        if hs.mode == "harmonic_minor":
+            nat = None if _is_tetrad(c.triad) else _natural_minor_twin(c.triad)
+            if nat is not None:
+                refs.append(_circle_ref_degree(ctx_mode, nat.roman))
+            continue
         refs.append(_circle_ref_degree(hs.mode, _degree_roman(c.triad)))
     return _dedup(refs)
 
@@ -849,8 +891,91 @@ def _seventh_ear_specs() -> List[HarmonyExerciseSpec]:
             description=(f"Listen to each diatonic seventh chord of {tonic} "
                          f"major and name its quality from the strip "
                          f"(Mm7 / mm7 / MM7 / ø7 / °7). The °7 option never "
-                         f"sounds here — no diatonic fully diminished "
-                         f"seventh exists until harmonic minor.")))
+                         f"sounds here — major has no diatonic fully "
+                         f"diminished seventh (that is harmonic minor's "
+                         f"vii°7).")))
+    return specs
+
+
+# ---------------------------------------------------------------------------
+# Harmonic minor (ticket 13 / plan G2a): a real V in minor
+# ---------------------------------------------------------------------------
+#
+# The raised leading tone gives minor keys the dominant machinery natural
+# minor honestly could not claim: V (major), vii° (leading-tone diminished)
+# and the i–iv–V–i frame, drilled across all 12 minor keys.  Native patterns
+# chunk by key-group exactly like ``_seventh_pattern_specs``; being native
+# MIDI drills they get echo (🎧) twins automatically.
+
+_HARMONIC_MINOR_PATTERNS = [
+    (["V", "i"], "V–i", "v_i",
+     "The real minor-key dominant: harmonic minor's raised 7̂ is a leading "
+     "tone, so V (major) resolves to i with the same pull as in major"),
+    (["vii°", "i"], "vii°–i", "viio_i",
+     "The leading-tone diminished triad on the raised 7̂ resolves up a "
+     "semitone into the tonic"),
+    (["i", "iv", "V", "i"], "i–iv–V–i", "i_iv_v_i",
+     "The full tonal cadence in minor: tonic, subdominant, then the raised "
+     "leading tone drives V home to i"),
+]
+
+
+def _harmonic_minor_pattern_specs(tokens, label, slug, blurb,
+                                  render: str = "block") -> List[HarmonyExerciseSpec]:
+    """The chunked 12-minor-key specs of one harmonic-minor pattern family."""
+    keys = DEFAULT_MINOR_KEYS
+    chunks = _chunk_keys(keys, len(tokens))
+    specs = []
+    for ci, chunk in enumerate(chunks, start=1):
+        keys_label = _keys_label(chunk, keys)
+        suffix = "" if len(chunks) == 1 else f" (set {ci})"
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"hminor_{slug}_{ci}",
+            title=f"{label} — {keys_label} (harmonic minor){suffix}",
+            drill="function", render=render, mode="harmonic_minor",
+            pattern=list(tokens), keys=list(chunk),
+            description=f"{blurb} ({keys_label})."))
+    return specs
+
+
+#: The A/B "one accidental changes everything" pairs (reference key A minor,
+#: matching the cadence catalogue's ``_REFERENCE_TONIC``): the SAME cadence
+#: with the natural ♭7, then the raised ♮7.  Ordered A-then-B so the modal
+#: sound is heard first and the leading tone arrives as the change.
+_HM_AB_PAIRS = [
+    ("bare", [
+        (["v", "i"], "v–i", "natural_minor",
+         "A: the modal close — v is minor, its ♭7 a whole step below the "
+         "tonic, no leading-tone pull"),
+        (["V", "i"], "V–i", "harmonic_minor",
+         "B: one accidental changes everything — the raised ♮7 makes V "
+         "major and gives the cadence a true leading tone"),
+    ]),
+    ("context", [
+        (["i", "iv", "v", "i"], "i–iv–v–i", "natural_minor",
+         "A: the full natural-minor progression — every chord inside the "
+         "key signature, the close stays modal"),
+        (["i", "iv", "V", "i"], "i–iv–V–i", "harmonic_minor",
+         "B: the same progression with the raised ♮7 — only one note "
+         "differs, and the arrival at i becomes conclusive"),
+    ]),
+]
+
+
+def _hm_ab_specs(pair_slug: str) -> List[HarmonyExerciseSpec]:
+    """The A/B lesson's paired specs (one pair per group), in A minor."""
+    tonic = _REFERENCE_TONIC["natural_minor"]
+    entries = dict(_HM_AB_PAIRS)[pair_slug]
+    specs = []
+    for tokens, label, mode, blurb in entries:
+        ab = "a" if mode == "natural_minor" else "b"
+        word = "natural" if mode == "natural_minor" else "harmonic"
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"hminor_ab_{pair_slug}_{ab}_{_key_slug(tonic)}",
+            title=f"{label} in {tonic} minor ({word} minor)",
+            drill="function", render="block", mode=mode,
+            pattern=list(tokens), keys=[tonic],
+            description=f"{blurb}."))
     return specs
 
 
@@ -1399,9 +1524,9 @@ def build_curriculum() -> CurriculumNode:
                          "forms a tritone, so the chord stops being merely "
                          "bright and starts *demanding* resolution — the "
                          "leading tone rises 7̂→1̂ while the seventh falls "
-                         "4̂→3̂, landing on the tonic third. Minor keys need "
-                         "the raised leading tone (harmonic minor) for a true "
-                         "V7, a later lesson.",
+                         "4̂→3̂, landing on the tonic third. Minor keys get "
+                         "their true V7 from the raised leading tone — see "
+                         "the Harmonic Minor category.",
                   related=["lesson:cadence_progressions",
                            "group:inv_major_dominant"],
                   keywords=["V7", "dominant seventh", "tritone", "leading tone"])
@@ -1472,9 +1597,10 @@ def build_curriculum() -> CurriculumNode:
                             "to I6, never to root-position I. Every figure "
                             "here is graded (plan G4's bass grading): the "
                             "drill only passes with the demanded note as the "
-                            "lowest sounding one. The fully diminished °7 is "
-                            "still reserved — it arrives with harmonic "
-                            "minor's raised leading tone (plan G2).",
+                            "lowest sounding one. Harmonic minor's raised "
+                            "leading tone now builds the fully diminished "
+                            "vii°7 (see the Harmonic Minor category); its "
+                            "figured-bass drill is still reserved (plan G2b).",
                      related=["lesson:dominant_seventh",
                               "lesson:chord_inversions",
                               "lesson:bass_dictation"],
@@ -1489,6 +1615,97 @@ def build_curriculum() -> CurriculumNode:
                    "V6/5→I, V4/3→I and V4/2→I6: each inversion resolves by "
                    "its own bass logic.", 4),
              [_seventh_resolution_spec(t) for t in DEFAULT_MAJOR_KEYS], 4)
+
+    # ===================================================================
+    # 6b. HARMONIC MINOR  (ticket 13 / plan G2a — 12 leaves)
+    # ===================================================================
+    hminor = cat("harmonic_minor", "Harmonic Minor",
+                 "One accidental changes everything: a real V in minor.",
+                 "Raise the 7th degree, hear the leading tone arrive, and "
+                 "cadence V–i and vii°–i in every minor key.", 4,
+                 keywords=["harmonic minor", "raised seventh", "raised 7",
+                           "leading tone", "V in minor", "minor dominant",
+                           "vii°", "natural 7"],
+                 theory="Natural minor has no leading tone: its 7th degree "
+                        "sits a whole step below the tonic, so its v is minor "
+                        "and its cadences stay modal. Harmonic minor raises "
+                        "that one degree by a semitone — an accidental, not a "
+                        "key-signature change — and the dominant machinery of "
+                        "major arrives in minor: V becomes a major triad "
+                        "whose third is a true leading tone, vii° becomes the "
+                        "leading-tone diminished chord, and V–i closes with "
+                        "the same pull as V–I. The price of the raised 7̂ is "
+                        "the augmented III+ mediant and an augmented-second "
+                        "gap in the scale — melodic minor smooths that ascent "
+                        "(a later lesson).")
+    l_hm_ab = lesson(hminor, "hm_one_accidental",
+                     "One accidental changes everything",
+                     "The same cadence twice: ♭7 (modal), then ♮7 (tonal) — "
+                     "hear what one semitone does.",
+                     "Contrast the modal v–i with the tonal V–i in A minor "
+                     "and hear the leading tone arrive.", 4,
+                     theory="Play the A pair first: v–i, entirely inside the "
+                            "key signature, the modal close of natural minor. "
+                            "Then the B pair: the SAME cadence with the 7th "
+                            "degree raised one semitone. That single "
+                            "accidental turns v (minor) into V (major), gives "
+                            "the chord a leading tone, and changes the "
+                            "arrival at i from a modal shading into a tonal "
+                            "conclusion. Each drill has a 🎧 echo twin — "
+                            "play A's twin, then B's, to hear the contrast "
+                            "with the notation veiled.",
+                     related=["group:cadence_types_minor",
+                              "lesson:cadence_types"],
+                     keywords=["A/B", "flat 7", "natural 7", "subtonic",
+                               "leading tone", "modal", "tonal"])
+    fill_native(group(l_hm_ab, "hm_ab_bare", "The bare pair (v–i vs V–i)",
+                      "Two chords each: the modal close, then the tonal "
+                      "close.", 4),
+                _hm_ab_specs("bare"), 4)
+    fill_native(group(l_hm_ab, "hm_ab_context", "In context (i–iv–v–i vs i–iv–V–i)",
+                      "The full progression twice — only one note differs.", 4),
+                _hm_ab_specs("context"), 4)
+    l_hm_dom = lesson(hminor, "hm_dominant", "The real dominant, key by key",
+                      "V–i and vii°–i with the raised leading tone, across "
+                      "all 12 minor keys.",
+                      "Play V–i and vii°–i with the correct raised 7̂ in "
+                      "every minor key.", 4,
+                      theory="In each minor key the raised 7th is a different "
+                             "accidental — G♯ in A minor, B♮ in C minor, F𝄪 "
+                             "in G♯ minor — but the function is identical: a "
+                             "semitone below the tonic, demanding resolution "
+                             "upward. V places it as the chord's third; vii° "
+                             "builds on it directly and resolves the same "
+                             "way (vii°→i), a rootless dominant.",
+                      related=["lesson:hm_one_accidental",
+                               "lesson:dominant_seventh"],
+                      keywords=["V-i", "vii°-i", "leading tone", "accidental",
+                                "transposition"])
+    fill_native(group(l_hm_dom, "hm_v_i", "V → i",
+                      "The major dominant resolving home, key-group by "
+                      "key-group.", 4),
+                _harmonic_minor_pattern_specs(*_HARMONIC_MINOR_PATTERNS[0]), 4)
+    fill_native(group(l_hm_dom, "hm_viio_i", "vii° → i",
+                      "The leading-tone diminished triad resolving up a "
+                      "semitone.", 4),
+                _harmonic_minor_pattern_specs(*_HARMONIC_MINOR_PATTERNS[1]), 4)
+    l_hm_cad = lesson(hminor, "hm_full_cadence", "i–iv–V–i in every minor key",
+                      "The full tonal cadence of the minor mode.",
+                      "Play i–iv–V–i with the raised 7̂ fluently in all 12 "
+                      "minor keys.", 4,
+                      theory="The frame is the minor-mode mirror of "
+                             "I–IV–V–I: tonic, subdominant preparation, then "
+                             "the harmonic-minor dominant driving home. Only "
+                             "V carries the accidental — i and iv stay inside "
+                             "the key signature, which is why the raised 7̂ "
+                             "leaps out of the texture when it arrives.",
+                      related=["lesson:hm_dominant",
+                               "lesson:cadence_progressions"],
+                      keywords=["i-iv-V-i", "cadence", "progression",
+                                "minor keys"])
+    fill_native(group(l_hm_cad, "hm_i_iv_v_i", "i–iv–V–i",
+                      "The full cadence, three keys per page.", 4),
+                _harmonic_minor_pattern_specs(*_HARMONIC_MINOR_PATTERNS[2]), 4)
 
     # ===================================================================
     # 7. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
@@ -1700,17 +1917,18 @@ def build_curriculum() -> CurriculumNode:
     # ===================================================================
     advanced = cat("advanced", "Advanced Topics (reserved)",
                    "Where the curriculum grows next.",
-                   "Preview the reserved expansion: harmonic minor, "
+                   "Preview the reserved expansion: melodic minor, "
                    "modal & jazz harmony, secondary dominants.", 5,
                    kind="reserved", reserved=True,
                    theory="These topics are reserved. The data model already shapes "
                           "for them: a new LabExperimentSpec (or a new theory mode) "
-                          "is all each one needs. (Seventh chords graduated to "
-                          "their own live category with the V7 tracer.)",
+                          "is all each one needs. (Seventh chords graduated with "
+                          "the V7 tracer; harmonic minor with ticket 13.)",
                    keywords=["advanced", "reserved", "future"])
     for i, (aid, title, blurb) in enumerate([
-        ("harmonic_minor", "Harmonic & melodic minor",
-         "The raised leading tone, V (major) in minor, and III+."),
+        ("melodic_minor", "Melodic minor & III+",
+         "The ascending/descending scale forms and the first legitimate "
+         "augmented-triad drill."),
         ("modal", "Modal harmony",
          "Dorian, Phrygian, Lydian, Mixolydian colour."),
         ("jazz", "Jazz harmony",

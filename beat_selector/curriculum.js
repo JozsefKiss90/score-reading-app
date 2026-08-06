@@ -519,7 +519,8 @@
         rows.push({ label: label, value: Array.isArray(value) ? value.join(", ") : value });
       }
     }
-    var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
+    var modeWord = t.mode === "natural_minor" ? "natural minor"
+      : t.mode === "harmonic_minor" ? "harmonic minor" : "major";
     add("Key", (t.key || "") + " (" + modeWord + ")");
     // Echo listen phase (ticket 07): the trainer redacts the target, so the
     // guide names only the key and says why the rest is hidden.

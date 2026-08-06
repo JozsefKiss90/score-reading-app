@@ -94,7 +94,7 @@ CONCEPTS = {
 #: draws two independent voices; ``melody`` draws a single melodic line.
 RENDERS = {"block", "arpeggio", "voice_leading", "polyphonic", "melody"}
 
-MODES = {"major", "natural_minor"}
+MODES = {"major", "natural_minor", "harmonic_minor"}
 
 #: Which render styles are legal for each concept (``validate`` enforces).
 _CONCEPT_RENDERS = {
@@ -386,7 +386,8 @@ class LabExperimentSpec:
                     f"{orig!r} is not diatonic to {self.mode}: the seventh "
                     f"vocabulary of this mode is "
                     f"{seventh_tokens_for_mode(self.mode)}. (The minor-key V7 "
-                    f"needs harmonic minor's raised leading tone, plan G2.)")
+                    f"needs harmonic minor's raised leading tone: mode "
+                    f"'harmonic_minor'.)")
 
     def _validate_params(self) -> None:
         p = self.parameters

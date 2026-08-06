@@ -649,7 +649,8 @@
     if (!el) return;
     var t = cur();
     if (!t) { el.textContent = ""; return; }
-    var modeWord = t.mode === "natural_minor" ? "natural minor" : "major";
+    var modeWord = t.mode === "natural_minor" ? "natural minor"
+      : t.mode === "harmonic_minor" ? "harmonic minor" : "major";
     var wantBass = strictBassPc(t);
     el.className = completed ? "done" : "";
     // Echo listen phase: everything that names the chord IS the answer —

@@ -362,6 +362,9 @@ _CATEGORY_OBJECTIVES = {
     "lesson:voice_leading_cadences": {
         "audio": "Hear voices resolve into the cadence.",
         "visual": "See common tones held and tendency tones move."},
+    "cat:harmonic_minor": {
+        "audio": "Hear the raised leading tone turn a modal close tonal.",
+        "visual": "Spot the one accidental (♮7) that makes V major."},
     "cat:motives": {"audio": "Recognise a motive transposed to a new key.",
                     "visual": "See the same contour re-spelled."},
     "cat:polyphony": {"audio": "Hear two lines imply a chord progression.",
