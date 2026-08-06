@@ -141,7 +141,7 @@ NODE_GENERATION_RULES = [
     "inversion_state_nodes",        # root / 1st / 2nd inversion voicing states
     "transposition_orbit_nodes",    # abstract degree class + per-key triad instances
     "quality_class_nodes",          # quality classes + a key's diatonic triads
-    "functional_equivalence_nodes", # dominant family + V (triad) / V7 (reserved) / vii°
+    "functional_equivalence_nodes", # dominant family + V (triad) / V7 / vii°
 ]
 
 #: The visual classes (colours). The first four are the reference image's palette; the rest are
@@ -413,8 +413,8 @@ def dominant_diminished_relative_network_v1() -> HarmonicNetworkTemplate:
         NodeClass("minor_key", "Relative minor", "blue", "#38bdf8",
                   "The relative minor of a major key (shares its key signature)."),
         NodeClass("dominant_seventh", "Dominant seventh", "yellow", "#facc15",
-                  "The V7 of a key. A theoretical node: seventh-chord drills are "
-                  "reserved (the engine is triad-based)."),
+                  "The V7 of a key. Launches the real V7→I resolution drill "
+                  "in that key (un-reserved by ticket 12 / plan G1d)."),
         NodeClass("diminished_triad", "Leading-tone diminished", "purple",
                   "#a855f7",
                   "The vii° (leading-tone) diminished triad of a key; a rootless "
@@ -521,14 +521,12 @@ def dominant_diminished_relative_network_v1() -> HarmonicNetworkTemplate:
         node_layers=["major_key", "minor_key", "dominant_seventh",
                      "diminished_triad"],
         launch_rules={
-            # Triad-based drills are launchable; seventh-chord drills are reserved
-            # until the engine grows seventh chords.
-            "launchable_kinds": ["major_key", "minor_key", "diminished_triad"],
-            "reserved_kinds": ["dominant_seventh"],
-            "reserved_reason": (
-                "The theory engine is triad-based; seventh-chord exercises are "
-                "not implemented. Dominant-seventh nodes link to the closest "
-                "available triad drill (the V→I resolution) instead."),
+            # Every kind launches a real drill: the engine builds V7 tetrads
+            # since ticket 09, so the dominant-seventh flip is honest (G1d).
+            "launchable_kinds": ["major_key", "minor_key", "diminished_triad",
+                                 "dominant_seventh"],
+            "reserved_kinds": [],
+            "reserved_reason": "",
         },
     )
 
@@ -784,8 +782,8 @@ def quality_class_network_v1() -> HarmonicNetworkTemplate:
 def functional_equivalence_network_v1() -> HarmonicNetworkTemplate:
     """The dominant-function alternatives (V triad / V7 / vii°) sharing one function.
 
-    Shows the exact distinction between the launchable V triad, the *reserved* dominant seventh
-    (the engine is triad-based), and the leading-tone diminished triad -- all members of, or
+    Shows the exact distinction between the launchable V triad, the dominant seventh (launchable
+    V7→I since ticket 12), and the leading-tone diminished triad -- all members of, or
     substitutes within, the dominant function (plan section 14.4).
     """
     node_classes = [
@@ -795,9 +793,9 @@ def functional_equivalence_network_v1() -> HarmonicNetworkTemplate:
         NodeClass("diatonic_triad", "V triad", "teal", "#14b8a6",
                   "The V major triad (launchable).",
                   semantic_level="chord", entity_role="instance", canonical_ref="triad"),
-        NodeClass("dominant_seventh", "V7 (reserved)", "yellow", "#facc15",
-                  "The dominant seventh -- a reserved node (the engine is triad-based).",
-                  semantic_level="chord", entity_role="reference", canonical_ref="triad"),
+        NodeClass("dominant_seventh", "V7", "yellow", "#facc15",
+                  "The dominant seventh -- launches the real V7→I resolution drill.",
+                  semantic_level="chord", entity_role="instance", canonical_ref="triad"),
         NodeClass("diminished_triad", "vii°", "purple", "#a855f7",
                   "The leading-tone diminished triad (a rootless dominant; launchable).",
                   semantic_level="chord", entity_role="instance", canonical_ref="triad"),
@@ -824,8 +822,8 @@ def functional_equivalence_network_v1() -> HarmonicNetworkTemplate:
         title="Functional-equivalence network",
         description=(
             "The dominant-function alternatives V, V7 and vii° with the exact distinction "
-            "between triad, seventh chord and diminished triad. The V7 stays reserved until "
-            "seventh-chord support expands; the V triad and vii° are launchable."),
+            "between triad, seventh chord and diminished triad. All three are launchable: "
+            "the V7 launches the real V7→I resolution drill (ticket 12)."),
         node_classes=node_classes, edge_classes=edge_classes, layout_rules=layout_rules,
         generation_rules=["functional_equivalence_edges"],
         node_generation_rules=["functional_equivalence_nodes"],
@@ -834,10 +832,10 @@ def functional_equivalence_network_v1() -> HarmonicNetworkTemplate:
         center_keys=["C"],
         node_layers=["function_family", "diatonic_triad", "dominant_seventh", "diminished_triad"],
         launch_rules={
-            "launchable_kinds": ["diatonic_triad", "diminished_triad", "function_family"],
-            "reserved_kinds": ["dominant_seventh"],
-            "reserved_reason": ("The engine is triad-based; seventh-chord drills are reserved. "
-                                "The V triad and vii° are launchable."),
+            "launchable_kinds": ["diatonic_triad", "diminished_triad", "function_family",
+                                 "dominant_seventh"],
+            "reserved_kinds": [],
+            "reserved_reason": "",
         },
     )
 

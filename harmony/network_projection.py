@@ -191,7 +191,17 @@ def _resolve_chord(triad, index: NetworkIndex, atlas) -> _Resolution:
         return _Resolution(node.id, "exact", "chord_instance",
                            f"exact diminished node for {triad.chord_symbol}")
 
-    # 3. approximate dominant-family: the genuine major V triad shown on its V7 node (never
+    # 3. exact dominant-seventh node (ticket 12): the compiled V7 tetrad IS the dom7 node's
+    #    chord. Gated on the dominant *degree* (index 4), so natural minor's subtonic VII7
+    #    (the same sonority built on degree 7) never lands on somebody else's V7 node.
+    if (triad.degree_index == 4 and triad.chord_quality == "dominant_seventh"
+            and root_pc in index.dom7_by_pc):
+        node = index.dom7_by_pc[root_pc]
+        return _Resolution(node.id, "exact", "chord_instance",
+                           f"exact dominant-seventh node for {triad.chord_symbol} "
+                           f"(V7 in {triad.key})")
+
+    # 4. approximate dominant-family: the genuine major V triad shown on its V7 node (never
     #    exact). Gated on the dominant *degree* (index 4) + major quality, so the natural-minor
     #    subtonic VII (also labelled function 'dominant' by the engine) is NOT mis-approximated.
     if (triad.degree_index == 4 and triad.chord_quality == "major"
@@ -202,7 +212,7 @@ def _resolve_chord(triad, index: NetworkIndex, atlas) -> _Resolution:
                            f"{node.spelling}7 node — the V triad approximates the "
                            f"dominant seventh")
 
-    # 4. contextual proxy: exact chord known via key/Atlas context, absent from active template
+    # 5. contextual proxy: exact chord known via key/Atlas context, absent from active template
     return _Resolution(
         proxy_triad_id(tonic, mode, degree), "contextual", "chord_instance",
         f"{triad.chord_symbol} ({triad.roman}) has no exact node in this template; "

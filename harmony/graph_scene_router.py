@@ -111,7 +111,9 @@ def _tetrad_inversion_lab(lab) -> bool:
     voicing states are built from the degree's diatonic triad, so projecting a
     V7 experiment onto it would land the tetrad on the triad node that merely
     shares its root — the exact dishonesty the ``base_roman`` rule forbids.
-    Refused until the seventh-chord network nodes unreserve (plan G1d).
+    Ticket 12 (G1d) un-reserved the *circle template's* dom7 nodes, but this
+    scene stays refused until the inversion template grows tetrad voicing
+    states (the four figures 7 · 6/5 · 4/3 · 4/2).
     """
     if lab is None or getattr(lab, "concept", None) != "inversion":
         return False
@@ -209,8 +211,8 @@ def _classify(request: GraphSceneRequest, ex, lab) -> GraphSceneDecision:
                 "unsupported", "unsupported",
                 "the inversion-space network voices triads only: projecting a "
                 "seventh-chord experiment onto it would land V7 on its "
-                "triad's node (the seventh-chord network nodes unreserve "
-                "with plan G1d)")
+                "triad's node (the scene unreserves when the inversion "
+                "template grows tetrad voicing states)")
         st = _lab_scene_type(lab_concept, getattr(lab, "render", "") or "")
         if st is None:
             return _decision("unsupported", "unsupported",

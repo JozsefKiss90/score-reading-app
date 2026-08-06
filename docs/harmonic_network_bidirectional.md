@@ -34,7 +34,7 @@ for a chord the template can't draw) · **theory edge** (an asserted harmonic re
 |---|---|
 | `harmony/harmonic_flow.py` | Shared contracts + controlled vocabularies: `HarmonicStep`, `HarmonicTransition`, `ProjectionNode`, `ProjectionEdge`, `DrillGraphProjection` (+`validate()`/`to_dict`/`from_dict`), `GraphDrillRequest`, `LaunchAction`, `HarmonicPath`, stable-id helpers. |
 | `harmony/network_projection.py` | **Drill → Graph.** `project_harmony_exercise`, `project_lab_experiment`, and `project_score_analysis` / `harmonic_step_from_score_slice`. Exact/contextual/approximate mapping, proxy placement, group boundaries, the theory-relation resolver. |
-| `harmony/network_launch.py` | **Graph → Drill.** `actions_for_selection(request, network)` and `compile_graph_drill_action(...)`. Node/edge/path action registry, reserved-action honesty, cap enforcement, preview projections. |
+| `harmony/network_launch.py` | **Graph → Drill.** `actions_for_selection(request, network)` and `compile_graph_drill_action(...)`. Node/edge/path action registry, cap enforcement, preview projections. Since ticket 12 the dom7 node's primary action is the real V7→I drill. |
 
 ### Changed
 
@@ -56,7 +56,7 @@ for a chord the template can't draw) · **theory edge** (an asserted harmonic re
 | `inversion_space_network_v1` | 4 (1 identity + 3 voicings) | One chord identity + root/1st/2nd inversion states. Routes to the Music Theory Lab (`compile_lab`) — no renderer duplicated. |
 | `transposition_orbit_network_v1` | 1 degree + N instances | An abstract degree orbiting a set of keys as exact per-key instances. A `horizontal_degree` drill maps exact with `transpose_next` overlays — a transposition, never a modulation. |
 | `quality_class_network_v1` | 3–4 classes + 7 triads | A key's diatonic triads grouped by chord quality; a `quality` drill enumerates a class (`enumerate_next`, never a progression). |
-| `functional_equivalence_network_v1` | 4 | The dominant-function alternatives V (launchable) / V7 (**reserved**) / vii° (launchable), showing the exact triad vs. seventh vs. diminished distinction. |
+| `functional_equivalence_network_v1` | 4 | The dominant-function alternatives V / V7 / vii° (all launchable since ticket 12 — the V7 launches the real V7→I drill), showing the exact triad vs. seventh vs. diminished distinction. |
 
 Genuinely-future reserved stubs remain in `PLANNED_TEMPLATES`: `modulation_path_network_v1`,
 `secondary_dominant_network_v1` (both need chromatic/pivot support the engine intentionally lacks).
@@ -79,12 +79,14 @@ status is preserved, not upgraded); group boundaries fall at key changes.
   `transposition` / `class_enumeration` and **never** assert a theoretical harmonic edge; only
   `harmonic_motion` / `voicing_change` orderings may, and **never across a group boundary**
   (derived from the steps' `group_index`, not just a flag).
-* The V triad shown on a V7 node is `approximate`, never `exact`. The natural-minor subtonic VII
+* The V triad shown on a V7 node is `approximate`, never `exact`; the compiled V7 **tetrad**
+  maps `exact` onto its dom7 node (ticket 12). The natural-minor subtonic VII / VII7
   is **not** treated as a dominant.
 * Key-relation edges (fifth / relative) compile to a *comparison / transposition*, never a
   progression. Legacy dominant/diminished resolutions into a **minor** key are skipped (the
   natural-minor trainer cannot honestly voice the leading-tone dominant).
-* Reserved seventh-chord actions are never launchable.
+* Un-reserving a node kind requires a real launchable drill (ticket 12 flipped the dom7 nodes
+  only because the ticket-09 V7 drills exist); no reserved placeholder entries remain.
 * Repeated chords produce distinct **occurrences** pointing at one canonical node.
 
 ## JS host-facing API (`window.HarmonicNetwork`)

@@ -18,9 +18,10 @@ Design rules (shared with the rest of the Harmony Trainer / Atlas / Circle):
   spec factories (``full_key_spec`` / ``function_spec``); every one is guarded to
   stay within :data:`~harmony.exercise_spec.MAX_CHORDS_PER_SPEC`.  Atlas/Circle
   references resolve against the live :class:`~harmony.atlas.Atlas` ontology.
-* **Honest about limits.**  The engine is triad-based, so dominant-seventh nodes
-  carry a *reserved* seventh-chord drill (never a launchable one) and link to the
-  closest available *triad* drill (the V→I resolution) instead.
+* **Launchable dominant sevenths.**  The engine builds real V7 tetrads (ticket
+  09), so every dominant-seventh node launches the genuine V7→I resolution
+  drill in its key — ticket 12 (plan G1d) un-reserved the nodes the graph was
+  built waiting for.
 
 The first template (``dominant_diminished_relative_network_v1``) reconstructs the
 topology of the Brian-Callipari-style reference image as a formal theory graph.
@@ -78,8 +79,7 @@ SCHEMA_VERSION = "harmony-network/v1"
 #: Network-relevant trainer groups: graph node kind -> trainer-dropdown group
 #: name.  Used by :meth:`HarmonicNetwork.trainer_groups` (and the standalone
 #: ``run_harmonic_network_demo`` launcher) to scope the embedded Harmony Trainer
-#: to ONLY the drills the graph actually visualises.  Reserved seventh-chord
-#: drills are excluded because they are not launchable.
+#: to ONLY the drills the graph actually visualises.
 NETWORK_GROUP_BY_KIND = OrderedDict([
     ("major_key", "Network — Major keys"),
     ("minor_key", "Network — Relative minors"),
@@ -288,7 +288,7 @@ def _present(atlas: Atlas, node_id: Optional[str]) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Launch entries (cap-guarded; honest about reserved drills)
+# Launch entries (cap-guarded)
 # ---------------------------------------------------------------------------
 
 def _launch_entry(spec: HarmonyExerciseSpec, label: str) -> Dict:
@@ -311,17 +311,6 @@ def _launch_entry(spec: HarmonyExerciseSpec, label: str) -> Dict:
         "drill": spec.drill,
         "chords": n,
         "spec": spec.to_dict(),
-    }
-
-
-def _reserved_entry(label: str, reason: str) -> Dict:
-    """A reserved (not-yet-implemented) drill entry -- never launchable."""
-    return {
-        "status": "reserved",
-        "label": label,
-        "reason": reason,
-        "drill": "seventh_chord",
-        "spec": None,
     }
 
 
@@ -436,7 +425,7 @@ class HarmonicNetwork:
         }
 
     def launchables(self) -> List[Dict]:
-        """Flat list of every trainer entry (launchable + reserved) with its node."""
+        """Flat list of every trainer entry with its node (all launchable since ticket 12)."""
         out: List[Dict] = []
         for n in self.nodes:
             for entry in n.trainer_specs:
@@ -455,8 +444,8 @@ class HarmonicNetwork:
         graph node they belong to (see :data:`NETWORK_GROUP_BY_KIND`).  An entry
         is included only when it is
 
-          * ``status == "launchable"`` (reserved seventh-chord drills are
-            excluded -- they carry no spec), and
+          * ``status == "launchable"`` (defence-in-depth: non-launchable
+            entries carry no spec), and
           * backed by a non-null spec that round-trips through
             :meth:`HarmonyExerciseSpec.from_dict` (i.e. compiles/validates).
 
@@ -473,7 +462,7 @@ class HarmonicNetwork:
                 continue
             for entry in n.trainer_specs:
                 if entry.get("status") != "launchable":
-                    continue                 # reserved seventh-chord drills dropped
+                    continue                 # never surface a non-launchable entry
                 spec_dict = entry.get("spec")
                 if not spec_dict:
                     continue
@@ -714,8 +703,8 @@ class _NetworkBuilder:
             v_triad_ref = _resolve_triad_ref(self.atlas, key, "major", 4)
             v_degree_ref = _present(self.atlas, degree_id("major", "V"))
             v_func_ref = _present(self.atlas, function_id("major", "dominant"))
-            # Closest available triad drill: the V→I resolution in this key.
-            v_i_spec = function_spec(["V", "I"], "V–I", "major", [key])
+            # The real V7→I resolution drill in this key (ticket 12 / G1d).
+            v7_i_spec = function_spec(["V7", "I"], "V7–I", "major", [key])
             self._add_node(NetNode(
                 id=did, label=f"{dom.root}7", kind="dominant_seventh",
                 pitch_class=note_pc(dom.root), spelling=dom.root,
@@ -723,16 +712,10 @@ class _NetworkBuilder:
                 key_contexts=[f"V7 of {key} major", f"V7 of {key} minor"],
                 atlas_refs=[r for r in (v_triad_ref, v_degree_ref, v_func_ref) if r],
                 circle_refs=[f"key:{key}:major"],
-                trainer_specs=[
-                    _reserved_entry(
-                        f"Dominant seventh drill ({dom.root}7)",
-                        "Seventh-chord exercises are not implemented yet — the "
-                        "theory engine is triad-based."),
-                    _launch_entry(
-                        v_i_spec,
-                        f"Closest triad drill: {dom.root} major as V resolving "
-                        f"to {key} (V→I)"),
-                ],
+                trainer_specs=[_launch_entry(
+                    v7_i_spec,
+                    f"Dominant seventh resolution: {dom.root}7 into {key} "
+                    f"(V7→I)")],
                 lab_specs=[_lab_ref("voice_leading",
                                     f"Dominant resolution V→I in {key} major")],
                 x=dx, y=dy, radius=lay_dom.node_radius, visual_class=vc_dom,
@@ -741,13 +724,12 @@ class _NetworkBuilder:
                     f"resolves to {key} (and to {key} minor). Without its root it "
                     f"is {vii.chord_symbol} — the leading-tone diminished triad — "
                     f"so {dom.root}7 and {vii.chord_symbol} share the dominant "
-                    f"function. Seventh-chord drills are reserved; the closest "
-                    f"available drill is the V→I triad resolution in {key} major."),
+                    f"function. A real V7→I resolution drill is launchable in "
+                    f"{key} major."),
                 data={
                     "resolvesTo": [key, f"{key}m"],
                     "rootTriad": dom.root,
                     "function": "dominant",
-                    "reservedSeventh": True,
                     "rootlessEquals": vii.chord_symbol,
                 },
             ))
@@ -1177,18 +1159,17 @@ class _NetworkBuilder:
         dx, dy = _spoke_xy(0, 1, d7_lay.radius, d7_lay.angle_offset)
         d7_id = f"hn:dom7:{v_triad.root}"
         self.fe_v7_id = d7_id
+        v7_spec = function_spec(["V7", tonic_roman], "V7–I", mode, [key])
         self._add_node(NetNode(
             id=d7_id, label=f"{v_triad.root}7", kind="dominant_seventh",
             pitch_class=note_pc(v_triad.root), spelling=v_triad.root, quality="dominant",
             key_contexts=[v_triad.key], atlas_refs=[],
-            trainer_specs=[_reserved_entry(f"Dominant seventh drill ({v_triad.root}7)",
-                                           "The engine is triad-based; seventh-chord drills are "
-                                           "reserved.")],
+            trainer_specs=self._safe_launch(
+                v7_spec, f"V7→{tonic_roman} ({v_triad.root}7)"),
             x=dx, y=dy, radius=d7_lay.node_radius, visual_class=self.t.node_class("dominant_seventh").visual_class,
-            explanation=f"{v_triad.root}7 — the dominant seventh (a reserved node).",
-            data={"key": key, "mode": mode, "root": v_triad.root, "sublabel": "V7",
-                  "reservedSeventh": True},
-            semantic_level="chord", entity_role="reference", canonical_ref="",
+            explanation=f"{v_triad.root}7 — the dominant seventh (launchable V7→{tonic_roman}).",
+            data={"key": key, "mode": mode, "root": v_triad.root, "sublabel": "V7"},
+            semantic_level="chord", entity_role="instance", canonical_ref="",
         ))
 
         dim_lay = self.t.layout_for("diminished_triad")
@@ -1456,16 +1437,13 @@ class _NetworkBuilder:
             dim = self.dim_by_idx[i]
             maj = self.major_by_idx[i]
             key = self.keys[i]
-            # closest launchable triad drill for the (reserved) dominant seventh
-            root_major = self.major_by_pc.get(note_pc(self.nodes_spelling(dom)))
-            if root_major:
-                self._add_edge(
-                    dom, root_major, "trainer_drill_available",
-                    explanation=f"Closest available Harmony Trainer drill for "
-                                f"{self.nodes_label(dom)}: the "
-                                f"{self.nodes_spelling(dom)} major triad "
-                                f"(as V of {key}).",
-                    strength=0.4)
+            # the V7→I drill lives in key K, like the vii°→I drill below
+            self._add_edge(
+                dom, maj, "trainer_drill_available",
+                explanation=f"A launchable V7→I resolution drill for "
+                            f"{self.nodes_label(dom)} is available in "
+                            f"{key} major.",
+                strength=0.4)
             # vii° → I is a real triad drill, living in key K
             self._add_edge(
                 dim, maj, "trainer_drill_available",

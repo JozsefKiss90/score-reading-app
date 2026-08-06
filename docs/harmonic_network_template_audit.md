@@ -40,11 +40,11 @@ inversion voice-leading walks) needs a small new edge model first.
 
 | id | status | notes |
 |----|--------|-------|
-| `dominant_diminished_relative_network_v1` | **implemented / shipped** | 48 nodes (12 major + 12 relative-minor + 12 dominant-seventh + 12 leading-tone diminished); resolution arrows V7→I and vii°→I. Triad-based engine, so dominant-seventh nodes carry a **reserved** seventh-chord drill and link to the closest launchable triad drill (the V→I resolution). |
+| `dominant_diminished_relative_network_v1` | **implemented / shipped** | 48 nodes (12 major + 12 relative-minor + 12 dominant-seventh + 12 leading-tone diminished); resolution arrows V7→I and vii°→I. Since ticket 12 (plan G1d) every dominant-seventh node launches the real V7→I resolution drill in its key — the original reserved-seventh caveat is retired. |
 
-This template is correct and complete for what it claims. The dominant-seventh
-honesty caveat (reserved, not launchable) is the only place the topology is
-"theoretical".
+This template is correct and complete for what it claims. The former
+dominant-seventh honesty caveat (reserved, not launchable) was retired by
+ticket 12: the ticket-09 V7 drills made the flip honest.
 
 ## 3. Audited candidate templates
 

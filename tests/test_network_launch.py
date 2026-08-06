@@ -2,7 +2,8 @@
 
 Covers plan section 20.3: key-node tonic identity vs full field, function-family enumeration,
 diminished vii°-I, resolution-edge progression, key-relation comparison (not progression),
-reserved-action honesty, cap enforcement, and the compile/preview envelope.
+the launchable dom7 V7 drill (ticket 12), cap enforcement, and the
+compile/preview envelope.
 """
 
 import unittest
@@ -99,15 +100,26 @@ class TestDiminishedAndDom7(unittest.TestCase):
         actions = actions_for_selection(_node_req("hn:dim:B"), net)
         self.assertTrue(any("vii°" in a.label and a.status == "launchable" for a in actions))
 
-    def test_dom7_reserved_and_approximation(self):
+    def test_dom7_launches_the_real_v7_drill(self):
+        # ticket 12 (G1d): the dom7 node's primary action is the launchable
+        # V7->I drill in its key; no reserved action remains.
         net = _legacy()
         actions = actions_for_selection(_node_req("hn:dom7:G"), net)
-        statuses = {a.status for a in actions}
-        self.assertIn("reserved", statuses)        # V7 stays reserved
-        self.assertIn("launchable", statuses)      # V->I approximation launchable
-        reserved = [a for a in actions if a.status == "reserved"][0]
-        self.assertIsNone(reserved.spec)
-        self.assertIn("reserved", reserved.reason.lower())
+        self.assertNotIn("reserved", {a.status for a in actions})
+        v7 = [a for a in actions if a.id.endswith(":v7")][0]
+        self.assertEqual(v7.status, "launchable")
+        self.assertEqual(v7.spec["pattern"], ["V7", "I"])
+        self.assertEqual(v7.spec["keys"], ["C"])
+        # a click on the node compiles the V7 drill first, not the reduction
+        chosen = compile_graph_drill_action(_node_req("hn:dom7:G"), net)
+        self.assertEqual(chosen.id, v7.id)
+
+    def test_dom7_still_offers_the_triad_reduction_for_comparison(self):
+        net = _legacy()
+        actions = actions_for_selection(_node_req("hn:dom7:G"), net)
+        v_i = [a for a in actions if a.id.endswith(":v_i")][0]
+        self.assertEqual(v_i.status, "launchable")
+        self.assertEqual(v_i.spec["pattern"], ["V", "I"])
 
 
 class TestEdgeActions(unittest.TestCase):

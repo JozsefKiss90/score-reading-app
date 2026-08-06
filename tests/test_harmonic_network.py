@@ -10,8 +10,9 @@ tests enforce its contract:
     diminished nodes; the rule-generated relationships (C<->Am, G7->C, B°->C,
     D7->G, F#°->G) exist;
   * Atlas integration -- node Atlas references resolve to real Atlas node ids;
-  * launch status -- triad/full-key drills are launchable and respect the
-    readability cap; seventh-chord drills are *reserved*, never launchable;
+  * launch status -- every node kind's drill is launchable and respects the
+    readability cap; dominant-seventh nodes launch the real V7->I drill
+    (ticket 12 / plan G1d un-reserved them);
   * determinism + payload shape; the reference image's node inventory is fully
     reconstructed (every major/minor/V7/vii° node is present).
 
@@ -371,7 +372,7 @@ class TestEnharmonicEdgeLabels(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 4. Launch status (triad launchable; seventh reserved)
+# 4. Launch status (every node kind launchable; dom7 = the real V7 drill)
 # ---------------------------------------------------------------------------
 
 class TestLaunchStatus(unittest.TestCase):
@@ -408,22 +409,47 @@ class TestLaunchStatus(unittest.TestCase):
         # a real diatonic triad drill (vii°->I), never a seventh-chord drill
         self.assertEqual(spec.drill, "function")
 
-    def test_seventh_chord_drill_is_reserved_not_launchable(self):
+    def test_dominant_seventh_drill_is_launchable_v7(self):
+        # ticket 12 (G1d): the dom7 node launches the REAL V7 drill, not a
+        # triad surrogate, and carries no reserved placeholder any more.
         g7 = self.net.node(dom7_node_id("G"))
-        reserved = self._reserved(g7)
-        self.assertTrue(reserved, "G7 must expose a reserved seventh drill")
-        self.assertIsNone(reserved[0]["spec"])
-        self.assertEqual(reserved[0]["drill"], "seventh_chord")
-
-    def test_dominant_node_offers_closest_triad_drill(self):
-        g7 = self.net.node(dom7_node_id("G"))
+        self.assertEqual(self._reserved(g7), [])
         launch = self._launchable(g7)
-        self.assertTrue(launch, "G7 must offer the closest available triad drill")
+        self.assertTrue(launch, "G7 must offer a launchable V7 drill")
         spec = HarmonyExerciseSpec.from_dict(launch[0]["spec"])
-        # the V->I resolution in C major (triad surrogate), NOT a seventh chord
         self.assertEqual(spec.drill, "function")
-        self.assertEqual(spec.pattern, ["V", "I"])
+        self.assertEqual(spec.pattern, ["V7", "I"])
         self.assertEqual(spec.keys, ["C"])
+        self.assertEqual(spec.mode, "major")
+
+    def test_every_dom7_node_launches_a_v7_drill_in_its_key(self):
+        # acceptance: all 12 dominant-seventh nodes launch V7->I in their key.
+        dom7s = self.net.nodes_of_kind("dominant_seventh")
+        self.assertEqual(len(dom7s), 12)
+        for node in dom7s:
+            launch = self._launchable(node)
+            self.assertTrue(launch, node.id)
+            spec = HarmonyExerciseSpec.from_dict(launch[0]["spec"])
+            self.assertEqual(spec.pattern, ["V7", "I"], node.id)
+            self.assertEqual(spec.keys, [node.data["resolvesTo"][0]], node.id)
+            self.assertLessEqual(len(compile_exercise(spec)),
+                                 MAX_CHORDS_PER_SPEC, node.id)
+
+    def test_no_reserved_entries_remain_anywhere(self):
+        # ticket 12: the reserved markers are gone in Python (JS is exercised
+        # by tests/harmonic_network_node_test.js against this same payload).
+        for n in self.net.nodes:
+            self.assertEqual(self._reserved(n), [], n.id)
+
+    def test_template_flip_is_backed_by_launchable_drills(self):
+        # the reserved->launchable flip is only honest because a real drill
+        # exists: every kind listed launchable carries >= 1 launchable spec.
+        tpl = self.net.template
+        self.assertIn("dominant_seventh", tpl.launch_rules["launchable_kinds"])
+        self.assertEqual(tpl.launch_rules["reserved_kinds"], [])
+        for kind in tpl.launch_rules["launchable_kinds"]:
+            for node in self.net.nodes_of_kind(kind):
+                self.assertTrue(self._launchable(node), node.id)
 
     def test_no_launchable_spec_claims_to_be_a_seventh_chord(self):
         for n in self.net.nodes:
@@ -445,14 +471,12 @@ class TestLaunchStatus(unittest.TestCase):
     def test_payload_launchables_and_counts(self):
         payload = self.net.to_payload()
         counts = payload["counts"]
-        self.assertEqual(counts["reservedDrills"], 12)     # one per dominant 7th
+        self.assertEqual(counts["reservedDrills"], 0)      # ticket 12: none left
         self.assertEqual(counts["nodesByKind"]["dominant_seventh"], 12)
-        # every launchable in the flat list has a real spec; reserved have none
+        # every entry in the flat list is launchable with a real spec
         for item in payload["launchables"]:
-            if item["status"] == "launchable":
-                self.assertIsNotNone(item["spec"])
-            else:
-                self.assertIsNone(item["spec"])
+            self.assertEqual(item["status"], "launchable")
+            self.assertIsNotNone(item["spec"])
 
 
 # ---------------------------------------------------------------------------
@@ -577,12 +601,10 @@ class TestPythonLaunchBridge(unittest.TestCase):
                 self.assertIsNone(item["spec"])
         self.assertEqual(launchable, 48)
 
-    def test_reserved_entries_are_never_launchable(self):
+    def test_no_reserved_entries_in_launchables(self):
+        # ticket 12: the reserved seventh placeholders are gone for good.
         reserved = [i for i in self.net.launchables() if i["status"] == "reserved"]
-        self.assertEqual(len(reserved), 12)         # one per dominant seventh
-        for item in reserved:
-            self.assertIsNone(item["spec"])
-            self.assertEqual(item["drill"], "seventh_chord")
+        self.assertEqual(reserved, [])
 
 
 # ---------------------------------------------------------------------------
@@ -646,7 +668,7 @@ class TestRegressionCounts(unittest.TestCase):
         ca, cb = a.counts(), b.counts()
         self.assertEqual(ca, cb)
         self.assertEqual(ca["launchableDrills"], 48)
-        self.assertEqual(ca["reservedDrills"], 12)
+        self.assertEqual(ca["reservedDrills"], 0)
 
     def test_edge_counts_are_a_pinned_fingerprint(self):
         # Literal totals so adding/removing a generation rule is actually caught
@@ -667,10 +689,10 @@ class TestRegressionCounts(unittest.TestCase):
             "trainer_drill_available": 24, "atlas_node_available": 24,
         })
 
-    def test_launchables_partition_into_launchable_and_reserved(self):
+    def test_every_launchable_entry_is_launchable(self):
         net = build_network()
         for item in net.launchables():
-            self.assertIn(item["status"], {"launchable", "reserved"})
+            self.assertEqual(item["status"], "launchable")
 
 
 if __name__ == "__main__":

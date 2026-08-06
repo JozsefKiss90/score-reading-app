@@ -59,6 +59,26 @@ class TestFullKey(unittest.TestCase):
         self.assertEqual(by_roman["V"].visual_node_id, "hn:dom7:G")
         self.assertTrue(any("approximate" in w or "V triad" in w for w in proj.warnings))
 
+    def test_v7_tetrad_maps_exactly_onto_its_dom7_node(self):
+        # ticket 12 (G1d): the compiled V7 tetrad IS the dom7 node's chord, so
+        # the mapping is exact (the V *triad* stays approximate, above).
+        spec = function_spec(["V7", "I"], "V7–I", "major", ["C"])
+        proj = project_harmony_exercise(spec, self.net)
+        proj.validate()
+        by_roman = {s.roman: s for s in proj.steps}
+        self.assertEqual(by_roman["V7"].mapping_status, "exact")
+        self.assertEqual(by_roman["V7"].visual_node_id, "hn:dom7:G")
+
+    def test_minor_subtonic_seventh_never_lands_on_a_dom7_node(self):
+        # honesty gate: A minor's VII7 sounds like G7 but is the SUBTONIC
+        # seventh (degree 7), not anyone's V7 — it must stay a proxy.
+        spec = function_spec(["VII7", "i"], "VII7–i", "natural_minor", ["A"])
+        proj = project_harmony_exercise(spec, self.net)
+        proj.validate()
+        by_roman = {s.roman: s for s in proj.steps}
+        self.assertNotEqual(by_roman["VII7"].visual_node_id, "hn:dom7:G")
+        self.assertEqual(by_roman["VII7"].mapping_status, "contextual")
+
     def test_proxy_nodes_exist_and_are_anchored(self):
         proj = project_harmony_exercise(full_key_spec("C", "major"), self.net)
         self.assertTrue(proj.projection_nodes)

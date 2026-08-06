@@ -10,8 +10,8 @@
  *   CENTER -- the SVG harmonic network (node x/y come straight from Python;
  *             the JS does ZERO layout maths, so it is headless-safe).
  *   RIGHT  -- the selected node/edge explanation, related Atlas/Circle nodes,
- *             related Trainer drills (launchable vs reserved) + launch buttons,
- *             and related Lab experiments.
+ *             related Trainer drills + launch buttons, and related Lab
+ *             experiments.
  *
  * Host-pollable API (window.HarmonicNetwork):
  *   init(payload)                 -> render everything; returns {ok, nodes, edges}
@@ -206,8 +206,8 @@
   // The host (run_harmonic_network_demo.py) polls takeLaunch() and feeds the
   // dequeued dict straight into HarmonyExerciseSpec.from_dict(), so what we queue
   // MUST be a raw HarmonyExerciseSpec dict (carrying a real `drill`), never a
-  // wrapper/entry object and never a reserved placeholder.
-  var RESERVED_DRILLS = { seventh_chord: true };
+  // wrapper/entry object. (Since ticket 12 every trainer entry in the payload
+  // is launchable, so no reserved-drill blacklist is needed here.)
 
   function launch(spec) {
     // Only a raw, launchable spec dict may enqueue.
@@ -215,11 +215,6 @@
       lastLaunch = { exerciseId: (spec && spec.exercise_id) || null,
         drill: (spec && spec.drill) || null, queued: false,
         reason: "missing-or-malformed-spec" };
-      return false;
-    }
-    if (RESERVED_DRILLS[spec.drill]) {     // reserved drills can never launch
-      lastLaunch = { exerciseId: spec.exercise_id || null, drill: spec.drill,
-        queued: false, reason: "reserved-drill" };
       return false;
     }
     launchQueue.push(spec);
@@ -810,7 +805,7 @@
     // related Trainer drills
     var drills = el("div", { class: "sect" }, [el("h3", { text: "Trainer drills" })]);
     (n.trainerSpecs || []).forEach(function (t) {
-      if (t.status === "launchable" && t.spec && !RESERVED_DRILLS[t.spec.drill]) {
+      if (t.status === "launchable" && t.spec && t.spec.drill) {
         var item = el("div", { class: "launchItem" }, [
           el("div", { class: "lbl", text: t.label }),
           el("button", { class: "launchBtn", text: "Launch ▶",
@@ -906,7 +901,7 @@
     if (hits) {
       hits.textContent = ok
         ? "Queued exercise for the trainer."
-        : "That drill is reserved — nothing launched.";
+        : "That drill can't launch — nothing queued.";
     }
   }
 

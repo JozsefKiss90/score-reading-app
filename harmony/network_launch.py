@@ -16,8 +16,8 @@ Design rules honoured here:
       never an asserted chord progression;
     * **harmonic-motion edges** (resolves_to / prepares / leading_tone_to) compile to a real
       function progression only when both endpoints resolve to supported diatonic triads;
-    * the reserved seventh-chord action stays **reserved** (never launchable); the V triad shown
-      near a V7 node is honest about being an approximation.
+    * a **dominant-seventh node** launches the real V7→I resolution drill (ticket 12 / G1d);
+      the V→I triad drill stays alongside it, honestly labelled as the seventh-less reduction.
 
 No theory is re-encoded: every spec comes from the ``harmony.atlas`` factories.
 """
@@ -124,12 +124,6 @@ def _trainer_action(action_id: str, label: str, spec: HarmonyExerciseSpec, group
         spec_type="harmony_exercise", spec=spec.to_dict(), reason=reason,
         preview_projection=preview,
     )
-
-
-def _reserved_action(action_id: str, label: str, reason: str, group: str,
-                     interaction_kind: str) -> LaunchAction:
-    return LaunchAction(id=action_id, label=label, target="trainer", status="reserved",
-                        semantic_group=group, interaction_kind=interaction_kind, reason=reason)
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -340,22 +334,28 @@ _FAMILY_ROUTE = {
 
 
 def _dom7_node_actions(node, network, request) -> List[LaunchAction]:
-    """Legacy V7 node: reserved seventh drill + the honest V->I triad approximation."""
+    """V7 node: the real V7->I resolution drill (ticket 12) + the V->I triad reduction."""
     ctx = _key_context_for(node)
-    out: List[LaunchAction] = [
-        _reserved_action(f"act:node:{node.id}:v7", f"Dominant seventh drill ({node.spelling}7)",
-                         "The engine is triad-based; seventh-chord drills are reserved.",
-                         "functional_equivalence", "node"),
+    if not ctx:
+        return []
+    tonic, mode = ctx
+    if mode != "major":
+        # The drillable V7 lives in major; the minor-key V7 needs harmonic
+        # minor's raised leading tone (plan G2).
+        return []
+    return [
+        _trainer_action(
+            f"act:node:{node.id}:v7",
+            f"Dominant seventh drill ({node.spelling}7): V7→I into {tonic}",
+            function_spec(["V7", "I"], "V7–I", "major", [tonic]),
+            "functional_path", "node", network, key_context=f"{tonic} major",
+            reason="the real dominant-seventh resolution"),
+        _trainer_action(
+            f"act:node:{node.id}:v_i", f"V→I into {tonic} (triad reduction)",
+            function_spec(["V", "I"], "V–I", "major", [tonic]),
+            "functional_equivalence", "node", network,
+            reason="the V triad is the V7 without its seventh (comparison)"),
     ]
-    if ctx:
-        tonic, mode = ctx
-        tonic_roman = "I" if mode == "major" else "i"
-        out.append(_trainer_action(
-            f"act:node:{node.id}:v_i", f"V→{tonic_roman} into {tonic} (triad approximation)",
-            function_spec(["V", tonic_roman], "V–I", mode, [tonic]),
-            "functional_path", "node", network,
-            reason="the V triad approximates the reserved V7 (shown honestly)"))
-    return out
 
 
 def _dim_node_actions(node, network, request) -> List[LaunchAction]:

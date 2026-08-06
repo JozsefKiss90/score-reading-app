@@ -9,7 +9,7 @@
  *   - selecting C surfaces its related Am / G7 / B°;
  *   - selecting G7 explains "resolves to C";
  *   - clicking a launch button queues a valid spec, dequeued via takeLaunch();
- *   - a dominant-seventh node's seventh drill is reserved (never launchable);
+ *   - a dominant-seventh node launches its real V7->I drill (ticket 12);
  *   - trainer/atlas sync highlighting maps onto the right node.
  *
  * Run:  node tests/harmonic_network_node_test.js
@@ -183,21 +183,21 @@ const PAYLOAD = loadPayload();
   assert(spec && spec.drill === "full_key", "queued spec is a real full_key drill");
   assert(h.ui.takeLaunch() === null, "queue drains to null");
 
-  // The dominant seventh exposes a RESERVED seventh drill (no launch button),
-  // plus a launchable triad surrogate (V->I), which is NOT a seventh chord.
+  // The dominant seventh launches its REAL V7->I drill (ticket 12): no
+  // reserved placeholder, no badge, exactly one launch button.
   ALL.length = 0;                            // only inspect the next render
   h.ui.selectNode("hn:dom7:G");
   const g7Node = h.ui.nodeById("hn:dom7:G");
   const reserved = g7Node.trainerSpecs.filter((t) => t.status === "reserved");
-  assert(reserved.length === 1 && reserved[0].spec === null,
-    "G7 seventh drill is reserved with no spec");
-  assert(byClass("reservedBadge").length >= 1, "reserved drill shows a badge");
+  assert(reserved.length === 0, "G7 carries no reserved entry any more");
+  assert(byClass("reservedBadge").length === 0, "no reserved badge rendered");
   const g7Btns = byClass("launchBtn");
-  assert(g7Btns.length === 1, "G7 shows exactly one (triad surrogate) launch button");
+  assert(g7Btns.length === 1, "G7 shows exactly one (V7 drill) launch button");
   g7Btns[0].fire("click");
-  const surrogate = h.ui.takeLaunch();
-  assert(surrogate && surrogate.drill === "function" && surrogate.drill !== "seventh_chord",
-    "G7's launchable is a triad drill, never a seventh chord");
+  const v7spec = h.ui.takeLaunch();
+  assert(v7spec && v7spec.drill === "function", "G7's launchable is a function drill");
+  assert(Array.isArray(v7spec.pattern) && v7spec.pattern[0] === "V7",
+    "G7's queued drill is the real V7 resolution, got " + JSON.stringify(v7spec.pattern));
 
   // launching a malformed spec is a no-op
   assert(h.ui.launch(null) === false, "launching null is refused");
@@ -254,27 +254,26 @@ const PAYLOAD = loadPayload();
   assert(drained && drained.drill === "full_key", "takeLaunch drains exactly the queued spec");
   assert(h.ui.takeLaunch() === null, "queue holds exactly one -> second drain is null");
 
-  // A reserved seventh-chord spec can NEVER be queued, even via launch() directly.
-  assert(h.ui.launch({ exercise_id: "x", drill: "seventh_chord" }) === false,
-    "reserved seventh_chord spec is refused");
-  assert(h.ui.pendingCount() === 0, "reserved spec is not queued");
-  ll = h.ui.lastLaunch();
-  assert(ll.queued === false && ll.reason === "reserved-drill",
-    "lastLaunch flags the reserved-drill refusal");
-
   // Malformed specs are refused with a reason.
   assert(h.ui.launch({}) === false, "spec without a drill is refused");
   assert(h.ui.launch(null) === false, "null spec is refused");
   assert(h.ui.lastLaunch().reason === "missing-or-malformed-spec", "reason recorded");
 
-  // The reserved G7 seventh action renders NO launch button (cannot queue).
+  // The G7 node's launch button queues the real V7 drill (ticket 12).
   ALL.length = 0;
   h.ui.selectNode("hn:dom7:G");
   const g7 = h.ui.nodeById("hn:dom7:G");
-  const reserved = g7.trainerSpecs.filter((t) => t.status === "reserved");
-  assert(reserved.length === 1 && reserved[0].spec === null, "G7 has a reserved, spec-less drill");
-  assert(byClass("reservedBadge").length >= 1, "reserved drill is clearly labelled");
-  assert(byClass("launchBtn").length === 1, "G7 exposes only the triad-surrogate launch button");
+  assert(g7.trainerSpecs.every((t) => t.status === "launchable" && t.spec),
+    "every G7 trainer entry is launchable with a real spec");
+  assert(byClass("reservedBadge").length === 0, "no reserved badge anywhere");
+  assert(byClass("launchBtn").length === 1, "G7 exposes exactly one launch button");
+  byClass("launchBtn")[0].fire("click");
+  ll = h.ui.lastLaunch();
+  assert(ll.queued === true && ll.drill === "function",
+    "lastLaunch records the queued V7 function drill");
+  const queued = h.ui.takeLaunch();
+  assert(queued && queued.pattern && queued.pattern[0] === "V7",
+    "the queued spec carries the V7 pattern");
   console.log("Test H (launch hardening + debug state): PASS");
 })();
 

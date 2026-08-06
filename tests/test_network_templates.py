@@ -275,10 +275,14 @@ class TestPhase8Templates(unittest.TestCase):
         self.assertEqual(net.counts()["nodesByKind"],
                          {"function_family": 1, "diatonic_triad": 1,
                           "dominant_seventh": 1, "diminished_triad": 1})
-        # the seventh chord is RESERVED, the V triad and vii° are launchable
+        # ticket 12: the seventh chord launches the real V7->I drill, exactly
+        # like the V triad and vii° (the reserved marker is gone).
+        from harmony.exercise_spec import HarmonyExerciseSpec as _Spec
         v7 = net.node("hn:dom7:G")
-        self.assertEqual(v7.trainer_specs[0]["status"], "reserved")
-        self.assertIsNone(v7.trainer_specs[0]["spec"])
+        self.assertEqual(v7.trainer_specs[0]["status"], "launchable")
+        v7_spec = _Spec.from_dict(v7.trainer_specs[0]["spec"])
+        self.assertEqual(v7_spec.pattern, ["V7", "I"])
+        self.assertEqual(v7_spec.keys, ["C"])
         self.assertEqual(net.node("hn:triad:C:major:4").trainer_specs[0]["status"], "launchable")
         self.assertEqual(net.node("hn:dim:B").trainer_specs[0]["status"], "launchable")
         rels = {e.relation for e in net.edges}
