@@ -2,9 +2,13 @@
 
 Run::
 
-    .venv/Scripts/python.exe run_functional_network_demo.py
+    .venv/Scripts/python.exe run_functional_network_demo.py            # major
+    .venv/Scripts/python.exe run_functional_network_demo.py --minor    # minor
+    .venv/Scripts/python.exe run_functional_network_demo.py --template <id>
 
 A practice-first harmonic network over a few major journey keys (C, G, D, F)
+-- or, with ``--minor``, the v2 minor journey (A, E, D, B: harmonic-minor
+chords, the real minor V, ticket 15 / G2c) --
 in which **every diatonic degree is a real graph node**, the graph reveals
 itself in guided stages, and *playing the trainer is what drives the graph*:
 
@@ -49,6 +53,7 @@ from harmony.functional_network import (
     build_functional_network,
     functional_payload,
     degree_node_id,
+    panel_mode,
 )
 from harmony.functional_network_template import get_template
 from harmony.functional_journey import (
@@ -113,9 +118,11 @@ class FunctionalNetworkWindow(QWidget):
     def __init__(self, midi_service=None, template_id: Optional[str] = None,
                  progress_path=DEFAULT_PROGRESS_FILENAME):
         super().__init__()
-        self.setWindowTitle("Functional Degree Network — staged journey")
 
         template = get_template(template_id)
+        self.setWindowTitle(f"Functional Degree Network — "
+                            f"{'minor' if template.mode == 'minor' else 'staged'} "
+                            f"journey")
         self._network = build_functional_network(template)
         self._stages: List[JourneyStage] = journey_stages(self._network)
         # Journey progress routes through the unified service (ticket 08).
@@ -390,10 +397,14 @@ class FunctionalNetworkWindow(QWidget):
         self._last_target = target
 
     def _light_target_node(self, target: dict):
-        tonic, _ = parse_key(target.get("key") or "")
+        # "A minor" targets light the m-suffixed minor panel node; the target
+        # key alone carries the panel mode (harmonic minor is a scale form of
+        # the same minor key, so its drills still report key "A minor").
+        tonic, key_mode = parse_key(target.get("key") or "")
         num = target.get("degreeNumber")
         if tonic and isinstance(num, int) and num >= 1:
-            self._mark_lit([degree_node_id(tonic, num - 1)])
+            self._mark_lit([degree_node_id(tonic, num - 1,
+                                           panel_mode(key_mode))])
 
     def _mark_lit(self, node_ids: List[str]):
         new = [nid for nid in node_ids
@@ -455,6 +466,21 @@ class FunctionalNetworkWindow(QWidget):
 def main(argv=None) -> int:
     argv = list(sys.argv if argv is None else argv)
 
+    # `--minor` launches the v2 minor journey (ticket 15 / G2c);
+    # `--template <id>` any registered functional template.
+    template_id: Optional[str] = None
+    if "--minor" in argv:
+        argv.remove("--minor")
+        template_id = "functional_degree_network_minor_v2"
+    if "--template" in argv:
+        i = argv.index("--template")
+        try:
+            template_id = argv[i + 1]
+        except IndexError:
+            print("[FNET] --template needs a template id")
+            return 2
+        del argv[i:i + 2]
+
     QCoreApplication.setAttribute(
         Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
     app = QApplication(argv)
@@ -471,7 +497,8 @@ def main(argv=None) -> int:
             print("[FNET] MidiService init failed:", exc)
             midi_service = None
 
-    win = FunctionalNetworkWindow(midi_service=midi_service)
+    win = FunctionalNetworkWindow(midi_service=midi_service,
+                                  template_id=template_id)
     win.resize(1720, 920)
     win.show()
     return app.exec()

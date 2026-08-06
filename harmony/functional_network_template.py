@@ -98,6 +98,12 @@ GENERATION_RULES = [
 #: The visual classes (node colours) of this network's palette.
 VISUAL_CLASSES = ["emerald", "violet", "amber"]
 
+#: The panel modes a functional template may declare.  ``minor`` panels use
+#: the *harmonic* minor chord set (the real V / vii°, ticket 13 / G2a) while
+#: the key context stays natural minor.  This is template metadata, not a
+#: vocabulary widening: kinds/relations/rules above stay frozen.
+PANEL_MODES = ["major", "minor"]
+
 #: The three merged function groups (T / PD-S / D), in T->PD->D order.
 #: The engine's five per-degree ``function_label`` values collapse onto these
 #: (the builder owns that mapping); ``mediant`` is grouped as a tonic
@@ -159,6 +165,10 @@ class FunctionalNetworkTemplate:
     #: The key hub's ``[dx, dy]`` offset (top-centre of the panel).
     hub_offset: List[float] = field(default_factory=lambda: [0.0, -195.0])
     launch_rules: Dict[str, Any] = field(default_factory=dict)
+    #: The panel mode: every journey key is a major key ("major") or a minor
+    #: key ("minor", harmonic-minor chord set).  One journey = one mode; a
+    #: mixed journey would need two templates.
+    mode: str = "major"
     schema: str = SCHEMA_VERSION
 
     # -- lookups ---------------------------------------------------------
@@ -249,6 +259,10 @@ class FunctionalNetworkTemplate:
         if missing:
             raise ValueError(f"node classes missing a layout rule: {sorted(missing)}")
 
+        if self.mode not in PANEL_MODES:
+            raise ValueError(
+                f"unknown panel mode {self.mode!r}; expected one of {PANEL_MODES}")
+
         if not self.journey_keys:
             raise ValueError("template requires at least one journey key")
         if len(set(self.journey_keys)) != len(self.journey_keys):
@@ -290,6 +304,7 @@ class FunctionalNetworkTemplate:
             "function_offsets": {k: list(v) for k, v in self.function_offsets.items()},
             "hub_offset": list(self.hub_offset),
             "launch_rules": dict(self.launch_rules),
+            "mode": self.mode,
         }
 
     @classmethod
@@ -309,6 +324,7 @@ class FunctionalNetworkTemplate:
                               for k, v in d.get("function_offsets", {}).items()},
             hub_offset=list(d.get("hub_offset", [0.0, -195.0])),
             launch_rules=dict(d.get("launch_rules", {})),
+            mode=d.get("mode", "major"),
             schema=d.get("schema", SCHEMA_VERSION),
         )
         tpl.validate()
@@ -322,6 +338,65 @@ class FunctionalNetworkTemplate:
 #: Default journey keys: 4 major keys with no enharmonic seam (v1 is major
 #: only; minor panels + modulation paths are the natural v2).
 DEFAULT_JOURNEY_KEYS = ["C", "G", "D", "F"]
+
+#: Default *minor* journey keys (v2): the relative minors of the v1 journey
+#: (Am/Em/Dm/Bm for C/G/F/D) -- the same no-enharmonic-seam neighbourhood of
+#: the circle, one key signature apart each.
+DEFAULT_MINOR_JOURNEY_KEYS = ["A", "E", "D", "B"]
+
+#: Functional positions inside a panel (y grows downward), shared by every
+#: journey template: PD/S column left, D column right, T cluster
+#: bottom-centre.  Indexed 0..6 (I..vii° / i..vii°).
+_PANEL_DEGREE_OFFSETS = [
+    [0.0, 95.0],       # 0 tonic       -- centre
+    [-115.0, -85.0],   # 1 supertonic  -- PD/S column, top
+    [115.0, 140.0],    # 2 mediant     -- orbiting the tonic (substitute)
+    [-160.0, -5.0],    # 3 subdominant -- PD/S column, lower
+    [115.0, -85.0],    # 4 dominant    -- D column, top
+    [-115.0, 140.0],   # 5 submediant  -- orbiting the tonic (substitute)
+    [160.0, -5.0],     # 6 leading/subtonic -- D column, lower
+]
+
+_PANEL_FUNCTION_OFFSETS = {
+    "tonic": [0.0, 200.0],
+    "predominant": [-195.0, -145.0],
+    "dominant": [195.0, -145.0],
+}
+
+_PANEL_HUB_OFFSET = [0.0, -195.0]
+
+
+def _panel_layout_rules() -> List[PanelLayoutRule]:
+    return [
+        PanelLayoutRule("degree_triad", node_radius=22.0,
+                        description="Degree triads at functional positions."),
+        PanelLayoutRule("function_group", node_radius=25.0,
+                        description="Function-family badges orbiting the panel."),
+        PanelLayoutRule("key_hub", node_radius=27.0,
+                        description="The key hub at the top of its panel."),
+    ]
+
+
+def _reserved_edge_classes() -> List[EdgeClass]:
+    """The reserved vocabulary every journey template names but never
+    generates -- shared verbatim by the major and minor factories."""
+    return [
+        EdgeClass("modulation_path_to", "Modulation path to", directed=True,
+                  implemented=False, visual_class="reserved",
+                  default_visible=False, description="Reserved."),
+        EdgeClass("borrowed_from_parallel", "Borrowed from parallel",
+                  directed=True, implemented=False, visual_class="reserved",
+                  default_visible=False, description="Reserved."),
+    ]
+
+
+def _triad_launch_rules() -> Dict[str, Any]:
+    # Everything in these graphs is a real triad drill.
+    return {
+        "launchable_kinds": ["degree_triad", "function_group", "key_hub"],
+        "reserved_kinds": [],
+        "reserved_reason": "",
+    }
 
 
 def functional_degree_network_v1(
@@ -396,23 +471,7 @@ def functional_degree_network_v1(
                   visual_class="atlas", default_visible=False,
                   description="A degree belongs to its key panel (default-off "
                               "overlay; the panel grouping already shows it)."),
-        # Reserved vocabulary -- named now, generated by a future layer.
-        EdgeClass("modulation_path_to", "Modulation path to", directed=True,
-                  implemented=False, visual_class="reserved",
-                  default_visible=False, description="Reserved."),
-        EdgeClass("borrowed_from_parallel", "Borrowed from parallel",
-                  directed=True, implemented=False, visual_class="reserved",
-                  default_visible=False, description="Reserved."),
-    ]
-
-    layout_rules = [
-        PanelLayoutRule("degree_triad", node_radius=22.0,
-                        description="Degree triads at functional positions."),
-        PanelLayoutRule("function_group", node_radius=25.0,
-                        description="Function-family badges orbiting the panel."),
-        PanelLayoutRule("key_hub", node_radius=27.0,
-                        description="The key hub at the top of its panel."),
-    ]
+    ] + _reserved_edge_classes()
 
     return FunctionalNetworkTemplate(
         template_id="functional_degree_network_v1",
@@ -429,33 +488,130 @@ def functional_degree_network_v1(
             "from the theory engine; triads only, so every node is launchable."),
         node_classes=node_classes,
         edge_classes=edge_classes,
-        layout_rules=layout_rules,
+        layout_rules=_panel_layout_rules(),
         generation_rules=list(GENERATION_RULES),
         journey_keys=list(keys),
         panel_width=470.0,
-        # Functional positions inside a panel (y grows downward):
-        #   PD/S column left, D column right, T cluster bottom-centre.
-        degree_offsets=[
-            [0.0, 95.0],       # 0 I    -- tonic centre
-            [-115.0, -85.0],   # 1 ii   -- PD/S column, top
-            [115.0, 140.0],    # 2 iii  -- orbiting I (tonic substitute)
-            [-160.0, -5.0],    # 3 IV   -- PD/S column, lower
-            [115.0, -85.0],    # 4 V    -- D column, top
-            [-115.0, 140.0],   # 5 vi   -- orbiting I (tonic substitute)
-            [160.0, -5.0],     # 6 vii° -- D column, lower
-        ],
-        function_offsets={
-            "tonic": [0.0, 200.0],
-            "predominant": [-195.0, -145.0],
-            "dominant": [195.0, -145.0],
-        },
-        hub_offset=[0.0, -195.0],
-        launch_rules={
-            # Everything in this graph is a real triad drill.
-            "launchable_kinds": ["degree_triad", "function_group", "key_hub"],
-            "reserved_kinds": [],
-            "reserved_reason": "",
-        },
+        degree_offsets=[list(o) for o in _PANEL_DEGREE_OFFSETS],
+        function_offsets={k: list(v)
+                          for k, v in _PANEL_FUNCTION_OFFSETS.items()},
+        hub_offset=list(_PANEL_HUB_OFFSET),
+        launch_rules=_triad_launch_rules(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# The v2 minor journey template (ticket 15 / plan G2c)
+# ---------------------------------------------------------------------------
+
+def functional_degree_network_minor_v2(
+        keys: "tuple[str, ...] | List[str]" = ("A", "E", "D", "B"),
+) -> FunctionalNetworkTemplate:
+    """The staged functional degree network over a few *minor* journey keys.
+
+    Registered through the registry seam as a new template -- the frozen v1
+    vocabulary is reused, never widened, and the v1 template is untouched
+    (docs/curriculum_expansion_plan.md section 9.6).
+
+    Same panel geometry and stage machine as v1, but every panel is a minor
+    key whose chords come from **harmonic minor** (ticket 13 / G2a): the
+    dominant column holds the *real* minor V (major triad on 5, raised
+    leading tone) and vii° -- not natural minor's modal v / VII.  The key
+    context stays natural minor (the raised 7 is a scale form, not a key
+    signature), which is exactly how the builder claims its Atlas refs::
+
+              [ii°]──prepares──▶[V]          PD/S column   D column
+          [iv]─┘                 │ [vii°]
+            ▲                    ▼resolves_to
+          [VI]···substitute···▶[i]◀···[III+]  T cluster (i centre, VI/III+ orbit)
+
+    Every degree node is a real, launchable harmonic-minor triad; there are
+    no reserved drills anywhere in this graph either.
+    """
+    node_classes = [
+        NodeClass("degree_triad", "Diatonic degree", "emerald", "#34d399",
+                  "One of the seven harmonic-minor triads of a journey key, "
+                  "placed by harmonic function (tonic cluster bottom-centre, "
+                  "predominants left, dominants right). The dominant column "
+                  "holds the real minor V: harmonic minor's raised leading "
+                  "tone makes it a major triad."),
+        NodeClass("function_group", "Function group", "violet", "#a78bfa",
+                  f"A functional family within one minor key: the "
+                  f"{FUNCTION_GROUP_LABELS['tonic']} (i, VI, III+), the "
+                  f"{FUNCTION_GROUP_LABELS['predominant']} (ii°, iv) or the "
+                  f"{FUNCTION_GROUP_LABELS['dominant']} (V, vii°). "
+                  "The augmented III+ is grouped as a tonic substitute; its "
+                  "explanation states how fragile that grouping is."),
+        NodeClass("key_hub", "Key hub", "amber", "#fbbf24",
+                  "A minor journey key (one per panel). Launches the "
+                  "full-key seven-triad harmonic-minor drill."),
+    ]
+
+    # Same renderer palette keys as v1 (the JS colours/dashes stay correct);
+    # descriptions tell the minor story.
+    edge_classes = [
+        EdgeClass("function_member", "Member of function", directed=False,
+                  visual_class="function", default_visible=True,
+                  description="A degree belongs to a functional family "
+                              "(i/VI/III+ → T, ii°/iv → PD/S, V/vii° → D)."),
+        EdgeClass("resolves_to", "Resolves to", directed=True,
+                  visual_class="resolve", default_visible=True,
+                  description="Dominant-function tension resolving home "
+                              "(V → i, vii° → i) -- the pull harmonic "
+                              "minor's raised leading tone exists to create."),
+        EdgeClass("prepares", "Prepares", directed=True,
+                  visual_class="leading", default_visible=True,
+                  description="A predominant approaching the dominant "
+                              "(ii° → V, iv → V)."),
+        EdgeClass("tonic_substitute", "Tonic substitute", directed=False,
+                  visual_class="relative", default_visible=True,
+                  description="VI and III+ share two chord tones with i and "
+                              "can stand in for it (III+ only barely -- see "
+                              "its node)."),
+        EdgeClass("deceptive_to", "Deceptive resolution", directed=True,
+                  visual_class="shared", default_visible=True,
+                  description="V resolving deceptively to VI instead of i "
+                              "(the minor-mode deceptive cadence)."),
+        EdgeClass("shared_triad", "Same triad in another key", directed=False,
+                  visual_class="samepc", default_visible=True,
+                  description="Pitch-class-identical triads across panels: "
+                              "one shape, several functions (Am is i at home "
+                              "and iv in E minor)."),
+        EdgeClass("fifth_relation", "Fifth relation", directed=True,
+                  visual_class="fifth", default_visible=True,
+                  description="Adjacent minor journey keys a perfect fifth "
+                              "apart."),
+        EdgeClass("in_key", "In key", directed=True,
+                  visual_class="atlas", default_visible=False,
+                  description="A degree belongs to its key panel (default-off "
+                              "overlay; the panel grouping already shows it)."),
+    ] + _reserved_edge_classes()
+
+    return FunctionalNetworkTemplate(
+        template_id="functional_degree_network_minor_v2",
+        title="Functional degree network — minor journey",
+        description=(
+            "The minor-key sibling of the staged functional journey: every "
+            "panel is a minor key whose seven triads come from harmonic "
+            "minor, so the dominant column holds the REAL minor V (a major "
+            "triad -- the raised leading tone) and vii°, not natural minor's "
+            "modal v/VII. Function groups, resolution / preparation / "
+            "substitution / deception arrows and cross-panel shared-triad "
+            "links work exactly as in the major journey, and the graph "
+            "reveals itself in the same guided stages. Derived entirely from "
+            "the theory engine; triads only, so every node is launchable."),
+        node_classes=node_classes,
+        edge_classes=edge_classes,
+        layout_rules=_panel_layout_rules(),
+        generation_rules=list(GENERATION_RULES),
+        journey_keys=list(keys),
+        panel_width=470.0,
+        degree_offsets=[list(o) for o in _PANEL_DEGREE_OFFSETS],
+        function_offsets={k: list(v)
+                          for k, v in _PANEL_FUNCTION_OFFSETS.items()},
+        hub_offset=list(_PANEL_HUB_OFFSET),
+        launch_rules=_triad_launch_rules(),
+        mode="minor",
     )
 
 
@@ -465,6 +621,7 @@ def functional_degree_network_v1(
 
 TEMPLATES = {
     "functional_degree_network_v1": functional_degree_network_v1,
+    "functional_degree_network_minor_v2": functional_degree_network_minor_v2,
 }
 
 DEFAULT_TEMPLATE_ID = "functional_degree_network_v1"

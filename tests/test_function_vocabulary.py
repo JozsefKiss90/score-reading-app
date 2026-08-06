@@ -160,9 +160,12 @@ class TestRenderedProse(unittest.TestCase):
             self.assertIn(needed, text)
 
     def test_functional_network_group_prose_uses_source_labels(self):
+        # keyed by panel mode since the v2 minor journey (ticket 15)
         from harmony.functional_network import _GROUP_PROSE
-        for fam, prose in _GROUP_PROSE.items():
-            self.assertIn(hr.internal_family_label(fam), prose, fam)
+        for mode, per_group in _GROUP_PROSE.items():
+            for fam, prose in per_group.items():
+                self.assertIn(hr.internal_family_label(fam), prose,
+                              f"{mode}:{fam}")
 
     def test_journey_and_template_prose_use_source_labels(self):
         from harmony.functional_network_template import functional_degree_network_v1

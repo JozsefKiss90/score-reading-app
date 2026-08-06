@@ -50,6 +50,9 @@ const PAYLOAD = loadPayload(
 const LEGACY = loadPayload(
   "import json;from harmony.harmonic_network import build_network_payload;" +
   "print(json.dumps(build_network_payload()))");
+const MINOR = loadPayload(
+  "import json;from harmony.functional_network import build_functional_network_payload;" +
+  "print(json.dumps(build_functional_network_payload('functional_degree_network_minor_v2')))");
 
 // --- minimal DOM harness (mirrors harmonic_network_node_test.js) ------------
 let ALL = [];
@@ -293,6 +296,62 @@ const C_DEGREES = [0, 1, 2, 3, 4, 5, 6].map((i) => "fnet:deg:C:" + i);
   assert(hub && hub.drill === "full_key" && hub.key === "G major",
     "key hub drills the full key");
   console.log("Test G (launch queue): PASS");
+})();
+
+// === Test H: the minor journey payload (ticket 15 / G2c) =====================
+(function testMinorJourney() {
+  const h = makeHarness(MINOR, true);
+  const r = h.ui.init(MINOR);
+  assert(r.ok && r.nodes === 44, "minor init reports 44 nodes, got " + r.nodes);
+  assert(MINOR.template.mode === "minor", "minor payload declares its mode");
+  assert(MINOR.progressive === true, "minor payload is progressive");
+  // exact-id sync lands on the m-suffixed minor node (the REAL minor V)
+  let p = h.ui.highlightFromDegreeTarget(
+    { key: "A minor", mode: "harmonic_minor", degreeNumber: 5 });
+  assert(p === "fnet:deg:Am:4", "A minor degree 5 -> fnet:deg:Am:4, got " + p);
+  let sn = h.ui.syncNodes();
+  assert(sn.indexOf("fnet:fn:Am:dominant") !== -1,
+    "the minor V highlight includes its function group (D)");
+  // the next chord lights the exercised V->i resolves_to edge
+  ALL.length = 0;
+  p = h.ui.highlightFromDegreeTarget(
+    { key: "A minor", mode: "harmonic_minor", degreeNumber: 5,
+      nextKey: "A minor", nextDegreeNumber: 1 });
+  assert(p === "fnet:deg:Am:4", "primary stays the current minor degree");
+  assert(h.ui.syncNodes().indexOf("fnet:deg:Am:0") !== -1,
+    "the next minor chord joins the sync set");
+  const litEdges = byClass("edge--sync");
+  assert(litEdges.some((e) => e.className.indexOf("relation--resolves_to") !== -1),
+    "the lit edge is the minor V->i resolves_to arrow");
+  // a MAJOR-mode target must clear on the minor payload (mode gate, both ways)
+  assert(h.ui.highlightFromDegreeTarget(
+    { key: "C major", mode: "major", degreeNumber: 5 }) === null,
+    "major target clears the sync on the minor payload");
+  assert(h.ui.syncNodes().length === 0, "no stale sync nodes remain");
+  // a minor key outside the journey clears rather than guessing
+  assert(h.ui.highlightFromDegreeTarget(
+    { key: "F minor", mode: "harmonic_minor", degreeNumber: 2 }) === null,
+    "unknown minor journey key clears the sync");
+  // scale-form honesty: natural minor's v (roman "v") must NOT light the
+  // harmonic-minor V node this graph shows — same degree, different chord
+  assert(h.ui.highlightFromDegreeTarget(
+    { key: "A minor", mode: "natural_minor", degreeNumber: 5, roman: "v" }) === null,
+    "natural-minor v target clears rather than lighting the harmonic V");
+  assert(h.ui.highlightFromDegreeTarget(
+    { key: "A minor", mode: "harmonic_minor", degreeNumber: 5, roman: "V" })
+    === "fnet:deg:Am:4", "matching roman still lights the exact node");
+  // minor node clicks queue real harmonic-minor drills
+  h.ui.selectNode("fnet:deg:Am:4");
+  const btns = byClass("launchBtn");
+  assert(btns.length >= 1, "the minor V degree renders a launch button");
+  assert(byClass("reservedBadge").length === 0, "no reserved badge anywhere");
+  btns[0].fire("click");
+  const spec = h.ui.takeLaunch();
+  assert(spec && spec.drill === "function" && spec.mode === "harmonic_minor",
+    "queued spec is a harmonic-minor function drill");
+  assert(JSON.stringify(spec.pattern) === JSON.stringify(["V", "i"]),
+    "the minor V node drills V–i");
+  console.log("Test H (minor journey payload): PASS");
 })();
 
 console.log("\nAll functional_network journey checks passed (" + passed + " assertions).");

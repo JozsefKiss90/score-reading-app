@@ -38,6 +38,7 @@ from harmony.functional_network import (
     degree_node_id,
     function_node_id,
     key_node_id,
+    panel_mode,
 )
 from harmony.functional_network_template import FUNCTION_GROUPS, FUNCTION_GROUP_LABELS
 
@@ -84,8 +85,26 @@ def _slug(text: str) -> str:
     return text.replace("#", "s").replace("b", "f")
 
 
-def _horizontal_v_spec(keys: List[str]) -> HarmonyExerciseSpec:
-    """The stage-6 cross-key drill: the V triad across every journey key."""
+def _horizontal_v_spec(keys: List[str],
+                       mode: str = "major") -> HarmonyExerciseSpec:
+    """The stage-6 cross-key drill: the V triad across every journey key.
+
+    In the minor journey V is drilled in ``harmonic_minor`` (the real minor
+    dominant, ticket 13); its exercise id carries the mode so the two
+    journeys' drill records stay disjoint in the shared progress store.
+    """
+    n_keys = f"{len(keys)} different key{'s' if len(keys) != 1 else ''}"
+    if mode == "minor":
+        return HarmonyExerciseSpec(
+            exercise_id=(f"fnet_degree_V_minor_"
+                         f"{'_'.join(_slug(k) for k in keys)}"),
+            title=f"V across {', '.join(keys)} (minor)",
+            drill="horizontal_degree", render="block", mode="harmonic_minor",
+            degree="V", keys=list(keys),
+            description=(f"The real minor dominant V (harmonic minor) "
+                         f"transposed across {', '.join(keys)} — the same "
+                         f"functional job in {n_keys}."),
+        )
     return HarmonyExerciseSpec(
         exercise_id=f"fnet_degree_V_{'_'.join(_slug(k) for k in keys)}",
         title=f"V across {', '.join(keys)} (major)",
@@ -93,7 +112,7 @@ def _horizontal_v_spec(keys: List[str]) -> HarmonyExerciseSpec:
         degree="V", keys=list(keys),
         description=(f"The dominant triad V transposed across "
                      f"{', '.join(keys)} — the same functional job in "
-                     f"{len(keys)} different key{'s' if len(keys) != 1 else ''}."),
+                     f"{n_keys}."),
     )
 
 
@@ -103,8 +122,16 @@ def journey_stages(network: HarmonicNetwork) -> List[JourneyStage]:
     ``network`` must be a functional degree network
     (:func:`harmony.functional_network.build_functional_network`); every node
     id a stage references is checked against it and a missing id raises
-    :class:`ValueError` immediately.
+    :class:`ValueError` immediately.  A ``mode="minor"`` template (the v2
+    minor journey, ticket 15 / G2c) gets the mirrored minor stage machine;
+    everything else gets the original major stages.
     """
+    if network.template.mode == "minor":
+        return _minor_journey_stages(network)
+    return _major_journey_stages(network)
+
+
+def _major_journey_stages(network: HarmonicNetwork) -> List[JourneyStage]:
     keys = [canonical_key(k) for k in network.template.journey_keys]
     if not keys:
         raise ValueError("network template has no journey keys")
@@ -263,6 +290,179 @@ def journey_stages(network: HarmonicNetwork) -> List[JourneyStage]:
     return stages
 
 
+def _minor_journey_stages(network: HarmonicNetwork) -> List[JourneyStage]:
+    """The minor journey's 7 stages (ticket 15 / G2c), mirroring the major
+    machine stage for stage: same reveal order, same unlock rules, minor
+    vocabulary (i / ii° / III+ / iv / V / VI / vii°) and the harmonic-minor
+    story.  Stage ids carry a ``_minor`` suffix so both journeys can share
+    one progress store without colliding.
+    """
+    keys = [canonical_key(k) for k in network.template.journey_keys]
+    if not keys:
+        raise ValueError("network template has no journey keys")
+    home = keys[0]                                   # the journey starts here
+    second = keys[1] if len(keys) > 1 else home
+
+    deg = lambda key, i: degree_node_id(key, i, "minor")      # noqa: E731
+    fn = lambda key, g: function_node_id(key, g, "minor")     # noqa: E731
+    hub = lambda key: key_node_id(key, "minor")               # noqa: E731
+
+    home_degrees = [deg(home, i) for i in range(7)]
+    home_functions = [fn(home, g) for g in FUNCTION_GROUPS]
+    all_node_ids = [n.id for n in network.nodes]
+
+    # As in the major machine, derive (from the engine) which roman the home
+    # tonic triad plays inside the second journey key.
+    home_tonic = generate_diatonic_triads(home, "harmonic_minor")[0]
+    home_tonic_pcs = frozenset(home_tonic.pitch_classes)
+    shared_roman = next(
+        (t.roman for t in generate_diatonic_triads(second, "harmonic_minor")
+         if frozenset(t.pitch_classes) == home_tonic_pcs), None)
+    shared_example = (
+        f" (the {home_tonic.chord_symbol} triad is i at home and "
+        f"{shared_roman} in {second} minor)" if shared_roman and second != home
+        else "")
+
+    hm = "harmonic_minor"
+    stages = [
+        JourneyStage(
+            stage_id="meet_the_scale_minor",
+            title="Stage 1 — Meet the minor scale",
+            explanation=(
+                f"{home} minor also has seven diatonic triads — but this "
+                f"journey builds them from HARMONIC minor: the 7th degree is "
+                f"raised, which turns the dominant into a real major triad "
+                f"(the payoff comes in stage 3). Play the drill and watch "
+                f"each correct chord light its node for good. The layout is "
+                f"not scale order: chords sit where they *work*."),
+            visible_node_ids=list(home_degrees),
+            visible_relations=[],
+            emphasis_node_ids=[deg(home, 0)],
+            drills=[full_key_spec(home, hm)],
+            unlock="finish_any",
+        ),
+        JourneyStage(
+            stage_id="three_jobs_minor",
+            title="Stage 2 — Three jobs in minor",
+            explanation=(
+                f"Minor keys run on the same three jobs as major: the "
+                f"{FUNCTION_GROUP_LABELS['tonic']} is home (i, with VI and "
+                f"the rare III+ as stand-ins), the "
+                f"{FUNCTION_GROUP_LABELS['predominant']} sets up motion (the "
+                f"diminished ii° and the subdominant iv), and the "
+                f"{FUNCTION_GROUP_LABELS['dominant']} carries tension (V, "
+                f"vii°). Play i–iv–V–i and feel the full minor cycle: home → "
+                f"approach → tension → home."),
+            visible_node_ids=home_degrees + home_functions,
+            visible_relations=["function_member"],
+            emphasis_node_ids=list(home_functions),
+            drills=[function_spec(["i", "iv", "V", "i"], "i–iv–V–i",
+                                  hm, [home])],
+            unlock="finish_any",
+        ),
+        JourneyStage(
+            stage_id="tension_home_minor",
+            title="Stage 3 — The real minor V",
+            explanation=(
+                f"This is why harmonic minor exists. Natural minor's v has "
+                f"no leading tone and barely pulls anywhere; raise the 7th "
+                f"and V becomes a major triad whose leading tone drags the "
+                f"ear home — the same authentic V → i pull major keys have. "
+                f"vii°, built on that raised tone, is the rootless twin. "
+                f"Play both resolutions in {home} minor and watch the red "
+                f"arrows fire."),
+            visible_node_ids=home_degrees + home_functions,
+            visible_relations=["function_member", "resolves_to"],
+            emphasis_node_ids=[deg(home, 4), deg(home, 6)],
+            drills=[
+                function_spec(["V", "i"], "V–i", hm, [home]),
+                function_spec(["vii°", "i"], "vii°–i", hm, [home]),
+            ],
+            unlock="finish_all",
+        ),
+        JourneyStage(
+            stage_id="approach_chain_minor",
+            title="Stage 4 — The approach chain",
+            explanation=(
+                "Minor's predominants prepare the dominant exactly as in "
+                "major: ii° falls a fifth onto V (diminished here, but the "
+                "bass motion is the same), and iv steps up to V. Chain them "
+                "and you get minor's ii°–V–i — the workhorse cadence of "
+                "minor-key music. Play it and follow the arrows: approach, "
+                "tension, home."),
+            visible_node_ids=home_degrees + home_functions,
+            visible_relations=["function_member", "resolves_to", "prepares"],
+            emphasis_node_ids=[deg(home, 1), deg(home, 3)],
+            drills=[function_spec(["ii°", "V", "i"], "ii°–V–i",
+                                  hm, [home])],
+            unlock="finish_any",
+        ),
+        JourneyStage(
+            stage_id="substitutes_minor",
+            title="Stage 5 — Substitutes",
+            explanation=(
+                "VI shares two chord tones with i and is minor's classic "
+                "tonic substitute — the goal of the deceptive resolution "
+                "V → VI, which stings more in minor because VI is a major "
+                "chord. III+ also orbits the tonic, but it is a rare, "
+                "unstable augmented chord that only exists because the "
+                "raised 7th sits inside the mediant. Play VI–ii°–V–i to "
+                "hear a substitute launch the whole cycle."),
+            visible_node_ids=home_degrees + home_functions,
+            visible_relations=["function_member", "resolves_to", "prepares",
+                               "tonic_substitute", "deceptive_to"],
+            emphasis_node_ids=[deg(home, 5), deg(home, 2)],
+            drills=[function_spec(["VI", "ii°", "V", "i"], "VI–ii°–V–i",
+                                  hm, [home])],
+            unlock="finish_any",
+        ),
+        JourneyStage(
+            stage_id="same_triad_new_key_minor",
+            title="Stage 6 — Same triad, new minor key",
+            explanation=(
+                f"Every minor journey key now has its panel — and grey links "
+                f"join triads that are literally the same three notes doing "
+                f"different jobs{shared_example}. Fewer links than the major "
+                f"journey: harmonic minor's raised-7th chords are unique to "
+                f"their key. Play V across all {len(keys)} keys, then repeat "
+                f"ii°–V–i in {second} minor to feel a familiar cycle in a "
+                f"new home."),
+            visible_node_ids=list(all_node_ids),
+            visible_relations=["function_member", "resolves_to", "prepares",
+                               "tonic_substitute", "deceptive_to",
+                               "shared_triad", "fifth_relation"],
+            emphasis_node_ids=[hub(second), deg(second, 4)],
+            drills=[
+                _horizontal_v_spec(keys, "minor"),
+                function_spec(["ii°", "V", "i"], "ii°–V–i", hm, [second]),
+            ],
+            unlock="finish_all",
+        ),
+        JourneyStage(
+            stage_id="free_exploration_minor",
+            title="Stage 7 — Free exploration",
+            explanation=(
+                "Everything is on the table: all minor keys, every relation, "
+                "every drill. Click any node to launch its drill — a degree "
+                "node pairs its chord with home (X–i; i plays the whole "
+                "key), function badges drill their family, key hubs drill "
+                "all seven harmonic-minor triads. Toggle relations on the "
+                "left to isolate one idea at a time. Nodes you light stay "
+                "lit."),
+            visible_node_ids=None,                    # no whitelist
+            visible_relations=["function_member", "resolves_to", "prepares",
+                               "tonic_substitute", "deceptive_to",
+                               "shared_triad", "fifth_relation"],
+            emphasis_node_ids=[hub(home)],
+            drills=[],
+            unlock="finish_any",
+        ),
+    ]
+
+    _validate_stages(stages, network)
+    return stages
+
+
 def _validate_stages(stages: List[JourneyStage],
                      network: HarmonicNetwork) -> None:
     """Every referenced node id / relation / unlock rule must exist."""
@@ -320,12 +520,17 @@ def drill_node_ids(spec: HarmonyExerciseSpec) -> List[str]:
     can never drift from what is actually played.  De-duplicated, order
     preserved.  Keys outside the journey simply produce ids that are not in
     the network -- the host's ``markCompleted`` ignores unknown ids.
+
+    The panel mode is read off each compiled chord's key ("A minor" -> the
+    ``m``-suffixed minor ids), so a harmonic-minor drill lands on the minor
+    journey's nodes and a major drill on the major journey's.
     """
     out: List[str] = []
     seen = set()
     for chord in compile_exercise(spec).chords:
-        tonic, _ = parse_key(chord.triad.key)
-        nid = degree_node_id(tonic, chord.triad.degree_index)
+        tonic, key_mode = parse_key(chord.triad.key)
+        nid = degree_node_id(tonic, chord.triad.degree_index,
+                             panel_mode(key_mode))
         if nid not in seen:
             seen.add(nid)
             out.append(nid)

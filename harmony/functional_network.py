@@ -28,6 +28,15 @@ Node ids are stable and parseable (the exact-id trainer sync depends on them):
 * ``fnet:deg:<key>:<degree_index>``  (``fnet:deg:C:4`` = the V of C major)
 * ``fnet:fn:<key>:<function_group>`` (``fnet:fn:C:dominant``)
 * ``fnet:key:<key>``                 (``fnet:key:C``)
+
+Minor panels (the v2 minor journey, ticket 15 / G2c) suffix the key token
+with ``m`` -- ``fnet:deg:Am:4`` is the V of A minor -- so minor ids are
+disjoint from every major id (the two journeys share one progress store) and
+the JS sync can reconstruct them from ``target.key`` + ``target.mode``.
+Minor panels generate their chords with **harmonic minor** (the real V /
+vii°, ticket 13 / G2a) while the *key* context stays natural minor: Atlas
+refs follow the natural-minor-twin honesty rule (chord-level nodes only on an
+exact pitch match; the raised III+ / V / vii° claim only their quality).
 """
 
 from __future__ import annotations
@@ -88,9 +97,9 @@ from harmony.harmonic_roles import (
 #: so the two names can never diverge at runtime.
 ENGINE_FUNCTION_TO_GROUP = ENGINE_FUNCTION_TO_INTERNAL_FAMILY
 
-#: Per-degree functional role prose (major mode), appended to the engine's own
-#: per-triad explanation.  Keyed by 0-based degree index.
-_ROLE_PROSE = {
+#: Per-degree functional role prose, appended to the engine's own per-triad
+#: explanation.  Keyed by panel mode, then 0-based degree index.
+_ROLE_PROSE_MAJOR = {
     0: ("This is home: the tonic. Every resolution and preparation arrow in "
         "this panel eventually points back here."),
     1: ("The supertonic ii is the strongest predominant: it prepares V by "
@@ -110,16 +119,52 @@ _ROLE_PROSE = {
         "leading tone pulls up a semitone to the tonic (vii° → I)."),
 }
 
-#: Per-group drill patterns (label, roman tokens).  Mirrors the Atlas
-#: function-map cell spec pattern, extended so every family drill *ends home*
-#: and the tonic family includes the mediant it groups.
+#: The minor-panel counterpart (harmonic-minor chord set, ticket 15 / G2c).
+_ROLE_PROSE_MINOR = {
+    0: ("This is home: the minor tonic. Every resolution and preparation "
+        "arrow in this panel eventually points back here."),
+    1: ("The supertonic ii° is minor's strongest predominant: diminished "
+        "here (unlike major's ii), it still prepares V by falling a fifth "
+        "onto it (ii° → V)."),
+    2: ("The augmented III+ only exists because harmonic minor raises the "
+        "7th inside the mediant. It shares two tones with i (hence its spot "
+        "with the tonic substitutes) AND two with V -- a rare, unstable "
+        "chord; composers usually prefer natural minor's plain III."),
+    3: ("The subdominant iv prepares the dominant (iv → V) and can also "
+        "move straight home (the plagal motion iv → i)."),
+    4: ("THE point of harmonic minor: raising the 7th turns natural minor's "
+        "weak v into a real major-triad dominant V, whose leading tone "
+        "pulls home to i (authentic) or deceptively to VI."),
+    5: ("The submediant VI is minor's classic tonic substitute (it shares "
+        "two tones with i) and the goal of the deceptive resolution "
+        "V → VI."),
+    6: ("The leading-tone diminished vii° is a rootless dominant, built on "
+        "harmonic minor's raised 7th: that tone pulls up a semitone to the "
+        "tonic (vii° → i)."),
+}
+
+_ROLE_PROSE = {"major": _ROLE_PROSE_MAJOR, "minor": _ROLE_PROSE_MINOR}
+
+#: Per-group drill patterns (label, roman tokens), keyed by panel mode.
+#: Mirrors the Atlas function-map cell spec pattern, extended so every family
+#: drill *ends home* and the tonic family includes the mediant it groups.
 _GROUP_DRILLS = {
-    "tonic": (["I", "vi", "iii", "I"],
-              f"{internal_family_label('tonic')} I–vi–iii–I"),
-    "predominant": (["IV", "ii", "V", "I"],
-                    f"{internal_family_label('predominant')} IV–ii–V–I"),
-    "dominant": (["V", "vii°", "I"],
-                 f"{internal_family_label('dominant')} V–vii°–I"),
+    "major": {
+        "tonic": (["I", "vi", "iii", "I"],
+                  f"{internal_family_label('tonic')} I–vi–iii–I"),
+        "predominant": (["IV", "ii", "V", "I"],
+                        f"{internal_family_label('predominant')} IV–ii–V–I"),
+        "dominant": (["V", "vii°", "I"],
+                     f"{internal_family_label('dominant')} V–vii°–I"),
+    },
+    "minor": {
+        "tonic": (["i", "VI", "III+", "i"],
+                  f"{internal_family_label('tonic')} i–VI–III+–i"),
+        "predominant": (["iv", "ii°", "V", "i"],
+                        f"{internal_family_label('predominant')} iv–ii°–V–i"),
+        "dominant": (["V", "vii°", "i"],
+                     f"{internal_family_label('dominant')} V–vii°–i"),
+    },
 }
 
 
@@ -140,16 +185,35 @@ def canonical_key(key: str) -> str:
     return tonic
 
 
-def degree_node_id(key: str, degree_index: int) -> str:
-    return f"fnet:deg:{canonical_key(key)}:{degree_index}"
+def panel_mode(key_or_mode: str) -> str:
+    """Collapse any key/mode string onto the two panel modes: ``"A minor"``,
+    ``"natural_minor"`` and ``"harmonic_minor"`` are all ``"minor"`` panels
+    (a raised 7 is a scale form of the same minor key); everything else is
+    ``"major"``.  The single home of the ``"minor" in ...`` convention that
+    the journey's drill mapping and the launcher's chord lighting share.
+    """
+    return "minor" if "minor" in (key_or_mode or "") else "major"
 
 
-def function_node_id(key: str, group: str) -> str:
-    return f"fnet:fn:{canonical_key(key)}:{group}"
+def panel_token(key: str, mode: str = "major") -> str:
+    """The id token of a journey-key panel: the canonical tonic, suffixed
+    ``m`` for minor panels (``"A", "minor"`` -> ``"Am"``).  The suffix keeps
+    every minor id disjoint from every major id -- the two journeys share one
+    progress store, and the JS sync rebuilds the token from ``target.mode``.
+    """
+    return canonical_key(key) + ("m" if mode == "minor" else "")
 
 
-def key_node_id(key: str) -> str:
-    return f"fnet:key:{canonical_key(key)}"
+def degree_node_id(key: str, degree_index: int, mode: str = "major") -> str:
+    return f"fnet:deg:{panel_token(key, mode)}:{degree_index}"
+
+
+def function_node_id(key: str, group: str, mode: str = "major") -> str:
+    return f"fnet:fn:{panel_token(key, mode)}:{group}"
+
+
+def key_node_id(key: str, mode: str = "major") -> str:
+    return f"fnet:key:{panel_token(key, mode)}"
 
 
 # ---------------------------------------------------------------------------
@@ -162,13 +226,20 @@ class _FunctionalBuilder:
     def __init__(self, template: FunctionalNetworkTemplate, atlas: Atlas):
         self.t = template
         self.atlas = atlas
+        #: Panel mode ("major"/"minor") and the three modes it implies:
+        #: chords come from harmonic minor (the real V / vii°, G2a) while the
+        #: KEY context -- Atlas/Circle refs, key-signature ordering -- stays
+        #: natural minor (a raised 7 is a scale form, not a key signature).
+        self.mode = template.mode           # also the prose word: "A minor"
+        self.chord_mode = "harmonic_minor" if self.mode == "minor" else "major"
+        self.ctx_mode = "natural_minor" if self.mode == "minor" else "major"
         # Panels are displayed left-to-right in circle-of-fifths order (F C G D
         # for the default journey) so fifth_relation edges join neighbours.
         # Pure layout: the *order key* comes from the engine, not a table.
         # Keys are canonicalised ("C major" -> "C") so labels, prose and node
         # ids all use the same tonic token the sync path reconstructs.
         self.keys = sorted((canonical_key(k) for k in template.journey_keys),
-                           key=lambda k: key_signature_fifths(k, "major"))
+                           key=lambda k: key_signature_fifths(k, self.ctx_mode))
         self.n = len(self.keys)
 
         self.nodes: List[NetNode] = []
@@ -179,8 +250,53 @@ class _FunctionalBuilder:
     # -- engine helpers --------------------------------------------------
     def _triads(self, key: str) -> List[DiatonicTriad]:
         if key not in self._triads_cache:
-            self._triads_cache[key] = generate_diatonic_triads(key, "major")
+            self._triads_cache[key] = generate_diatonic_triads(
+                key, self.chord_mode)
         return self._triads_cache[key]
+
+    # -- id helpers (panel-mode aware) -----------------------------------
+    def _deg_id(self, key: str, i: int) -> str:
+        return degree_node_id(key, i, self.mode)
+
+    def _fn_id(self, key: str, group: str) -> str:
+        return function_node_id(key, group, self.mode)
+
+    def _key_id(self, key: str) -> str:
+        return key_node_id(key, self.mode)
+
+    def _degree_atlas_refs(self, key: str, i: int,
+                           triad: DiatonicTriad) -> List[str]:
+        """Atlas refs for one degree node, honest per panel mode.
+
+        Major panels claim triad + degree + function + quality as before.
+        Minor panels follow the G2a natural-minor-twin precedent: the Atlas
+        has no harmonic-minor nodes, so chord-level refs are claimed only
+        when the chord exactly equals its natural-minor twin (i / ii° / iv /
+        VI); the raised-leading-tone chords (III+ / V / vii°) claim nothing
+        but their quality class.
+        """
+        if self.mode == "minor":
+            nat = generate_diatonic_triads(key, "natural_minor")[i]
+            twin = nat.pitches == triad.pitches
+            candidates = (
+                _resolve_triad_ref(self.atlas, key, "natural_minor", i)
+                if twin else None,
+                _present(self.atlas, degree_id("natural_minor", nat.roman))
+                if twin else None,
+                _present(self.atlas,
+                         function_id("natural_minor", nat.function_label))
+                if twin else None,
+                _present(self.atlas, quality_id(triad.chord_quality)),
+            )
+        else:
+            candidates = (
+                _resolve_triad_ref(self.atlas, key, "major", i),
+                _present(self.atlas, degree_id("major", triad.roman)),
+                _present(self.atlas,
+                         function_id("major", triad.function_label)),
+                _present(self.atlas, quality_id(triad.chord_quality)),
+            )
+        return [r for r in candidates if r]
 
     def _panel_origin(self, panel_index: int) -> Tuple[float, float]:
         """The centre of panel ``panel_index`` (panels in a centred row)."""
@@ -217,44 +333,42 @@ class _FunctionalBuilder:
 
         for pi, key in enumerate(self.keys):
             px, py = self._panel_origin(pi)
-            scale = generate_scale(key, "major")
+            scale = generate_scale(key, self.chord_mode)
             triads = self._triads(key)
+            tonic_roman = triads[0].roman           # "I" major / "i" minor
 
             # ---- 7 degree-triad nodes ---------------------------------
             for i, triad in enumerate(triads):
                 group = ENGINE_FUNCTION_TO_GROUP[triad.function_label]
                 dx, dy = self.t.degree_offsets[i]
                 if i == 0:
-                    spec = full_key_spec(key, "major")
-                    label = (f"{key} major — all 7 diatonic triads "
-                             f"(home drill for I)")
+                    spec = full_key_spec(key, self.chord_mode)
+                    label = (f"{key} {self.mode} — all 7 diatonic "
+                             f"triads (home drill for {tonic_roman})")
                 else:
-                    spec = function_spec([triad.roman, "I"],
-                                         f"{triad.roman}–I", "major", [key])
-                    label = (f"{triad.roman}–I in {key} major "
+                    spec = function_spec([triad.roman, tonic_roman],
+                                         f"{triad.roman}–{tonic_roman}",
+                                         self.chord_mode, [key])
+                    label = (f"{triad.roman}–{tonic_roman} in {key} "
+                             f"{self.mode} "
                              f"({triad.chord_symbol}→{triads[0].chord_symbol})")
-                atlas_refs = [r for r in (
-                    _resolve_triad_ref(self.atlas, key, "major", i),
-                    _present(self.atlas, degree_id("major", triad.roman)),
-                    _present(self.atlas,
-                             function_id("major", triad.function_label)),
-                    _present(self.atlas, quality_id(triad.chord_quality)),
-                ) if r]
                 self.nodes.append(NetNode(
-                    id=degree_node_id(key, i),
+                    id=self._deg_id(key, i),
                     label=triad.roman, kind="degree_triad",
                     pitch_class=note_pc(triad.root), spelling=triad.root,
                     quality=triad.chord_quality,
-                    key_contexts=[f"{triad.roman} of {key} major"],
-                    atlas_refs=atlas_refs,
-                    circle_refs=[f"key:{key}:major"],
+                    key_contexts=[f"{triad.roman} of {key} {self.mode}"],
+                    atlas_refs=self._degree_atlas_refs(key, i, triad),
+                    circle_refs=[f"key:{key}:{self.ctx_mode}"],
                     trainer_specs=[_launch_entry(spec, label)],
-                    lab_specs=([_lab_ref("cadence",
-                                         f"V–I cadence in {key} major")]
+                    lab_specs=([_lab_ref(
+                        "cadence",
+                        f"V–{tonic_roman} cadence in {key} {self.mode}")]
                                if i == 4 else []),
                     x=px + dx, y=py + dy, radius=lay_deg.node_radius,
                     visual_class=vc_deg,
-                    explanation=(f"{triad.explanation_text} {_ROLE_PROSE[i]}"),
+                    explanation=(f"{triad.explanation_text} "
+                                 f"{_ROLE_PROSE[self.mode][i]}"),
                     data={
                         "roman": triad.roman,
                         "degreeIndex": i,
@@ -264,6 +378,7 @@ class _FunctionalBuilder:
                         "pitches": list(triad.pitches),
                         "intervalLayer": triad.interval_layer,
                         "panelKey": key,
+                        "panelMode": self.mode,
                         "sublabel": triad.chord_symbol,
                     },
                 ))
@@ -274,43 +389,52 @@ class _FunctionalBuilder:
                            if ENGINE_FUNCTION_TO_GROUP[t.function_label] == group]
                 romans = [t.roman for t in members]
                 symbols = [t.chord_symbol for t in members]
-                tokens, drill_label = _GROUP_DRILLS[group]
+                tokens, drill_label = _GROUP_DRILLS[self.mode][group]
                 fx, fy = self.t.function_offsets[group]
+                # The mediant/subdominant extras are guarded: the Atlas has
+                # no natural_minor mediant function node, so minor panels
+                # simply drop that ref.
                 fn_refs = [r for r in (
-                    _present(self.atlas, function_id("major", group)),
-                    _present(self.atlas, function_id("major", "mediant"))
+                    _present(self.atlas, function_id(self.ctx_mode, group)),
+                    _present(self.atlas, function_id(self.ctx_mode, "mediant"))
                     if group == "tonic" else None,
-                    _present(self.atlas, function_id("major", "subdominant"))
+                    _present(self.atlas,
+                             function_id(self.ctx_mode, "subdominant"))
                     if group == "predominant" else None,
                 ) if r]
+                mediant_roman = triads[2].roman     # "iii" major / "III+" minor
                 mediant_note = (
-                    " The iii chord is grouped here as a tonic substitute; "
-                    "see its own node for why that call is ambiguous."
+                    f" The {mediant_roman} chord is grouped here as a tonic "
+                    f"substitute; see its own node for why that call is "
+                    f"ambiguous."
                     if group == "tonic" else "")
                 self.nodes.append(NetNode(
-                    id=function_node_id(key, group),
+                    id=self._fn_id(key, group),
                     label=FUNCTION_GROUP_SHORT[group], kind="function_group",
                     pitch_class=note_pc(key), spelling=key, quality="function",
                     key_contexts=[f"{FUNCTION_GROUP_LABELS[group]} of "
-                                  f"{key} major"],
+                                  f"{key} {self.mode}"],
                     atlas_refs=fn_refs,
-                    circle_refs=[f"key:{key}:major"],
+                    circle_refs=[f"key:{key}:{self.ctx_mode}"],
                     trainer_specs=[_launch_entry(
-                        function_spec(tokens, drill_label, "major", [key]),
-                        f"{FUNCTION_GROUP_LABELS[group]} in {key} major "
-                        f"({'–'.join(tokens)})")],
+                        function_spec(tokens, drill_label, self.chord_mode,
+                                      [key]),
+                        f"{FUNCTION_GROUP_LABELS[group]} in {key} "
+                        f"{self.mode} ({'–'.join(tokens)})")],
                     lab_specs=[],
                     x=px + fx, y=py + fy, radius=lay_fn.node_radius,
                     visual_class=vc_fn,
                     explanation=(
                         f"The {FUNCTION_GROUP_LABELS[group].lower()} of {key} "
-                        f"major: {', '.join(f'{r} ({s})' for r, s in zip(romans, symbols))}. "
-                        f"{_GROUP_PROSE[group]}{mediant_note}"),
+                        f"{self.mode}: "
+                        f"{', '.join(f'{r} ({s})' for r, s in zip(romans, symbols))}. "
+                        f"{_GROUP_PROSE[self.mode][group]}{mediant_note}"),
                     data={
                         "functionGroup": group,
                         "members": romans,
                         "memberSymbols": symbols,
                         "panelKey": key,
+                        "panelMode": self.mode,
                         "sublabel": "·".join(romans),
                     },
                 ))
@@ -319,25 +443,36 @@ class _FunctionalBuilder:
             hx, hy = self.t.hub_offset
             chord_syms = [t.chord_symbol for t in triads]
             hub_refs = [r for r in (
-                _resolve_scale_ref(self.atlas, key, "major"),
-                _resolve_triad_ref(self.atlas, key, "major", 0),
+                _resolve_scale_ref(self.atlas, key, self.ctx_mode),
+                _resolve_triad_ref(self.atlas, key, self.ctx_mode, 0),
             ) if r]
+            if self.mode == "minor":
+                # The panel's chords come from harmonic minor -- say so
+                # (the key signature phrase stays the natural-minor truth).
+                scale_note = (
+                    f"Chords come from harmonic minor: the 7th is raised to "
+                    f"{scale.scale_pitches[6]}, which is what makes "
+                    f"{chord_syms[4]} and {chord_syms[6]} real dominants. ")
+                hub_cadence = f"ii°–V–i cadence in {key} minor"
+            else:
+                scale_note = ""
+                hub_cadence = f"ii–V–I cadence in {key} major"
             self.nodes.append(NetNode(
-                id=key_node_id(key),
-                label=key, kind="key_hub",
-                pitch_class=note_pc(key), spelling=key, quality="major",
-                key_contexts=[f"{key} major"],
+                id=self._key_id(key),
+                label=panel_token(key, self.mode), kind="key_hub",
+                pitch_class=note_pc(key), spelling=key, quality=self.mode,
+                key_contexts=[f"{key} {self.mode}"],
                 atlas_refs=hub_refs,
-                circle_refs=[f"key:{key}:major"],
+                circle_refs=[f"key:{key}:{self.ctx_mode}"],
                 trainer_specs=[_launch_entry(
-                    full_key_spec(key, "major"),
-                    f"{key} major — all 7 diatonic triads")],
-                lab_specs=[_lab_ref("cadence",
-                                    f"ii–V–I cadence in {key} major")],
+                    full_key_spec(key, self.chord_mode),
+                    f"{key} {self.mode} — all 7 diatonic triads")],
+                lab_specs=[_lab_ref("cadence", hub_cadence)],
                 x=px + hx, y=py + hy, radius=lay_hub.node_radius,
                 visual_class=vc_hub,
                 explanation=(
-                    f"The {key} major panel ({_fifths_phrase(scale.fifths)}). "
+                    f"The {key} {self.mode} panel "
+                    f"({_fifths_phrase(scale.fifths)}). {scale_note}"
                     f"Its seven diatonic triads are laid out by harmonic "
                     f"function below: tonic cluster at the bottom "
                     f"({chord_syms[0]}, {chord_syms[5]}, {chord_syms[2]}), "
@@ -349,7 +484,8 @@ class _FunctionalBuilder:
                     "scale": list(scale.scale_pitches),
                     "triads": chord_syms,
                     "panelKey": key,
-                    "sublabel": "major",
+                    "panelMode": self.mode,
+                    "sublabel": self.mode,
                 },
             ))
 
@@ -362,11 +498,11 @@ class _FunctionalBuilder:
             for i, triad in enumerate(self._triads(key)):
                 group = ENGINE_FUNCTION_TO_GROUP[triad.function_label]
                 self._add_edge(
-                    degree_node_id(key, i), function_node_id(key, group),
+                    self._deg_id(key, i), self._fn_id(key, group),
                     "function_member",
                     explanation=f"{triad.chord_symbol} ({triad.roman}) belongs "
                                 f"to the {FUNCTION_GROUP_LABELS[group].lower()} "
-                                f"of {key} major.",
+                                f"of {key} {self.mode}.",
                     strength=0.4)
 
     def _rule_resolution_edges(self) -> None:
@@ -374,15 +510,17 @@ class _FunctionalBuilder:
             triads = self._triads(key)
             v, vii, tonic = triads[4], triads[6], triads[0]
             self._add_edge(
-                degree_node_id(key, 4), degree_node_id(key, 0), "resolves_to",
+                self._deg_id(key, 4), self._deg_id(key, 0), "resolves_to",
                 explanation=f"{v.chord_symbol} resolves to {tonic.chord_symbol} "
-                            f"(V → I): the authentic resolution that defines "
-                            f"{key} major.",
+                            f"({v.roman} → {tonic.roman}): the authentic "
+                            f"resolution that defines "
+                            f"{key} {self.mode}.",
                 strength=1.0)
             self._add_edge(
-                degree_node_id(key, 6), degree_node_id(key, 0), "resolves_to",
+                self._deg_id(key, 6), self._deg_id(key, 0), "resolves_to",
                 explanation=f"{vii.chord_symbol} resolves to "
-                            f"{tonic.chord_symbol} (vii° → I): its leading "
+                            f"{tonic.chord_symbol} ({vii.roman} → "
+                            f"{tonic.roman}): its leading "
                             f"tone {vii.root} pulls up a semitone to {key}.",
                 strength=0.9)
 
@@ -391,15 +529,17 @@ class _FunctionalBuilder:
             triads = self._triads(key)
             ii, iv, v = triads[1], triads[3], triads[4]
             self._add_edge(
-                degree_node_id(key, 1), degree_node_id(key, 4), "prepares",
+                self._deg_id(key, 1), self._deg_id(key, 4), "prepares",
                 explanation=f"{ii.chord_symbol} prepares {v.chord_symbol} "
-                            f"(ii → V): a falling fifth, the same motion V "
-                            f"makes onto I.",
+                            f"({ii.roman} → {v.roman}): a falling fifth, the "
+                            f"same motion {v.roman} "
+                            f"makes onto {triads[0].roman}.",
                 strength=0.8)
             self._add_edge(
-                degree_node_id(key, 3), degree_node_id(key, 4), "prepares",
+                self._deg_id(key, 3), self._deg_id(key, 4), "prepares",
                 explanation=f"{iv.chord_symbol} prepares {v.chord_symbol} "
-                            f"(IV → V): the subdominant stepping up to the "
+                            f"({iv.roman} → {v.roman}): the subdominant "
+                            f"stepping up to the "
                             f"dominant.",
                 strength=0.7)
 
@@ -408,14 +548,14 @@ class _FunctionalBuilder:
             triads = self._triads(key)
             tonic, iii, vi = triads[0], triads[2], triads[5]
             self._add_edge(
-                degree_node_id(key, 5), degree_node_id(key, 0),
+                self._deg_id(key, 5), self._deg_id(key, 0),
                 "tonic_substitute",
                 explanation=f"{vi.chord_symbol} shares two chord tones with "
                             f"{tonic.chord_symbol} and can stand in for it "
                             f"(the classic tonic substitute).",
                 strength=0.6)
             self._add_edge(
-                degree_node_id(key, 2), degree_node_id(key, 0),
+                self._deg_id(key, 2), self._deg_id(key, 0),
                 "tonic_substitute",
                 explanation=f"{iii.chord_symbol} shares two chord tones with "
                             f"{tonic.chord_symbol} — a weaker, more ambiguous "
@@ -428,9 +568,10 @@ class _FunctionalBuilder:
             triads = self._triads(key)
             v, vi = triads[4], triads[5]
             self._add_edge(
-                degree_node_id(key, 4), degree_node_id(key, 5), "deceptive_to",
+                self._deg_id(key, 4), self._deg_id(key, 5), "deceptive_to",
                 explanation=f"{v.chord_symbol} resolves deceptively to "
-                            f"{vi.chord_symbol} instead of {key} (V → vi, the "
+                            f"{vi.chord_symbol} instead of {key} ({v.roman} → "
+                            f"{vi.roman}, the "
                             f"deceptive cadence): the ear expects home and "
                             f"gets its substitute.",
                 strength=0.5)
@@ -439,31 +580,33 @@ class _FunctionalBuilder:
         for key in self.keys:
             for i, triad in enumerate(self._triads(key)):
                 self._add_edge(
-                    degree_node_id(key, i), key_node_id(key), "in_key",
+                    self._deg_id(key, i), self._key_id(key), "in_key",
                     explanation=f"{triad.chord_symbol} is the {triad.roman} "
-                                f"triad of {key} major.",
+                                f"triad of {key} {self.mode}.",
                     strength=0.3)
 
     def _rule_fifth_relation_edges(self) -> None:
         # self.keys is sorted by key-signature fifths. An edge is only HONEST
         # when the neighbours really are one step apart on the circle (F -> C
-        # -> G -> D for the default journey); a sparser custom key set (e.g.
-        # C and D) gets no fifth_relation edge rather than a false one.
+        # -> G -> D for the default journey; D -> A -> E -> B for the minor
+        # one); a sparser custom key set (e.g. C and D) gets no
+        # fifth_relation edge rather than a false one.
         for i in range(self.n - 1):
             a, b = self.keys[i], self.keys[i + 1]
-            if key_signature_fifths(b, "major") - \
-                    key_signature_fifths(a, "major") != 1:
+            if key_signature_fifths(b, self.ctx_mode) - \
+                    key_signature_fifths(a, self.ctx_mode) != 1:
                 continue
             self._add_edge(
-                key_node_id(a), key_node_id(b), "fifth_relation",
-                explanation=f"{b} major is a perfect fifth above {a} major "
+                self._key_id(a), self._key_id(b), "fifth_relation",
+                explanation=f"{b} {self.mode} is a perfect fifth above "
+                            f"{a} {self.mode} "
                             f"(one step clockwise on the circle of fifths).",
                 strength=0.8)
 
     def _rule_shared_triad_edges(self) -> None:
         # Pitch-class-set equality across panels: one triad shape, several
-        # functional jobs (C:I ≡ G:IV ≡ F:V ...).  This is what shows a G
-        # triad being I in G and V in C simultaneously.
+        # functional jobs (C:I ≡ G:IV ≡ F:V ...; Am is i at home and iv in E
+        # minor).  This is what shows one triad doing two jobs at once.
         by_pcset: Dict[frozenset, List[Tuple[str, int, DiatonicTriad]]] = {}
         for key in self.keys:
             for i, triad in enumerate(self._triads(key)):
@@ -477,28 +620,46 @@ class _FunctionalBuilder:
                     if ka == kb:
                         continue  # same panel: nothing cross-key to show
                     self._add_edge(
-                        degree_node_id(ka, ia), degree_node_id(kb, ib),
+                        self._deg_id(ka, ia), self._deg_id(kb, ib),
                         "shared_triad",
                         explanation=f"One shape, two jobs: {ta.chord_symbol} "
-                                    f"is the {ta.roman} of {ka} major and the "
-                                    f"{tb.roman} of {kb} major — the same "
+                                    f"is the {ta.roman} of {ka} "
+                                    f"{self.mode} and the "
+                                    f"{tb.roman} of {kb} {self.mode} — "
+                                    f"the same "
                                     f"three pitches doing different "
                                     f"functional work.",
                         strength=0.6)
 
 
-#: Per-group prose for the function-group node explanations.
+#: Per-group prose for the function-group node explanations, keyed by panel
+#: mode.
 _GROUP_PROSE = {
-    "tonic": (f"{internal_family_label('tonic')} chords are points of rest: "
-              "phrases start and end here, and every dominant arrow in the "
-              "panel resolves into this cluster."),
-    "predominant": (f"{internal_family_label('predominant')} chords (the "
-                    "supertonic ii and the subdominant IV) set up the "
-                    f"dominant: they are the approach lane of the "
-                    f"{function_flow_short()} cycle (ii → V and IV → V)."),
-    "dominant": (f"{internal_family_label('dominant')} chords carry the "
-                 "tension: V and its rootless twin vii° both contain the "
-                 "leading tone and pull home to I."),
+    "major": {
+        "tonic": (f"{internal_family_label('tonic')} chords are points of rest: "
+                  "phrases start and end here, and every dominant arrow in the "
+                  "panel resolves into this cluster."),
+        "predominant": (f"{internal_family_label('predominant')} chords (the "
+                        "supertonic ii and the subdominant IV) set up the "
+                        f"dominant: they are the approach lane of the "
+                        f"{function_flow_short()} cycle (ii → V and IV → V)."),
+        "dominant": (f"{internal_family_label('dominant')} chords carry the "
+                     "tension: V and its rootless twin vii° both contain the "
+                     "leading tone and pull home to I."),
+    },
+    "minor": {
+        "tonic": (f"{internal_family_label('tonic')} chords are points of rest: "
+                  "phrases start and end here, and every dominant arrow in the "
+                  "panel resolves into this cluster."),
+        "predominant": (f"{internal_family_label('predominant')} chords (the "
+                        "diminished supertonic ii° and the subdominant iv) set "
+                        f"up the dominant: they are the approach lane of the "
+                        f"{function_flow_short()} cycle (ii° → V and iv → V)."),
+        "dominant": (f"{internal_family_label('dominant')} chords carry the "
+                     "tension: V and its rootless twin vii° both contain "
+                     "harmonic minor's raised leading tone and pull home "
+                     "to i."),
+    },
 }
 
 

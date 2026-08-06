@@ -1063,12 +1063,19 @@
   }
   function completedIds() { return Array.from(completedSet); }
 
-  // "fnet:deg:<tonic>:<degreeNumber-1>" for a trainer target, or null.
-  function degreeNodeIdFor(key, degreeNumber) {
+  // The panel id token of a journey key: the tonic, "m"-suffixed on minor
+  // payloads (mirrors Python's panel_token; "fnet:deg:Am:4" = the V of Am).
+  function panelToken(key, minor) {
     var tonic = tonicOf(key || "");
+    return tonic ? tonic + (minor ? "m" : "") : null;
+  }
+
+  // "fnet:deg:<token>:<degreeNumber-1>" for a trainer target, or null.
+  function degreeNodeIdFor(key, degreeNumber, minor) {
+    var token = panelToken(key, minor);
     var num = parseInt(degreeNumber, 10);
-    if (!tonic || !num || num < 1) return null;
-    return "fnet:deg:" + tonic + ":" + (num - 1);
+    if (!token || !num || num < 1) return null;
+    return "fnet:deg:" + token + ":" + (num - 1);
   }
 
   // Exact-id trainer sync for functional payloads: node ids encode
@@ -1083,20 +1090,30 @@
     var tid = data && data.template && data.template.template_id;
     var isFnet = String(tid || "").indexOf("functional_degree_network") === 0;
     if (!isFnet) return highlightFromTrainerTarget(target);
-    // the functional graph is major-only: a minor-mode target must clear the
-    // sync rather than land on the same-tonic MAJOR panel node
-    if (String(target.mode || "").indexOf("minor") !== -1) {
+    // A journey graph is single-mode (template.mode). A target of the OTHER
+    // mode must clear the sync rather than land on a same-tonic panel node:
+    // a minor drill never lights the major graph and vice versa.
+    var payloadMinor = !!(data && data.template && data.template.mode === "minor");
+    var targetMinor = String(target.mode || "").indexOf("minor") !== -1;
+    if (targetMinor !== payloadMinor) {
       return setSyncHighlight([]);
     }
-    var degId = degreeNodeIdFor(target.key, target.degreeNumber);
+    var degId = degreeNodeIdFor(target.key, target.degreeNumber, payloadMinor);
     if (!degId || !nodesById[degId]) return setSyncHighlight([]);
-    var ids = [degId];
     var node = nodesById[degId];
+    // Scale-form honesty: on the minor graph, degree index alone can lie
+    // (natural minor's v is NOT the harmonic-minor V node this graph shows).
+    // When the target names its roman, it must match the node's exactly.
+    if (target.roman && node.data && node.data.roman &&
+        String(target.roman) !== String(node.data.roman)) {
+      return setSyncHighlight([]);
+    }
+    var ids = [degId];
     var group = node.data && node.data.functionGroup;
-    var fnId = "fnet:fn:" + tonicOf(target.key) + ":" + group;
+    var fnId = "fnet:fn:" + panelToken(target.key, payloadMinor) + ":" + group;
     if (group && nodesById[fnId]) ids.push(fnId);
     var nextId = degreeNodeIdFor(target.nextKey || target.key,
-                                 target.nextDegreeNumber);
+                                 target.nextDegreeNumber, payloadMinor);
     if (nextId && nextId !== degId && nodesById[nextId]) ids.push(nextId);
     return setSyncHighlight(ids);
   }
