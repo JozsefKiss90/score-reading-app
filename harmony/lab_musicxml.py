@@ -241,7 +241,7 @@ def build_lab_payload(experiment: LabExperiment) -> Dict:
             expected[abs_key] = list(t["pitchClasses"])
 
     overall_render = "arpeggio" if spec.render in ("arpeggio", "melody") else "block"
-    return {
+    payload = {
         "TRAINER_MODE": True,
         "schema": "harmony-trainer/payload-v1",
         "labSchema": spec.schema,
@@ -251,10 +251,19 @@ def build_lab_payload(experiment: LabExperiment) -> Dict:
         "title": experiment.title,
         "render": overall_render,
         "match": "pitch_class",
+        "PRESENTATION": "visual",
         "TARGET_CHORDS": targets,
         "TARGET_BY_MEASURE": target_by_measure,
         "EXPECTED_MIDI_BY_MEASURE_OR_BEAT": expected,
     }
+    dictation = str((spec.parameters or {}).get("dictation", "") or "")
+    if dictation:
+        # Bass-line dictation is ear-first (ticket 11 / plan A1 level 5):
+        # PRESENTATION="echo" veils the notation + triggers the host's
+        # auto-play; DICTATION switches the JS prompt to bass-line answering.
+        payload["PRESENTATION"] = "echo"
+        payload["DICTATION"] = dictation
+    return payload
 
 
 def build_lab_exercise(experiment: LabExperiment):

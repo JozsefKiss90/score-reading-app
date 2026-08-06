@@ -60,6 +60,14 @@
   // for review); navigating again re-veils the next pass.
   var presentation = "visual";  // "visual" | "echo"
 
+  // ---- bass-line dictation (plan A1 level 5, ticket 11) -------------------
+  // DICTATION "bass" payloads are echo drills whose graded target per measure
+  // is the single bass pitch class (the notation + playback keep the full
+  // chords).  Grading needs nothing new — pitchClasses already carries the
+  // bass alone — but the veiled prompt must ask for the bass line, not for
+  // echoing a chord.
+  var dictation = null;         // null | "bass"
+
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
@@ -114,6 +122,18 @@
     app.state.midiDown.forEach(function (m) {
       m = Math.trunc(Number(m));
       if (pcs.indexOf(mod12(m)) === -1) return;
+      if (low === null || m < low) low = m;
+    });
+    return low;
+  }
+
+  // Dictation answers with the BASS LINE, so the lowest sounding note — chord
+  // tone or not — IS the answer: a stray note held below the demanded bass
+  // must fail, where ordinary drills would keep it advisory.
+  function lowestHeldNote() {
+    var low = null;
+    app.state.midiDown.forEach(function (m) {
+      m = Math.trunc(Number(m));
       if (low === null || m < low) low = m;
     });
     return low;
@@ -422,7 +442,8 @@
       if (t.pitchClasses.map(mod12).indexOf(pc) !== -1) satisfied.add(pc);
       if (!completed && coversAll(satisfied, t.pitchClasses)) {
         var wantBass = strictBassPc(t);
-        var low = wantBass === null ? null : lowestHeldChordTone(t);
+        var low = wantBass === null ? null
+          : dictation === "bass" ? lowestHeldNote() : lowestHeldChordTone(t);
         if (wantBass === null || (low !== null && mod12(low) === wantBass)) {
           completed = true;
           bassMiss = false;
@@ -638,8 +659,11 @@
       // the answer strip instead of playing it back.
       var listenHow = answerMode === "mcq"
         ? "hear the chord, then name it from the answer strip below."
-        : "hear the target, then play it back on the keyboard. It is " +
-          "graded exactly like the visual drill";
+        : dictation === "bass"
+          ? "hear the progression, then play only its bass line — one " +
+            "bass note per measure (any octave)"
+          : "hear the target, then play it back on the keyboard. It is " +
+            "graded exactly like the visual drill";
       el.innerHTML =
         '<div class="row big">' + esc(t.key) + " — echo by ear</div>" +
         '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
@@ -813,7 +837,9 @@
       title.textContent = isVeiled()
         ? (answerMode === "mcq"
             ? "🎧 Ear drill — listen, then identify  —  " + renderWord
-            : "🎧 Echo drill — listen, then play it back  —  " + renderWord)
+            : dictation === "bass"
+              ? "🎧 Bass-line dictation — listen, then play the bass line"
+              : "🎧 Echo drill — listen, then play it back  —  " + renderWord)
         : (data.title || "Exercise") + "  —  " + renderWord;
     }
     renderList();
@@ -840,6 +866,7 @@
     answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card")
       ? data.ANSWER_MODE : "midi";
     presentation = data.PRESENTATION === "echo" ? "echo" : "visual";
+    dictation = data.DICTATION === "bass" ? "bass" : null;
     answerLog = [];
     lastAnswer = null;
     answeredCorrect = new Set();
@@ -868,7 +895,8 @@
       return { idx: idx, completed: completed, finished: finished,
                arpIndex: arpIndex, total: targets().length,
                answerMode: answerMode, answered: answerLog.length,
-               presentation: presentation, veiled: isVeiled() };
+               presentation: presentation, veiled: isVeiled(),
+               dictation: dictation };
     },
     // Non-MIDI answering (plan U2).  MCQ: answer("IV"); card: answer(3).
     answer: submitAnswer,

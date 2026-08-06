@@ -373,19 +373,18 @@ class TestCurriculumG1b(unittest.TestCase):
         cls.root = build_curriculum()
         cls.cat = cls.root.find("cat:sevenths")
 
-    def test_category_grew_to_32_live_leaves(self):
+    def test_category_grew_with_g1b_leaves(self):
         self.assertIsNotNone(self.cat)
         self.assertFalse(self.cat.reserved)
-        self.assertEqual(self.cat.exercise_count, 32)   # 16 (G1a) + 7 + 6 + 3
+        # 16 (G1a) + 16 (G1b: 7 quality + 6 ii7–V7–I + 3 ear) + 24 (G1c,
+        # ticket 11 — pinned in tests/test_figured_sevenths.py)
+        self.assertEqual(self.cat.exercise_count, 56)
 
-    def test_new_lessons_live_and_g1c_seam_reserved(self):
+    def test_g1b_lessons_live(self):
         for lid in ("lesson:seventh_qualities", "lesson:sevenths_ii_v_i"):
             node = self.root.find(lid)
             self.assertIsNotNone(node, lid)
             self.assertFalse(node.reserved, lid)
-        more = self.root.find("lesson:sevenths_more")
-        self.assertIsNotNone(more)
-        self.assertTrue(more.reserved)
 
     def test_quality_group_covers_the_four_diatonic_qualities(self):
         grp = self.root.find("group:sevenths_quality")

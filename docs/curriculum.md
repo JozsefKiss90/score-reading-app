@@ -126,7 +126,9 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | block cadences from `_CADENCE_CATALOG` (6 two-chord types + 7 progressions) | 13 | Cadences |
 | seventh-chord tracer (ticket 09 / G1a): add-the-7th (2 chunked) + tritone resolution (12 keys) + V7→I (2 chunked) | 16 | Seventh Chords |
 | seventh qualities (ticket 10 / G1b): quality drills (7 chunked: Mm7 1 + MM7 2 + mm7 3 + ø7 1) + hear-a-seventh MCQ (3 keys) + ii7–V7–I block/arpeggio (3+3 chunked) | 16 | Seventh Chords |
-| **grand total** | **263 exercise leaves** | (~340 nodes total) |
+| V7 figured bass (ticket 11 / G1c): figured-bass inversions (7 · 6/5 · 4/3 · 4/2, 12 keys) + resolution walks (V6/5→I, V4/3→I, V4/2→I6, 12 keys) | 24 | Seventh Chords |
+| bass-line dictation (ticket 11 / A1 level 5): roots + ii6 + V7-figure bass lines × C/G/Eb, ear-first (`dictation: "bass"`) | 9 | Inversions › Bass-line dictation |
+| **grand total** | **296 exercise leaves** | (~375 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

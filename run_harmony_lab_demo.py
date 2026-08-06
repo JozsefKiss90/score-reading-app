@@ -81,13 +81,16 @@ def _now_iso() -> str:
 
 
 def _is_aural_drill(spec: LabExperimentSpec) -> bool:
-    """Is this curriculum leaf natively ear-first (embedded presentation="echo")?
+    """Is this curriculum leaf natively ear-first?
 
     Ticket 10's quality-ID drills are authored aural (echo + mcq) rather than
-    derived echo twins, so the scene pane must withhold the routed graph for
-    them exactly as it does on the echo-button path — the graph would name
-    the very chords the learner is asked to identify by ear.
+    derived echo twins, and ticket 11's bass-line dictations are aural lab
+    cadences (``dictation: "bass"``), so the scene pane must withhold the
+    routed graph for them exactly as it does on the echo-button path — the
+    graph would name the very chords the learner is asked to hear.
     """
+    if (spec.parameters or {}).get("dictation"):
+        return True
     if spec.concept != "drill":
         return False
     try:

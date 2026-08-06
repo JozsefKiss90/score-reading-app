@@ -71,8 +71,8 @@ helper (`harmony.lab._satb_progression`), explicitly *not* a counterpoint engine
 
 | `concept` | `render` (allowed) | key `parameters` |
 |---|---|---|
-| `inversion` | `block`, `arpeggio` | `degree`, `inversions` ⊆ `{0,1,2}`, `strict_bass?` |
-| `cadence` | `block`, `voice_leading` | `pattern` (figured tokens like `ii6` allowed with `render="block"`), `cadence_type?` |
+| `inversion` | `block`, `arpeggio` | `degree` (a triad degree, or a seventh token like `V7` — ticket 11 / G1c), `inversions` ⊆ `{0,1,2}` (triads) / `{0,1,2,3}` (sevenths), `strict_bass?` |
+| `cadence` | `block`, `voice_leading` | `pattern` (figured tokens like `ii6` — and the dominant-seventh figures `V65`/`V43`/`V42` — allowed with `render="block"`), `cadence_type?`, `dictation?` (`"bass"` = ear-first bass-line dictation, ticket 11 / A1 L5) |
 | `voice_leading` | `voice_leading`, `block` | `pattern` |
 | `motive` | `melody` | `degrees`, `keys?` |
 | `polyphonic_harmony` | `polyphonic` | `progression`, `upper_degrees`, `bass_degrees?` |
@@ -131,6 +131,17 @@ ordered-tone walk, so those targets do not carry the `strictBass` flag). Cadence
 patterns may demand a voicing with a figured token (`ii6`): that measure's bass
 is then graded the lowest-note way (see `cad_ii6_V_I_C`, the curriculum's
 inversions↔cadences bridge drill).
+
+Ticket 11 (plan G1c) widens the same machinery to the **dominant seventh**: the
+pattern tokens `V65` / `V43` / `V42` (slash spellings accepted) parse to the V7
+tetrad with a demanded bass, and an `inversion` experiment with `degree: "V7"`
+walks all four voicings with the tetrad figures `7 · 6/5 · 4/3 · 4/2` — every
+figured measure bass-graded exactly like the triad grid. **Bass-line dictation**
+(plan A1 level 5) is a cadence spec with `dictation: "bass"`: the notation and
+playback keep the full chords, but each measure's graded target collapses to its
+single bass pitch class; the payload carries `PRESENTATION: "echo"` (veil +
+host auto-play) and `DICTATION: "bass"` (the JS prompt asks for the bass line,
+one note per measure, any octave).
 
 ### Voice-leading cadences (Phase 3)
 Cadences are rendered as a simple **closed-position SATB-like** grand-staff

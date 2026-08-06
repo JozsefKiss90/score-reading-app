@@ -163,27 +163,63 @@ def default_keys(mode: str) -> List[str]:
 
 
 #: Understood triad figured-bass suffixes -> inversion number, longest first so
-#: ``"64"`` wins over ``"6"``.  Sevenths figures (7, 6/5, 4/3, 4/2) arrive with G1.
+#: ``"64"`` wins over ``"6"``.
 _TRIAD_FIGURES = [
     ("6/4", 2), ("64", 2), ("6/3", 1), ("63", 1), ("5/3", 0), ("53", 0), ("6", 1),
 ]
 
+#: Seventh-chord figured-bass suffixes -> inversion number (ticket 11 / plan
+#: G1c).  G1c's vocabulary is the DOMINANT seventh only: the suffix attaches
+#: to a bare ``V`` head (``V65`` / ``V6/5`` …) and resolves to the ``V7``
+#: tetrad token, whose mode gate (major only, plan G2 for minor) then applies
+#: unchanged.  Other degrees' figured sevenths (``ii65``) stay rejected.
+_SEVENTH_FIGURES = [
+    ("6/5", 1), ("65", 1), ("4/3", 2), ("43", 2), ("4/2", 3), ("42", 3),
+]
+
 
 def parse_figured_token(token: str) -> "Tuple[str, int]":
-    """Split an optional triad figured-bass suffix off a Roman token.
+    """Split an optional figured-bass suffix off a Roman token.
 
-    ``"ii6" -> ("ii", 1)``; ``"I64" -> ("I", 2)``; ``"V" -> ("V", 0)``.  The
-    figure is a *performance instruction* (plan G4): it demands the inversion's
+    ``"ii6" -> ("ii", 1)``; ``"I64" -> ("I", 2)``; ``"V" -> ("V", 0)``; and
+    the dominant-seventh figures ``"V65" -> ("V7", 1)``, ``"V43" -> ("V7",
+    2)``, ``"V42" -> ("V7", 3)`` (slash spellings too).  The figure is a
+    *performance instruction* (plans G4/G1c): it demands the inversion's
     chord member in the bass.  Unknown figures are left on the token — the
     caller's Roman validation rejects them explicitly (the tolerant
     ``roman_token_to_index`` would otherwise silently strip digits, playing
     ``"ii6"`` as root-position ii, which is exactly the F4 dishonesty).
     """
     t = (token or "").strip()
+    for suffix, inv in _SEVENTH_FIGURES:
+        if t.endswith(suffix) and t[:-len(suffix)].strip() == "V":
+            return "V7", inv
     for suffix, inv in _TRIAD_FIGURES:
         if t.endswith(suffix) and len(t) > len(suffix):
             return t[:-len(suffix)].strip(), inv
     return t, 0
+
+
+def _compact_figure(inv: int, figures) -> str:
+    """The shortest slash-free spelling of ``inv`` in a figure table
+    (``1 -> "6"`` for triads, ``1 -> "65"`` for sevenths) — derived from the
+    parse tables so the id vocabulary can never drift from what parses."""
+    return min((s for s, i in figures if i == inv and "/" not in s), key=len)
+
+
+def _figured_id_token(head: str, inv: int) -> str:
+    """The stable id token of a figured chord (``("V7", 1) -> "V65"``).
+
+    Re-attaches the figure so a figured drill's id never collides with its
+    root-position sibling; for a seventh head the figure replaces the ``7``
+    (standard notation: V65 implies the seventh).
+    """
+    if not inv:
+        return head
+    if parse_seventh_token(head) is not None:
+        stem = head[:-1] if head.endswith("7") else head
+        return stem + _compact_figure(inv, _SEVENTH_FIGURES)
+    return head + _compact_figure(inv, _TRIAD_FIGURES)
 
 
 def split_figured_pattern(pattern) -> "Tuple[List[str], List[int]]":
@@ -213,6 +249,7 @@ class CadenceParams:
     pattern: tuple = ("V", "I")       # Roman / functional tokens
     cadence_type: str = ""            # display only; one of harmonic_roles.CADENCE_TYPES
     strict_bass: bool = False
+    dictation: str = ""               # "" | "bass" — grade only the bass line (A1 L5)
 
 
 @dataclass(frozen=True)
@@ -247,6 +284,7 @@ def cadence_params(p: Dict) -> CadenceParams:
         pattern=tuple(p.get("pattern", ("V", "I"))),
         cadence_type=str(p.get("cadence_type", "")),
         strict_bass=bool(p.get("strict_bass", False)),
+        dictation=str(p.get("dictation", "") or ""),
     )
 
 
@@ -362,11 +400,19 @@ class LabExperimentSpec:
 
         if self.concept == "inversion":
             ip = inversion_params(p)
-            roman_token_to_index(ip.degree)         # raises on a bad token
+            if parse_seventh_token(ip.degree) is not None:
+                # A seventh degree (ticket 11 / plan G1c) owns FOUR voicings
+                # (7 · 6/5 · 4/3 · 4/2); the mode gate mirrors the pattern
+                # tokens' (natural minor has no V7 until harmonic minor).
+                self._check_diatonic([ip.degree])
+                allowed, shapes = (0, 1, 2, 3), "{0,1,2,3} (seventh chords)"
+            else:
+                roman_token_to_index(ip.degree)     # raises on a bad token
+                allowed, shapes = (0, 1, 2), "{0,1,2} (triads)"
             if not ip.inversions:
                 raise ValueError("inversion requires a non-empty 'inversions' list")
-            if any(i not in (0, 1, 2) for i in ip.inversions):
-                raise ValueError("inversions must be a subset of {0,1,2} (triads)")
+            if any(i not in allowed for i in ip.inversions):
+                raise ValueError(f"inversions must be a subset of {shapes}")
             self._check_len(len(ip.inversions))
 
         elif self.concept in ("cadence", "voice_leading"):
@@ -380,7 +426,9 @@ class LabExperimentSpec:
                     raise ValueError(
                         f"unrecognised figured-bass suffix in {orig!r}; the "
                         f"understood triad figures are 5/3, 6 (6/3) and 6/4, "
-                        f"and the seventh chords are the diatonic vocabulary "
+                        f"the seventh figures are the dominant's 6/5, 4/3 "
+                        f"and 4/2 (V65, V43, V42), and the seventh chords "
+                        f"are the diatonic vocabulary "
                         f"(Imaj7, ii7, ..., viiø7; i7, ..., VII7)")
             if any(figures) and self.render != "block":
                 raise ValueError(
@@ -394,6 +442,18 @@ class LabExperimentSpec:
                     "seventh slice widens it)")
             self._check_diatonic(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
+            if cp.dictation:
+                # Bass-line dictation (ticket 11 / plan A1 level 5): hear the
+                # full progression, answer with only its bass line.
+                if cp.dictation != "bass":
+                    raise ValueError(
+                        f"unknown dictation {cp.dictation!r}; the only "
+                        f"dictation mode is 'bass' (play only the bass line)")
+                if self.concept != "cadence" or self.render != "block":
+                    raise ValueError(
+                        "dictation='bass' requires concept='cadence' with "
+                        "render='block' (the veiled block progression whose "
+                        "bass line is the graded answer)")
             if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:
                 raise ValueError(
                     f"unknown cadence_type {cp.cadence_type!r}; expected one of "
@@ -509,8 +569,11 @@ class LabExperimentSpec:
             roman = normalise_pattern(heads)              # validate() ensured diatonic
             # Figures re-attach in the id (ii6 must not collide with a plain ii
             # drill), while the skeleton itself is the root-position pattern.
-            id_tokens = [n + ("" if not f else "6" if f == 1 else "64")
-                         for n, f in zip(roman, figures)]
+            id_tokens = [_figured_id_token(n, f) for n, f in zip(roman, figures)]
+            if cp.dictation:
+                # the dictation variant's skeleton must not collide with the
+                # plain drill of the same pattern
+                id_tokens.append(f"{cp.dictation}dict")
             label = "–".join(cp.pattern)
             specs.append(HarmonyExerciseSpec(
                 exercise_id=f"lab_{self.concept}_{self.mode}_{_key_slug(tonic)}_{_ident('_'.join(id_tokens))}",

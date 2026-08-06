@@ -26,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
+from theory.diatonic_harmony import parse_seventh_token
 from harmony.graph_scene import GraphScene, SCENE_TYPES, SCENE_SOURCE_KINDS
 from harmony.graph_scene_generators import (
     SCENE_TEMPLATE,
@@ -103,6 +104,21 @@ _LAB_SCENES = frozenset({
 _ROUTER_UNBUILDABLE = frozenset({"score_harmonic_path", "unsupported"})
 
 
+def _tetrad_inversion_lab(lab) -> bool:
+    """A Lab ``inversion`` experiment on a seventh degree (``V7``, ticket 11).
+
+    The inversion-space network voices TRIADS only: its identity anchor and
+    voicing states are built from the degree's diatonic triad, so projecting a
+    V7 experiment onto it would land the tetrad on the triad node that merely
+    shares its root — the exact dishonesty the ``base_roman`` rule forbids.
+    Refused until the seventh-chord network nodes unreserve (plan G1d).
+    """
+    if lab is None or getattr(lab, "concept", None) != "inversion":
+        return False
+    degree = str((getattr(lab, "parameters", None) or {}).get("degree", ""))
+    return parse_seventh_token(degree) is not None
+
+
 def _buildable(scene_type: Optional[str], ex, lab) -> bool:
     """True when this router has the input it needs to actually build ``scene_type``.
 
@@ -110,6 +126,8 @@ def _buildable(scene_type: Optional[str], ex, lab) -> bool:
     degrade to ``unsupported`` (e.g. curriculum metadata naming ``inversion_space`` with no lab)."""
     if scene_type in _IMPLEMENTED_EXERCISE_SCENES:
         return ex is not None
+    if scene_type == "inversion_space":
+        return lab is not None and not _tetrad_inversion_lab(lab)
     if scene_type in _LAB_SCENES:
         return lab is not None
     if scene_type in _ROUTER_UNBUILDABLE:
@@ -186,6 +204,13 @@ def _classify(request: GraphSceneRequest, ex, lab) -> GraphSceneDecision:
 
     # 2. Lab concept (a real Lab experiment, not the native-drill wrapper)
     if lab is not None and lab_concept and lab_concept != "drill":
+        if _tetrad_inversion_lab(lab):
+            return _decision(
+                "unsupported", "unsupported",
+                "the inversion-space network voices triads only: projecting a "
+                "seventh-chord experiment onto it would land V7 on its "
+                "triad's node (the seventh-chord network nodes unreserve "
+                "with plan G1d)")
         st = _lab_scene_type(lab_concept, getattr(lab, "render", "") or "")
         if st is None:
             return _decision("unsupported", "unsupported",

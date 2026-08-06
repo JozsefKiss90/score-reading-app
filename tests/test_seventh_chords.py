@@ -275,13 +275,16 @@ class TestCurriculumLeaves(unittest.TestCase):
         self.assertIsNotNone(self.cat)
         self.assertFalse(self.cat.reserved)
         # 16 G1a leaves (2 + 12 + 2) + 16 G1b leaves (7 quality + 3 ear +
-        # 6 ii7–V7–I) — see tests/test_seventh_qualities.py
-        self.assertEqual(self.cat.exercise_count, 32)
+        # 6 ii7–V7–I) + 24 G1c leaves (12 figured inversions + 12 resolution
+        # walks) — see tests/test_seventh_qualities.py, test_figured_sevenths.py
+        self.assertEqual(self.cat.exercise_count, 56)
 
-    def test_reserved_seam_named(self):
+    def test_g1c_seam_went_live(self):
+        # The former reserved seam carries the G1c figured-bass drills now
+        # (ticket 11); see tests/test_figured_sevenths.py::TestCurriculumG1c.
         more = self.root.find("lesson:sevenths_more")
         self.assertIsNotNone(more)
-        self.assertTrue(more.reserved)
+        self.assertFalse(more.reserved)
 
     def test_all_twelve_keys_covered_per_family(self):
         for gid, expect_lab in (("group:sevenths_add7", False),

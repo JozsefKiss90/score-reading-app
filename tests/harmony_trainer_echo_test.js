@@ -312,4 +312,51 @@ function assert(cond, msg) {
   console.log("Test I (echo + mcq quality ID): PASS");
 })();
 
+// === Test J: bass-line dictation (ticket 11 / plan A1 level 5) ==============
+(function testBassLineDictation() {
+  // The lab payload shape for dictation: full-chord midiPitches (playback
+  // sounds the whole progression) but a single graded pitch class per
+  // measure — the bass — plus DICTATION: "bass" for the prompt.
+  const p = echoPayload({ DICTATION: "bass" });
+  p.TARGET_CHORDS = [
+    Object.assign(echoTarget(0, "ii6", [5], [62, 65, 69, 53]),
+                  { strictBass: true, bassPitchClass: 5, bassNote: "F",
+                    figuredBass: "6", bassMidi: 53 }),
+    Object.assign(echoTarget(1, "V", [7], [67, 71, 74, 55]),
+                  { strictBass: true, bassPitchClass: 7, bassNote: "G",
+                    bassMidi: 55 }),
+  ];
+  const h = makeHarness(p);
+  h.HT.init(p);
+  assert(h.HT.state().veiled === true, "dictation starts veiled (echo)");
+  assert(h.HT.state().dictation === "bass", "DICTATION reaches state()");
+  const title = h.nodes.get("htTitle").textContent;
+  assert(/dictation/i.test(title), "the veiled header names dictation");
+  const cur = h.nodes.get("htCurrent")._innerHTML;
+  assert(/bass line/i.test(cur), "the veiled prompt asks for the bass line");
+  assert(cur.indexOf("play it back on the keyboard") === -1,
+         "the generic echo-the-chord prompt is replaced");
+  ["SYM_SECRET_0", "TONE_SECRET_0", "EXPLAIN_SECRET_0"].forEach((secret) => {
+    assert(cur.indexOf(secret) === -1, "dictation panel must not leak " + secret);
+  });
+  // A note held BELOW the demanded bass is the answer's bass — and wrong.
+  // (Ordinary drills keep stray notes advisory; dictation answers with the
+  // lowest sounding note, so it must fail here.)
+  h.noteOn(52);                                    // E3 — below any F
+  h.noteOn(65);                                    // F4 — the target pc
+  assert(h.HT.state().completed === false,
+         "a stray note below the demanded bass must not pass dictation");
+  h.noteOff(52); h.noteOff(65);
+  assert(h.HT.state().idx === 0, "the failed attempt does not advance");
+  // Grading: the bass note alone completes the measure (any octave).
+  h.noteOn(65);                                    // F4
+  assert(h.HT.state().completed === true, "the bass pitch class completes");
+  h.noteOff(65);
+  assert(h.HT.state().idx === 1, "release advances to the next measure");
+  h.noteOn(43); h.noteOff(43);                     // G2 — a different octave
+  assert(h.HT.state().finished === true, "the bass line finishes the drill");
+  assert(h.HT.state().veiled === false, "the reveal shows the full chords");
+  console.log("Test J (bass-line dictation): PASS");
+})();
+
 console.log("\nAll echo-presentation checks passed (" + passed + " assertions).");

@@ -41,10 +41,12 @@ from typing import Dict, List, Optional, Tuple
 
 from theory.diatonic_harmony import (
     DiatonicTriad,
+    build_seventh_chord,
     generate_diatonic_triads,
     generate_scale,
     transpose_degree_pattern,
     roman_token_to_index,
+    parse_seventh_token,
     parse_pitch_class,
     note_pc,
     LETTER_BASE_PC,
@@ -74,14 +76,23 @@ TREBLE_OCTAVE = 4          # base octave for root-position treble voicings
 BASS_OCTAVE = 3            # octave for the bass note / SATB bass
 SATB_BASE_OCTAVE = 4       # base octave for SATB close-position upper voices
 
-#: Inversion -> figured-bass + label.  ``"6"`` is the common shorthand for 6/3.
+#: Inversion -> figured-bass + label.  ``"6"`` is the common shorthand for 6/3;
+#: a tetrad (ticket 11 / plan G1c) figures 7 · 6/5 · 4/3 · 4/2 instead.
 _FIGURED_BASS = {0: "5/3", 1: "6", 2: "6/4"}
-_INVERSION_LABEL = {0: "root position", 1: "first inversion", 2: "second inversion"}
+_FIGURED_BASS_TETRAD = {0: "7", 1: "6/5", 2: "4/3", 3: "4/2"}
+_INVERSION_LABEL = {0: "root position", 1: "first inversion",
+                    2: "second inversion", 3: "third inversion"}
 
 
-def _inversion_annotation(inv: int, bass_name: str) -> dict:
+def _figures_for(chord: DiatonicTriad) -> dict:
+    """The figured-bass table matching the chord's size (triad vs tetrad)."""
+    return _FIGURED_BASS_TETRAD if len(chord.pitches) > 3 else _FIGURED_BASS
+
+
+def _inversion_annotation(inv: int, bass_name: str,
+                          figures: dict = _FIGURED_BASS) -> dict:
     """The annotation fields an inversion always carries together."""
-    return dict(inversion=inv, figured_bass=_FIGURED_BASS[inv],
+    return dict(inversion=inv, figured_bass=figures[inv],
                 inversion_label=_INVERSION_LABEL[inv], bass_note=bass_name)
 
 #: Scale-degree caret labels for motive degrees (^1..^7, octave-folded).
@@ -289,13 +300,19 @@ def _gen_inversion(spec: LabExperimentSpec) -> List[LabMeasure]:
     tonic, mode = tonic_of(spec.key), spec.mode
     scale = generate_scale(tonic, mode)
     fifths = scale.fifths
-    triad = generate_diatonic_triads(tonic, mode)[roman_token_to_index(ip.degree)]
-    triad_pcs = tuple(triad.pitch_classes)             # root/third/fifth order
+    if parse_seventh_token(ip.degree) is not None:
+        # A seventh degree (ticket 11 / plan G1c): four voicings, figures
+        # 7 · 6/5 · 4/3 · 4/2.  build_seventh_chord enforces the mode gate.
+        triad = build_seventh_chord(ip.degree, tonic, mode)
+    else:
+        triad = generate_diatonic_triads(tonic, mode)[roman_token_to_index(ip.degree)]
+    figures = _figures_for(triad)
+    triad_pcs = tuple(triad.pitch_classes)             # root/third/fifth(/seventh)
     group = f"{triad.roman} inversions in {triad.key}"
 
     measures: List[LabMeasure] = []
     for k, inv in enumerate(ip.inversions):
-        bass_name = triad.pitches[inv]                 # 0=root,1=third,2=fifth
+        bass_name = triad.pitches[inv]                 # 0=root,1=third,2=fifth,3=seventh
         bass_pc = note_pc(bass_name)
         bass = _bass_note(bass_name)
 
@@ -317,13 +334,13 @@ def _gen_inversion(spec: LabExperimentSpec) -> List[LabMeasure]:
 
         invariant = "–".join(triad.pitches)
         lab_note = (
-            f"{triad.chord_symbol} in {_INVERSION_LABEL[inv]} ({_FIGURED_BASS[inv]}): "
+            f"{triad.chord_symbol} in {_INVERSION_LABEL[inv]} ({figures[inv]}): "
             f"the chord tones {invariant} are invariant; only the bass changes to "
             f"{bass_name}."
         )
         ann = _annotation_for(
             triad, tonic, mode, lab_note=lab_note,
-            **_inversion_annotation(inv, bass_name),
+            **_inversion_annotation(inv, bass_name, figures),
         )
         measures.append(LabMeasure(
             index=k, render=spec.render, group=group,
@@ -499,7 +516,7 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
         sym = triad.chord_symbol if not inv else f"{triad.chord_symbol}/{bass_name}"
         bits = [f"{cp.pattern[k]} ({sym}, {triad.function_label})"]
         if inv:
-            bits.append(f"{_INVERSION_LABEL[inv]} ({_FIGURED_BASS[inv]}) — "
+            bits.append(f"{_INVERSION_LABEL[inv]} ({_figures_for(triad)[inv]}) — "
                         f"{bass_name} in the bass")
         if bass_motion:
             bits.append(f"bass {bass_motion}")
@@ -509,7 +526,15 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             bits.append(tendency[0])
         lab_note = "; ".join(bits) + "."
 
-        inv_extra = {} if not inv else _inversion_annotation(inv, bass_name)
+        inv_extra = ({} if not inv
+                     else _inversion_annotation(inv, bass_name,
+                                                _figures_for(triad)))
+        if cp.dictation:
+            # Bass-line dictation (ticket 11 / plan A1 level 5): the notation
+            # and playback keep the FULL chord, but the graded target is the
+            # bass alone — every measure demands its (possibly figured) bass.
+            lab_note = (f"Bass-line dictation: play only the bass note "
+                        f"({bass_name}). {lab_note}")
         ann = _annotation_for(
             triad, tonic, mode, voices=voices, common_tones=common,
             bass_motion=bass_motion, tendency_tones=tendency,
@@ -521,9 +546,12 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             tonic=tonic, mode=mode, fifths=fifths,
             scale_pitches=tuple(scale.scale_pitches),
             staff1=staff1, staff2=staff2, annotation=ann, underlying=triad,
-            target_pitch_classes=triad_pcs, bass_pitch_class=bass_pc,
+            target_pitch_classes=((bass_pc,) if cp.dictation else triad_pcs),
+            bass_pitch_class=bass_pc,
             expected_by_beat=None,
-            strict_bass=bool(inv),      # only the figured chord is bass-graded
+            # A figured chord's bass is always graded; in dictation EVERY
+            # measure's answer is its bass.
+            strict_bass=bool(inv) or bool(cp.dictation),
         ))
         prev_triad = triad
         prev_bass_name = bass_name

@@ -540,9 +540,16 @@ def _exercise_node_from_lab(spec: LabExperimentSpec, parent: str, order: int,
 def _lab_objective(spec: LabExperimentSpec) -> str:
     p = spec.parameters
     if spec.concept == "inversion":
+        if parse_seventh_token(str(p.get("degree", ""))) is not None:
+            return (f"Voice {p.get('degree')} from each figure "
+                    f"(7 · 6/5 · 4/3 · 4/2) with the demanded bass as the "
+                    f"lowest sounding note.")
         return (f"Hear that {p.get('degree', 'I')} keeps its identity as the bass "
                 f"moves through root position, first, and second inversion.")
     if spec.concept in ("cadence", "voice_leading"):
+        if p.get("dictation") == "bass":
+            return (f"Hear the {'-'.join(p.get('pattern', []))} progression "
+                    f"and play back only its bass line.")
         return (f"Voice-lead the {'-'.join(p.get('pattern', []))} progression and "
                 f"resolve its tendency tones.")
     if spec.concept == "motive":
@@ -568,6 +575,8 @@ def _lab_keywords(spec: LabExperimentSpec) -> List[str]:
         kws.append("-".join(str(d) for d in p["degrees"]))
     if spec.concept == "inversion":
         kws.append("inversion")
+    if p.get("dictation"):
+        kws.extend(["dictation", "bass line", "ear", "🎧"])
     return kws
 
 
@@ -871,6 +880,93 @@ def _tritone_resolution_spec(tonic: str) -> LabExperimentSpec:
 def _tritone_curriculum_specs() -> List[LabExperimentSpec]:
     """The tritone-resolution frame in all 12 major keys."""
     return [_tritone_resolution_spec(tonic) for tonic in DEFAULT_MAJOR_KEYS]
+
+
+# ---------------------------------------------------------------------------
+# V7 figured bass + bass-line dictation (ticket 11 / plan G1c, G4, A1 level 5)
+# ---------------------------------------------------------------------------
+
+def _seventh_inversion_spec(tonic: str) -> LabExperimentSpec:
+    """V7's four voicings (7 · 6/5 · 4/3 · 4/2) in one major key, bass-graded."""
+    spec = LabExperimentSpec(
+        experiment_id=f"sevenths_inv_{_key_slug(tonic)}",
+        title=f"V7 figured-bass inversions in {tonic} major",
+        concept="inversion", mode="major", key=f"{tonic} major", render="block",
+        parameters={"degree": "V7", "inversions": [0, 1, 2, 3]},
+        description=("Read each figure as a performance instruction: 7 puts "
+                     "the root in the bass, 6/5 the third (the leading "
+                     "tone), 4/3 the fifth, 4/2 the chordal seventh — and "
+                     "each drill only passes with that note as the lowest "
+                     "sounding one."),
+    )
+    spec.validate()
+    return spec
+
+
+#: The resolution walk: each V7 figure paired with its classic landing — the
+#: outer-voice frame contracts stepwise, and 4/2's bass (the chordal seventh)
+#: must fall into I6.
+_FIGURED_RESOLUTION_PATTERN = ["V65", "I", "V43", "I", "V42", "I6"]
+
+
+def _seventh_resolution_spec(tonic: str) -> LabExperimentSpec:
+    """V6/5→I, V4/3→I and V4/2→I6 as one six-measure walk in one key."""
+    spec = LabExperimentSpec(
+        experiment_id=f"sevenths_figres_{_key_slug(tonic)}",
+        title=f"Resolve V7 from every figure in {tonic} major",
+        concept="cadence", mode="major", key=f"{tonic} major", render="block",
+        parameters={"pattern": list(_FIGURED_RESOLUTION_PATTERN),
+                    "cadence_type": "authentic"},
+        description=("Each inversion resolves by its own bass logic: 6/5's "
+                     "leading tone rises to the tonic, 4/3's fifth steps "
+                     "either way, and 4/2's chordal seventh MUST fall — "
+                     "which is why V4/2 lands on I6, never root-position I. "
+                     "Every figured bass is graded as the lowest sounding "
+                     "note."),
+    )
+    spec.validate()
+    return spec
+
+
+#: Bass-dictation keys: three signatures (natural, sharp-side, flat-side) —
+#: hearing a bass line is key-independent, so variety beats coverage (matches
+#: the hear-a-seventh drills' key choice).
+_BASS_DICTATION_KEYS = ["C", "G", "Eb"]
+
+#: ``(pattern, slug, what the bass line teaches)`` — from root motion through
+#: a triad figure to the V7 figures, so dictation grows with the figured
+#: vocabulary the visual drills just established.
+_BASS_DICTATION_PATTERNS = [
+    (["I", "IV", "V", "I"], "roots",
+     "root motion: the bass walks 1̂–4̂–5̂–1̂"),
+    (["ii6", "V", "I"], "ii6",
+     "the figured predominant: ii6 bends the bass line to 4̂–5̂–1̂"),
+    (["V65", "I", "V42", "I6"], "v7figs",
+     "V7's figures: the leading tone rises 7̂–1̂, then the chordal "
+     "seventh falls 4̂–3̂"),
+]
+
+
+def _bass_dictation_specs() -> List[LabExperimentSpec]:
+    """The bass-line dictation drills (A1 level 5): 3 progressions × 3 keys."""
+    specs = []
+    for pattern, slug, blurb in _BASS_DICTATION_PATTERNS:
+        for tonic in _BASS_DICTATION_KEYS:
+            spec = LabExperimentSpec(
+                experiment_id=f"bassdict_{slug}_{_key_slug(tonic)}",
+                title=(f"Bass-line dictation: {'–'.join(pattern)} "
+                       f"in {tonic} major"),
+                concept="cadence", mode="major", key=f"{tonic} major",
+                render="block",
+                parameters={"pattern": list(pattern), "dictation": "bass"},
+                description=(f"🎧 Hear the full {'–'.join(pattern)} "
+                             f"progression, then play only its bass line — "
+                             f"{blurb}. The notation stays hidden until you "
+                             f"finish."),
+            )
+            spec.validate()
+            specs.append(spec)
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -1360,19 +1456,39 @@ def build_curriculum() -> CurriculumNode:
                       "ii7–V7–I arpeggiated: hear each chord tone arrive.", 4),
                 _seventh_pattern_specs(*_SEVENTH_PATTERNS[2],
                                        render="arpeggio"), 4)
-    l_7more = lesson(sevenths, "sevenths_more", "Seventh inversions (reserved)",
-                     "V6/5, V4/3, V4/2 — figured-bass sevenths; and the °7.",
-                     "(Reserved) The figured-bass inversions of the seventh "
-                     "chords (plan G1c) and the fully diminished seventh "
-                     "(with harmonic minor, plan G2).", 4,
-                     kind="reserved", reserved=True,
-                     theory="The seventh vocabulary is live (G1b); next the "
-                            "figures 7–6/5–4/3–4/2 become graded performance "
-                            "instructions (plan G1c, with G4's bass grading), "
-                            "and harmonic minor legitimises vii°7 (plan G2).",
-                     keywords=["V65", "V43", "V42", "inversion",
-                               "diminished seventh", "reserved"])
+    l_7more = lesson(sevenths, "sevenths_more", "Seventh inversions & figured bass",
+                     "V6/5, V4/3, V4/2 — the figures become performance "
+                     "instructions.",
+                     "Voice V7 from any figure with the demanded bass as the "
+                     "lowest sounding note, and resolve each inversion by its "
+                     "own bass logic.", 4,
+                     theory="A seventh chord has four bass positions, and the "
+                            "figures name them: 7 (root), 6/5 (third — the "
+                            "leading tone), 4/3 (fifth), 4/2 (the chordal "
+                            "seventh itself). Each figure implies its own "
+                            "resolution: 6/5's bass rises a semitone to the "
+                            "tonic, while 4/2's bass — the dissonant seventh "
+                            "— must FALL by step, which is why V4/2 resolves "
+                            "to I6, never to root-position I. Every figure "
+                            "here is graded (plan G4's bass grading): the "
+                            "drill only passes with the demanded note as the "
+                            "lowest sounding one. The fully diminished °7 is "
+                            "still reserved — it arrives with harmonic "
+                            "minor's raised leading tone (plan G2).",
+                     related=["lesson:dominant_seventh",
+                              "lesson:chord_inversions",
+                              "lesson:bass_dictation"],
+                     keywords=["V65", "V43", "V42", "V6/5", "V4/3", "V4/2",
+                               "inversion", "figured bass", "third inversion"])
     l_7more.keywords.append("sevenths")
+    fill_lab(group(l_7more, "sevenths_figured_inv", "V7 figured-bass inversions",
+                   "All four voicings (7 · 6/5 · 4/3 · 4/2), key by key — the "
+                   "figured bass is graded.", 4),
+             [_seventh_inversion_spec(t) for t in DEFAULT_MAJOR_KEYS], 4)
+    fill_lab(group(l_7more, "sevenths_figured_res", "Resolution by figure",
+                   "V6/5→I, V4/3→I and V4/2→I6: each inversion resolves by "
+                   "its own bass logic.", 4),
+             [_seventh_resolution_spec(t) for t in DEFAULT_MAJOR_KEYS], 4)
 
     # ===================================================================
     # 7. INTERVALS  (theory + cross-links; owns NO exercise -> no duplication)
@@ -1483,6 +1599,28 @@ def build_curriculum() -> CurriculumNode:
                    "The authentic cadence with a first-inversion predominant "
                    "(bass 4̂–5̂–1̂).", 3),
              [_ii6_cadence_spec()], 3)
+    l_dict = lesson(inversions, "bass_dictation", "Bass-line dictation",
+                    "🎧 Hear a progression, play only its bass line.",
+                    "Track the bass by ear through root motion, figured "
+                    "triads and V7's inversions.", 3,
+                    theory="The bass line is where inversions live: root "
+                           "motion leaps by fourths and fifths, while a "
+                           "figure bends the line into steps (ii6 walks "
+                           "4̂–5̂–1̂; V4/2's seventh falls into I6). "
+                           "Dictation turns that reading skill into a "
+                           "hearing skill — the full progression sounds, "
+                           "the notation stays hidden, and only the bass "
+                           "notes are graded (any octave, one per measure). "
+                           "Finishing reveals the score for review.",
+                    related=["lesson:chord_inversions",
+                             "lesson:inversion_cadence_bridge",
+                             "lesson:sevenths_more"],
+                    keywords=["dictation", "bass line", "ear training",
+                              "🎧", "bass", "aural"])
+    fill_lab(group(l_dict, "bass_dictation_drills", "Dictation drills",
+                   "🎧 Three bass-line vocabularies (roots, ii6, V7 figures) "
+                   "in three keys.", 3),
+             _bass_dictation_specs(), 3)
 
     # ===================================================================
     # 9. MOTIVES  (lab: 2)

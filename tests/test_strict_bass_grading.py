@@ -162,9 +162,12 @@ class TestIi6CadenceBridgeLeaf(unittest.TestCase):
         self.root = build_curriculum()
 
     def _ii6_leaves(self):
+        # Bass-line dictation leaves (ticket 11) may also carry ii6 in their
+        # patterns; the bridge leaf is the unique VISUAL ii6 cadence drill.
         return [lf for lf in self.root.find("cat:inversions").leaves()
                 if lf.lab_spec.concept == "cadence"
-                and "ii6" in (lf.lab_spec.parameters.get("pattern") or [])]
+                and "ii6" in (lf.lab_spec.parameters.get("pattern") or [])
+                and not lf.lab_spec.parameters.get("dictation")]
 
     def test_leaf_exists_once_under_inversions(self):
         self.assertEqual(len(self._ii6_leaves()), 1)
