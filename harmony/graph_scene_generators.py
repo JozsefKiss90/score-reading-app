@@ -902,10 +902,19 @@ def build_quality_class_scene(spec: HarmonyExerciseSpec, *, source_kind: str = "
 # --------------------------------------------------------------------------------------------- #
 
 _CADENCE_NAMES = {
-    ("V", "I"): "authentic (perfect)", ("V", "i"): "authentic (minor)",
+    # A bare V–I is the authentic *family*: perfect vs imperfect is decided by
+    # the soprano, which this token-level lookup cannot see (ticket 16 / G3 —
+    # specs that control the soprano carry an explicit cadence_type instead).
+    ("V", "I"): "authentic", ("V", "i"): "authentic (minor)",
     ("vii°", "I"): "authentic (leading-tone)", ("V", "vi"): "deceptive", ("V", "VI"): "deceptive",
     ("IV", "I"): "plagal", ("iv", "i"): "plagal (minor)", ("I", "V"): "half", ("i", "V"): "half",
-    ("i", "v"): "half (minor)", ("VII", "i"): "subtonic", ("♭VII", "i"): "subtonic",
+    ("i", "v"): "half (minor)", ("ii", "V"): "half", ("IV", "V"): "half",
+    # Root-position iv–V is a plain minor half: "phrygian" requires iv6's
+    # ♭6̂-in-the-bass semitone fall, which token-level heads cannot see
+    # (the Phrygian specs carry cadence_type="phrygian" explicitly).
+    ("iv", "V"): "half",
+
+    ("VII", "i"): "subtonic", ("♭VII", "i"): "subtonic",
     ("ii°", "i"): "phrygian-approach",
 }
 

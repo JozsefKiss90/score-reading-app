@@ -49,6 +49,9 @@ from theory.diatonic_harmony import (
     roman_token_to_index,
     parse_seventh_token,
     seventh_tokens_for_mode,
+    generate_scale,
+    transpose_degree_pattern,
+    note_pc,
     _canon_mode,
     _mode_word,
 )
@@ -251,7 +254,16 @@ class CadenceParams:
     pattern: tuple = ("V", "I")       # Roman / functional tokens
     cadence_type: str = ""            # display only; one of harmonic_roles.CADENCE_TYPES
     strict_bass: bool = False
-    dictation: str = ""               # "" | "bass" — grade only the bass line (A1 L5)
+    dictation: str = ""               # "" | "bass" | "soprano" — grade one line only
+    #: 1-based scale degree demanded in the soprano, one per pattern chord
+    #: (ticket 16 / plan G3: PAC ends on 1̂, IAC on 3̂/5̂).  Empty -> the SATB
+    #: voicing picks the smoothest soprano as before.
+    soprano_degrees: tuple = ()
+    #: Display-only alternative token per pattern chord (ticket 16's cadential
+    #: 6/4 relabel drill: the same sounds shown as ``V(6–4)`` instead of
+    #: ``I64``).  Never changes what compiles or what is graded — only what
+    #: each measure's annotation CALLS the chord.
+    relabel: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -287,6 +299,8 @@ def cadence_params(p: Dict) -> CadenceParams:
         cadence_type=str(p.get("cadence_type", "")),
         strict_bass=bool(p.get("strict_bass", False)),
         dictation=str(p.get("dictation", "") or ""),
+        soprano_degrees=tuple(int(d) for d in p.get("soprano_degrees", ())),
+        relabel=tuple(str(t) for t in p.get("relabel", ())),
     )
 
 
@@ -452,18 +466,60 @@ class LabExperimentSpec:
                     "seventh slice widens it)")
             self._check_diatonic(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
-            if cp.dictation:
-                # Bass-line dictation (ticket 11 / plan A1 level 5): hear the
-                # full progression, answer with only its bass line.
-                if cp.dictation != "bass":
+            if cp.relabel and len(cp.relabel) != len(cp.pattern):
+                raise ValueError(
+                    "relabel needs one display token per pattern chord (it "
+                    "renames what a measure's annotation calls the chord, "
+                    "never what compiles)")
+            if cp.soprano_degrees:
+                # A demanded soprano (ticket 16 / plan G3, the PAC/IAC seam):
+                # only the SATB render HAS a soprano, and each demanded degree
+                # must be a tone of its chord (never voice a non-chord tone).
+                if self.render != "voice_leading":
                     raise ValueError(
-                        f"unknown dictation {cp.dictation!r}; the only "
-                        f"dictation mode is 'bass' (play only the bass line)")
-                if self.concept != "cadence" or self.render != "block":
+                        "soprano_degrees requires render='voice_leading': a "
+                        "block stack has no designated soprano")
+                if len(cp.soprano_degrees) != len(cp.pattern):
+                    raise ValueError(
+                        "soprano_degrees needs one 1-based scale degree per "
+                        "pattern chord")
+                if any(not (1 <= d <= 7) for d in cp.soprano_degrees):
+                    raise ValueError("soprano_degrees must be in 1..7")
+                tonic = tonic_of(self.key)
+                scale = generate_scale(tonic, self.mode)
+                triads = transpose_degree_pattern(
+                    normalise_pattern(list(romans)), tonic, self.mode)
+                for tok, deg, triad in zip(cp.pattern, cp.soprano_degrees,
+                                           triads):
+                    pc = note_pc(scale.scale_pitches[deg - 1])
+                    if pc not in triad.pitch_classes:
+                        raise ValueError(
+                            f"soprano degree {deg} "
+                            f"({scale.scale_pitches[deg - 1]}) is not a tone "
+                            f"of {tok} ({'-'.join(triad.pitches)}); the "
+                            f"soprano must sing a chord tone")
+            if cp.dictation:
+                # Line dictation: hear the full progression, answer with one
+                # line only — the bass (ticket 11 / plan A1 level 5) or the
+                # soprano (ticket 16 / plan G3, the PAC-vs-IAC ear seam).
+                if cp.dictation not in ("bass", "soprano"):
+                    raise ValueError(
+                        f"unknown dictation {cp.dictation!r}; the dictation "
+                        f"modes are 'bass' (play only the bass line) and "
+                        f"'soprano' (play only the top line)")
+                if cp.dictation == "bass" and (
+                        self.concept != "cadence" or self.render != "block"):
                     raise ValueError(
                         "dictation='bass' requires concept='cadence' with "
                         "render='block' (the veiled block progression whose "
                         "bass line is the graded answer)")
+                if cp.dictation == "soprano" and (
+                        self.concept != "cadence"
+                        or self.render != "voice_leading"):
+                    raise ValueError(
+                        "dictation='soprano' requires concept='cadence' with "
+                        "render='voice_leading' (only the SATB voicing has a "
+                        "soprano line to dictate)")
             if cp.cadence_type and cp.cadence_type not in CADENCE_TYPES:
                 raise ValueError(
                     f"unknown cadence_type {cp.cadence_type!r}; expected one of "

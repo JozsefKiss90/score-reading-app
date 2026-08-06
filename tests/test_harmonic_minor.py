@@ -254,7 +254,9 @@ class TestHarmonicMinorCurriculum(unittest.TestCase):
         self.assertIn((("v", "i"), "authentic"), minor)
         self.assertIn((("VII", "i"), "subtonic"), minor)
         cadences = next(c for c in self.root.children if c.title == "Cadences")
-        self.assertEqual(cadences.exercise_count, 26)
+        # 26 pre-G3; ticket 16 adds 4 catalogue variants (ii–V / IV–V, block +
+        # SATB) and 35 taxonomy leaves (PAC/IAC, halves, 6/4, reflex, orbits).
+        self.assertEqual(cadences.exercise_count, 65)
 
 
 if __name__ == "__main__":

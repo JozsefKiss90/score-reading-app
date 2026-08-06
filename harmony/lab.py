@@ -386,7 +386,8 @@ def _stack_ascending(names: List[str], base_octave: int
     return out
 
 
-def _satb_progression(triads: List[DiatonicTriad]
+def _satb_progression(triads: List[DiatonicTriad],
+                      soprano_pcs: Optional[List[Optional[int]]] = None
                       ) -> List[Dict[str, Tuple[str, int, int]]]:
     """Deterministic SATB-like voicing: smooth soprano, root in the bass.
 
@@ -396,20 +397,33 @@ def _satb_progression(triads: List[DiatonicTriad]
     strictly ascending and the bass sits below the tenor).  This is a simple
     closed-position voicing, not a counterpoint engine (see the module docstring
     and the lab docs for the extension seam).
+
+    ``soprano_pcs`` (ticket 16 / plan G3) demands a soprano pitch class per
+    chord (``None`` = free): only the rotation topping that tone is eligible,
+    and the whole upper-voice block may slide an octave so the demanded
+    soprano still lands near the previous one (validate() guarantees the tone
+    is a chord tone, so the rotation always exists).
     """
     out: List[Dict[str, Tuple[str, int, int]]] = []
     prev_sop: Optional[int] = None
-    for triad in triads:
+    for k, triad in enumerate(triads):
         rots = _close_rotations(triad)
+        b_step, b_alter = parse_pitch_class(triad.pitches[0])
+        bass = (b_step, b_alter, BASS_OCTAVE)
 
         def sop_midi(rot):
             return _midi(*rot[2])
 
         target = 72 if prev_sop is None else prev_sop
+        want = soprano_pcs[k] if soprano_pcs else None
+        if want is not None:
+            base = next(r for r in rots if sop_midi(r) % 12 == want)
+            rots = [[(s, a, o + shift) for (s, a, o) in base]
+                    for shift in (-1, 0, 1)
+                    if _midi(base[0][0], base[0][1], base[0][2] + shift)
+                    > _midi(*bass)]                    # tenor stays above bass
         best = min(rots, key=lambda r: (abs(sop_midi(r) - target), sop_midi(r)))
         tenor, alto, sop = best
-        b_step, b_alter = parse_pitch_class(triad.pitches[0])
-        bass = (b_step, b_alter, BASS_OCTAVE)
         prev_sop = sop_midi(best)
         out.append({"S": sop, "A": alto, "T": tenor, "B": bass})
     return out
@@ -475,12 +489,21 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
     heads, inversions = split_figured_pattern(list(cp.pattern))
     roman = normalise_pattern(heads)
     triads = transpose_degree_pattern(roman, tonic, mode)
-    label = "–".join(cp.pattern)
+    # Relabel tokens (ticket 16, the cadential-6/4 relabel drill) rename what
+    # the annotation CALLS each chord; compilation and grading use cp.pattern.
+    shown_tokens = list(cp.relabel or cp.pattern)
+    label = "–".join(shown_tokens)
     concept_word = "voice leading" if spec.concept == "voice_leading" else "cadence"
     group = f"{label} ({concept_word}) in {scale.key}"
 
     use_satb = (spec.render == "voice_leading")
-    satb = _satb_progression(triads) if use_satb else [None] * len(triads)
+    # A demanded soprano line (ticket 16 / plan G3): scale degrees -> pitch
+    # classes; validate() guaranteed one chord tone per pattern chord.
+    soprano_pcs = ([note_pc(scale.scale_pitches[d - 1])
+                    for d in cp.soprano_degrees]
+                   if cp.soprano_degrees else None)
+    satb = (_satb_progression(triads, soprano_pcs) if use_satb
+            else [None] * len(triads))
 
     measures: List[LabMeasure] = []
     prev_triad: Optional[DiatonicTriad] = None
@@ -514,8 +537,17 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
         if bass_motion is not None and prev_bass_name is not None:
             bass_motion = f"{prev_bass_name} → {bass_name}"
 
+        # The cadential 6/4 (ticket 16 / plan G3+F3): a tonic-spelled 6/4
+        # heading into a dominant is NOT tonic function — its 6th and 4th are
+        # suspensions over the dominant bass.  Detected here, at the engine,
+        # so every surface that renders this measure tells the truth.
+        cadential_64 = (inv == 2 and roman[k].upper() == "I"
+                        and k + 1 < len(triads)
+                        and triads[k + 1].function_label == "dominant")
+        func_word = ("dominant (cadential 6/4)" if cadential_64
+                     else triad.function_label)
         sym = triad.chord_symbol if not inv else f"{triad.chord_symbol}/{bass_name}"
-        bits = [f"{cp.pattern[k]} ({sym}, {triad.function_label})"]
+        bits = [f"{shown_tokens[k]} ({sym}, {func_word})"]
         if inv:
             bits.append(f"{_INVERSION_LABEL[inv]} ({_figures_for(triad)[inv]}) — "
                         f"{bass_name} in the bass")
@@ -527,15 +559,29 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             bits.append(tendency[0])
         lab_note = "; ".join(bits) + "."
 
+        if cadential_64:
+            lab_note += (f" Cadential 6/4 — dominant in function despite the "
+                         f"tonic spelling: the bass is already the dominant "
+                         f"({bass_name}), and the 6th and 4th above it are "
+                         f"suspensions that resolve down (6–5, 4–3) into the "
+                         f"next chord. Hear this as an embellished dominant, "
+                         f"not a tonic chord.")
         inv_extra = ({} if not inv
                      else _inversion_annotation(inv, bass_name,
                                                 _figures_for(triad)))
-        if cp.dictation:
+        sop_name = _spell_octave(voicing["S"]) if use_satb else None
+        sop_pc = _midi(*voicing["S"]) % 12 if use_satb else None
+        if cp.dictation == "bass":
             # Bass-line dictation (ticket 11 / plan A1 level 5): the notation
             # and playback keep the FULL chord, but the graded target is the
             # bass alone — every measure demands its (possibly figured) bass.
             lab_note = (f"Bass-line dictation: play only the bass note "
                         f"({bass_name}). {lab_note}")
+        elif cp.dictation == "soprano":
+            # Soprano dictation (ticket 16 / plan G3): the PAC-vs-IAC ear —
+            # full SATB playback, but the graded target is the top line.
+            lab_note = (f"Soprano dictation: play only the top note "
+                        f"({sop_name}). {lab_note}")
         ann = _annotation_for(
             triad, tonic, mode, voices=voices, common_tones=common,
             bass_motion=bass_motion, tendency_tones=tendency,
@@ -547,12 +593,15 @@ def _gen_voice_leading(spec: LabExperimentSpec) -> List[LabMeasure]:
             tonic=tonic, mode=mode, fifths=fifths,
             scale_pitches=tuple(scale.scale_pitches),
             staff1=staff1, staff2=staff2, annotation=ann, underlying=triad,
-            target_pitch_classes=((bass_pc,) if cp.dictation else triad_pcs),
+            target_pitch_classes=((bass_pc,) if cp.dictation == "bass"
+                                  else (sop_pc,) if cp.dictation == "soprano"
+                                  else triad_pcs),
             bass_pitch_class=bass_pc,
             expected_by_beat=None,
-            # A figured chord's bass is always graded; in dictation EVERY
-            # measure's answer is its bass.
-            strict_bass=bool(inv) or bool(cp.dictation),
+            # A figured chord's bass is always graded; in BASS dictation every
+            # measure's answer is its bass.  Soprano dictation grades the top
+            # line — a lowest-note demand would be nonsense there.
+            strict_bass=bool(inv) or cp.dictation == "bass",
         ))
         prev_triad = triad
         prev_bass_name = bass_name

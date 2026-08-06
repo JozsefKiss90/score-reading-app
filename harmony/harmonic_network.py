@@ -122,6 +122,10 @@ CADENCE_CATALOGUE = {
         (("V", "I"), "V–I", "authentic"),
         (("IV", "I"), "IV–I", "plagal"),
         (("V", "vi"), "V–vi", "deceptive"),
+        # The half-cadence family (ticket 16 / plan G3): a phrase pausing on
+        # the dominant, approached from either predominant.
+        (("ii", "V"), "ii–V", "half"),
+        (("IV", "V"), "IV–V", "half"),
         (("ii", "V", "I"), "ii–V–I", "authentic"),
         (("IV", "V", "I"), "IV–V–I", "authentic"),
         (("I", "IV", "V", "I"), "I–IV–V–I", "authentic"),

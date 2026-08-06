@@ -66,9 +66,14 @@ _CATEGORIES = [
      "Major + minor functional progressions (19)."),
     ("cadences", "Cadences", ["cat:cadences"],
      ["tests/test_curriculum.py", "tests/test_curriculum_cadences.py",
-      "tests/test_content_truth.py", "tests/test_harmony_atlas.py"],
-     "13 cadences (6 two-chord types + 7 functional progressions), each as a "
-     "block drill AND an SATB voice-leading variant (26 leaves)."),
+      "tests/test_content_truth.py", "tests/test_harmony_atlas.py",
+      "tests/test_cadence_taxonomy.py"],
+     "15 catalogue cadences (8 two-chord types + 7 functional progressions), "
+     "each as a block drill AND an SATB voice-leading variant (30 leaves), "
+     "plus the G3 taxonomy lessons (ticket 16): PAC vs IAC eye+ear, the "
+     "half-cadence family with the Phrygian iv6–V, the cadential 6/4 "
+     "hear/relabel pairs, the V→? ear reflex and 16 multi-key cadence "
+     "orbits (65 leaves total)."),
     ("sevenths", "Seventh Chords", ["cat:sevenths"],
      ["tests/test_seventh_chords.py", "tests/test_curriculum.py"],
      "The V7 tracer (plan G1a): add-the-7th + V7→I chunked across the 12 major "
@@ -211,7 +216,15 @@ def _audit_category(root: CurriculumNode, atlas, circle_keys, key, title,
         # bridge validity (compiles within the cap)
         try:
             for es in spec.to_exercise_specs():
-                exercise_ids.append(es.exercise_id)
+                # The duplicate check applies to LAUNCHED drill ids: for the
+                # 'drill' passthrough the bridge id IS the exercise, while a
+                # lab concept's bridge is only its root-position shadow —
+                # taxonomy leaves share one on purpose (ticket 16: three
+                # PAC/IAC sopranos over one V–I; the cadential-6/4 relabel
+                # drill is the same sounds relabelled).  Their identity is
+                # the experiment id, whose uniqueness is checked above.
+                if spec.concept == "drill":
+                    exercise_ids.append(es.exercise_id)
                 n = len(compile_exercise(es))
                 if n > MAX_CHORDS_PER_SPEC:
                     invalid_bridge.append(f"{lf.id}: {es.exercise_id} -> {n} chords")

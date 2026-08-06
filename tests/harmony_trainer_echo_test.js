@@ -359,4 +359,42 @@ function assert(cond, msg) {
   console.log("Test J (bass-line dictation): PASS");
 })();
 
+// === Test K: soprano dictation (ticket 16 / plan G3, the PAC-vs-IAC ear) ====
+(function testSopranoDictation() {
+  // Mirror of Test J on the other edge of the texture: full-chord playback,
+  // but the graded pitch class per measure is the SOPRANO, and a stray note
+  // held ABOVE the demanded soprano must fail (the top line IS the answer).
+  const p = echoPayload({ DICTATION: "soprano" });
+  p.TARGET_CHORDS = [
+    echoTarget(0, "V", [11], [50, 55, 59, 43]),      // soprano B (B4 = 71)
+    echoTarget(1, "I", [0], [52, 55, 60, 48]),       // soprano C (C5 = 72)
+  ];
+  const h = makeHarness(p);
+  h.HT.init(p);
+  assert(h.HT.state().veiled === true, "soprano dictation starts veiled");
+  assert(h.HT.state().dictation === "soprano", "DICTATION reaches state()");
+  assert(/soprano/i.test(h.nodes.get("htTitle").textContent),
+         "the veiled header names soprano dictation");
+  const cur = h.nodes.get("htCurrent")._innerHTML;
+  assert(/top line/i.test(cur), "the veiled prompt asks for the top line");
+  assert(cur.indexOf("play it back on the keyboard") === -1,
+         "the generic echo-the-chord prompt is replaced");
+  // A note held ABOVE the demanded soprano is the answer's top — and wrong.
+  h.noteOn(74);                                    // D5 — above the soprano
+  h.noteOn(71);                                    // B4 — the target pc
+  assert(h.HT.state().completed === false,
+         "a stray note above the demanded soprano must not pass");
+  h.noteOff(74); h.noteOff(71);
+  assert(h.HT.state().idx === 0, "the failed attempt does not advance");
+  // The soprano alone completes the measure (any octave).
+  h.noteOn(59);                                    // B3 — a different octave
+  assert(h.HT.state().completed === true, "the soprano pitch class completes");
+  h.noteOff(59);
+  assert(h.HT.state().idx === 1, "release advances to the next measure");
+  h.noteOn(60); h.noteOff(60);                     // C4
+  assert(h.HT.state().finished === true, "the top line finishes the drill");
+  assert(h.HT.state().veiled === false, "the reveal shows the full chords");
+  console.log("Test K (soprano dictation): PASS");
+})();
+
 console.log("\nAll echo-presentation checks passed (" + passed + " assertions).");

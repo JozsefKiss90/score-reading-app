@@ -38,6 +38,12 @@ class TestDictationValidation(unittest.TestCase):
 
     def test_unknown_dictation_value_rejected(self):
         with self.assertRaises(ValueError):
+            _dictation(value="alto").validate()
+
+    def test_soprano_dictation_needs_the_satb_render(self):
+        # "soprano" is a real dictation mode (ticket 16), but only the
+        # voice_leading render has a soprano line to dictate.
+        with self.assertRaises(ValueError):
             _dictation(value="soprano").validate()
 
     def test_dictation_requires_block_render(self):

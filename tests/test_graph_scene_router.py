@@ -304,7 +304,9 @@ class TestBuildCadence(unittest.TestCase):
         self.assertEqual([o.roman for o in scene.occurrence_map], ["V", "I"])
         self.assertEqual(scene.occurrence_at(0).chord_symbol, "G")           # V triad, not G7
         self.assertEqual(scene.occurrence_at(0).next_theory_relation, "resolves_to")
-        self.assertEqual(scene.metadata.get("cadenceType"), "authentic (perfect)")
+        # A bare V–I is the authentic FAMILY: without a controlled soprano the
+        # scene may not claim "perfect" (ticket 16 / plan F9).
+        self.assertEqual(scene.metadata.get("cadenceType"), "authentic")
 
     def test_voice_leading_render_defers_to_phase6(self):
         self.assertEqual(decide_graph_scene(_req(lab_spec=self._cad("voice_leading"))).scene_type,

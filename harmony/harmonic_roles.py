@@ -200,8 +200,16 @@ FUNCTION_EXEMPLAR_DEGREE: Dict[str, int] = {
 #: flat-VII -> i close; ``aeolian`` and ``axis`` tag loop *progressions* (i-VI-VII-i and
 #: I-V-vi-IV) rather than two-chord closures -- the axis loop contains deceptive motion but is
 #: never itself labelled "deceptive".
+#:
+#: The G3 taxonomy repair (ticket 16 / plan F9): ``authentic`` remains the *family*
+#: label of any V(7)->I close; ``perfect_authentic`` / ``imperfect_authentic``
+#: refine it where a spec controls the soprano (PAC ends on 1̂, IAC on 3̂/5̂ --
+#: a distinction a block drill without a designated soprano cannot honestly
+#: claim).  ``phrygian`` is the minor-mode half cadence iv6->V whose bass falls
+#: a semitone ♭6̂->5̂ (a *half*-family member with its own name).
 CADENCE_TYPES = frozenset({
-    "authentic", "plagal", "half", "deceptive", "subtonic", "aeolian", "axis",
+    "authentic", "perfect_authentic", "imperfect_authentic",
+    "plagal", "half", "phrygian", "deceptive", "subtonic", "aeolian", "axis",
 })
 
 

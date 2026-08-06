@@ -381,6 +381,20 @@ def _atlas_refs_for_lab(spec: LabExperimentSpec) -> List[str]:
     if tokens:
         roman = normalise_pattern(tokens)
         for t in transpose_degree_pattern(roman, tonic, mode):
+            if mode == "harmonic_minor":
+                # Mirror _atlas_refs_for_native (ticket 13): the Atlas has no
+                # harmonic-minor degree/triad nodes, so a chord claims its
+                # natural-minor twin where one exists (i / ii° / iv / VI) and
+                # only the mode-less quality class otherwise (V / vii° / III+).
+                nat = None if _is_tetrad(t) else _natural_minor_twin(t)
+                if nat is not None:
+                    ctx = _key_context_mode(mode)
+                    refs.append(degree_id(ctx, nat.roman))
+                    refs.append(triad_id(tonic, ctx, t.degree_index))
+                    refs.append(function_id(ctx, nat.function_label))
+                if not _is_tetrad(t):
+                    refs.append(quality_id(t.chord_quality))
+                continue
             refs.append(degree_id(mode, _degree_roman(t)))
             if not _is_tetrad(t):
                 refs.append(triad_id(tonic, mode, t.degree_index))
@@ -597,6 +611,10 @@ def _lab_objective(spec: LabExperimentSpec) -> str:
         if p.get("dictation") == "bass":
             return (f"Hear the {'-'.join(p.get('pattern', []))} progression "
                     f"and play back only its bass line.")
+        if p.get("dictation") == "soprano":
+            return (f"Hear the {'-'.join(p.get('pattern', []))} cadence and "
+                    f"play back only its top line — the degree the soprano "
+                    f"ends on decides PAC vs IAC.")
         return (f"Voice-lead the {'-'.join(p.get('pattern', []))} progression and "
                 f"resolve its tendency tones.")
     if spec.concept == "motive":
@@ -623,7 +641,10 @@ def _lab_keywords(spec: LabExperimentSpec) -> List[str]:
     if spec.concept == "inversion":
         kws.append("inversion")
     if p.get("dictation"):
-        kws.extend(["dictation", "bass line", "ear", "🎧"])
+        line = "bass line" if p["dictation"] == "bass" else "soprano"
+        kws.extend(["dictation", line, "ear", "🎧"])
+    if p.get("cadence_type"):
+        kws.append(str(p["cadence_type"]).replace("_", " "))
     return kws
 
 
@@ -641,6 +662,10 @@ _CADENCE_CATALOG = [
     (["V", "I"],  "V–I",  "major", "authentic", "type"),
     (["IV", "I"], "IV–I", "major", "plagal",    "type"),
     (["I", "V"],  "I–V",  "major", "half",      "type"),
+    # The half-cadence family (ticket 16 / plan G3): ANY predominant can pause
+    # on the dominant — I–V above is only the plainest approach.
+    (["ii", "V"], "ii–V", "major", "half",      "type"),
+    (["IV", "V"], "IV–V", "major", "half",      "type"),
     (["V", "vi"], "V–vi", "major", "deceptive", "type"),
     # -- natural-minor two-chord cadence types --
     (["v", "i"],   "v–i",   "natural_minor", "authentic", "type"),
@@ -662,9 +687,17 @@ _CADENCE_CATALOG = [
 #: bass-motion prose is generated per cadence from the compiled chords).  Keys are
 #: drawn from :data:`harmony.harmonic_roles.CADENCE_TYPES` (the canonical enum).
 _CADENCE_TYPE_BLURB = {
-    "authentic": "a strong arrival driven by the dominant resolving to the tonic",
+    "authentic": "a strong arrival driven by the dominant resolving to the tonic "
+                 "(whether it is *perfect* or *imperfect* is decided by the "
+                 "soprano — see the PAC vs IAC lesson)",
+    "perfect_authentic": "the conclusive close: V–I in root position with the "
+                         "soprano ending on the tonic (1̂)",
+    "imperfect_authentic": "an authentic close softened by its soprano, which "
+                           "ends on 3̂ or 5̂ instead of the tonic",
     "plagal": "the gentle 'amen' of the subdominant falling to the tonic",
     "half": "an unfinished pause that comes to rest on the dominant",
+    "phrygian": "the minor-mode half cadence iv6–V: the bass falls a semitone "
+                "♭6̂ → 5̂ into the dominant",
     "deceptive": "the surprise of the dominant side-stepping to vi instead of I",
     "subtonic": "the modal ♭VII → i close (a whole-step subtonic, not a leading tone)",
     "aeolian": "the characteristic natural-minor i–VI–VII–i loop",
@@ -785,6 +818,210 @@ def _ii6_cadence_spec() -> LabExperimentSpec:
     )
     spec.validate()
     return spec
+
+
+# ---------------------------------------------------------------------------
+# Cadence taxonomy repair (ticket 16 / plan G3): PAC vs IAC, the half-cadence
+# family, the cadential 6/4, the V→? ear reflex and multi-key cadence orbits
+# ---------------------------------------------------------------------------
+
+#: PAC/IAC variants: (slug, soprano degrees for V–I, cadence_type, tag, blurb).
+#: Same two chords every time — only the demanded soprano changes, which is
+#: the entire PAC/IAC distinction (plan F9).
+_PAC_IAC_VARIANTS = [
+    ("pac", [7, 1], "perfect_authentic", "soprano 7̂→1̂",
+     "The perfect authentic cadence: root-position V–I with the soprano "
+     "rising onto the tonic — the most conclusive close tonal music has"),
+    ("iac3", [2, 3], "imperfect_authentic", "soprano 2̂→3̂",
+     "An imperfect authentic cadence: the same V–I, but the soprano settles "
+     "on 3̂ — still an arrival, audibly less final"),
+    ("iac5", [5, 5], "imperfect_authentic", "soprano 5̂ held",
+     "An imperfect authentic cadence: the soprano holds the common tone 5̂, "
+     "the gentlest authentic close"),
+]
+
+
+def _pac_iac_specs(ear: bool = False) -> List[LabExperimentSpec]:
+    """The PAC/IAC variants in C major: SATB V–I with a demanded soprano.
+
+    ``ear=False`` is the eye set; ``ear=True`` derives the aural twins — the
+    identical voicings presented as soprano dictation (🎧).
+    """
+    tonic = _REFERENCE_TONIC["major"]
+    specs = []
+    for slug, degrees, ctype, tag, blurb in _PAC_IAC_VARIANTS:
+        word = "PAC" if ctype == "perfect_authentic" else "IAC"
+        params: Dict = {"pattern": ["V", "I"], "cadence_type": ctype,
+                        "soprano_degrees": list(degrees)}
+        if ear:
+            params["dictation"] = "soprano"
+        spec = LabExperimentSpec(
+            experiment_id=(f"cad_{slug}_eardict_{_key_slug(tonic)}" if ear
+                           else f"cad_{slug}_{_key_slug(tonic)}"),
+            title=(f"🎧 {word} by ear: dictate the soprano ({tag})" if ear
+                   else f"{word}: V–I in {tonic} major ({tag})"),
+            concept="cadence", mode="major", key=f"{tonic} major",
+            render="voice_leading", parameters=params,
+            description=((f"Hear the full V–I and play back only its top "
+                          f"line ({tag}): the degree the soprano ends on is "
+                          f"what makes this a {word}.") if ear
+                         else f"{blurb}."),
+        )
+        spec.validate()
+        specs.append(spec)
+    return specs
+
+
+def _minor_half_specs() -> List[HarmonyExerciseSpec]:
+    """i–V half cadences across the 12 minor keys (harmonic minor).
+
+    The pause lands on the REAL dominant (raised 7̂ — ticket 13), which
+    natural minor cannot honestly provide; chunked like the other native
+    pattern families, so echo (🎧) twins arrive automatically.
+    """
+    keys = DEFAULT_MINOR_KEYS
+    chunks = _chunk_keys(keys, 2)
+    specs = []
+    for ci, chunk in enumerate(chunks, start=1):
+        keys_label = _keys_label(chunk, keys)
+        suffix = "" if len(chunks) == 1 else f" (set {ci})"
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"halfcad_i_V_{ci}",
+            title=f"i–V half cadence — {keys_label} (harmonic minor){suffix}",
+            drill="function", render="block", mode="harmonic_minor",
+            pattern=["i", "V"], keys=list(chunk),
+            description=(f"The minor-mode half cadence: the phrase pauses on "
+                         f"the real major dominant ({keys_label}).")))
+    return specs
+
+
+#: Phrygian-half keys: one natural, one sharp-side, one flat-side signature
+#: (mirrors the bass-dictation key choice).
+_PHRYGIAN_KEYS = ["A", "E", "D"]
+
+
+def _phrygian_half_specs() -> List[LabExperimentSpec]:
+    """The Phrygian half cadence iv6–V (block; the figure grades the bass).
+
+    iv6 puts ♭6̂ in the bass, which falls a semitone onto 5̂ — the defining
+    half-step the drill assesses (the figured bass is a performance
+    instruction, plan G4).  Harmonic minor supplies the real V.
+    """
+    specs = []
+    for tonic in _PHRYGIAN_KEYS:
+        spec = LabExperimentSpec(
+            experiment_id=f"cad_phrygian_iv6_V_{_key_slug(tonic)}",
+            title=f"Phrygian half cadence: iv6–V in {tonic} minor",
+            concept="cadence", mode="harmonic_minor", key=f"{tonic} minor",
+            render="block",
+            parameters={"pattern": ["iv6", "V"], "cadence_type": "phrygian"},
+            description=(f"The Phrygian half: iv6 puts ♭6̂ in the bass and it "
+                         f"falls a semitone onto the dominant — play the "
+                         f"figured bass as written."),
+        )
+        spec.validate()
+        specs.append(spec)
+    return specs
+
+
+#: Cadential-6/4 keys: natural, sharp-side, flat-side.
+_CADENTIAL64_KEYS = ["C", "G", "F"]
+
+
+def _cadential64_specs() -> List[LabExperimentSpec]:
+    """The cadential 6/4, taught as hear-then-relabel pairs per key.
+
+    The A leaf plays IV–I6/4–V7–I under its familiar (tonic-spelled) labels;
+    the B leaf is the SAME sounds relabelled IV–V(6–5/4–3)–I.  The engine's
+    measure annotation already tells the truth on both (the 6/4 before a
+    dominant is annotated as dominant function — see harmony.lab).
+    """
+    specs = []
+    for tonic in _CADENTIAL64_KEYS:
+        hear = LabExperimentSpec(
+            experiment_id=f"cad_c64_{_key_slug(tonic)}",
+            title=f"The cadential 6/4: IV–I6/4–V7–I in {tonic} major",
+            concept="cadence", mode="major", key=f"{tonic} major",
+            render="block",
+            parameters={"pattern": ["IV", "I64", "V7", "I"],
+                        "cadence_type": "authentic"},
+            description=(f"Play the classic cadence with the 6/4 on the "
+                         f"downbeat: the bass reaches the dominant EARLY, "
+                         f"while the upper voices still spell the tonic."),
+        )
+        relabel = LabExperimentSpec(
+            experiment_id=f"cad_c64_relabel_{_key_slug(tonic)}",
+            title=(f"Relabelled: IV–V(6–5/4–3)–I in {tonic} major "
+                   f"(the same sounds)"),
+            concept="cadence", mode="major", key=f"{tonic} major",
+            render="block",
+            parameters={"pattern": ["IV", "I64", "V7", "I"],
+                        "cadence_type": "authentic",
+                        # display-only: the measures now CALL the 6/4 what it
+                        # is — one dominant with 6–4 suspensions resolving.
+                        "relabel": ["IV", "V(6–4)", "V7(5–3)", "I"]},
+            description=(f"The identical notes, read honestly: from the "
+                         f"bass's arrival on 5̂ this is ONE dominant whose "
+                         f"6th and 4th are suspensions resolving 6–5 and "
+                         f"4–3. \"I6/4\" here is a spelling, not a tonic."),
+        )
+        for s in (hear, relabel):
+            s.validate()
+            specs.append(s)
+    return specs
+
+
+#: Reflex-drill keys (3 keys × 2 chords = 6 measures per spec).
+_REFLEX_KEYS = ["C", "G", "F"]
+
+
+def _cadence_reflex_specs() -> List[HarmonyExerciseSpec]:
+    """The deceptive-vs-authentic ear reflex (plan G3 drill 4): hear V→?,
+    answer the arrival Roman from the MCQ strip (echo + mcq, ticket 10's
+    machinery)."""
+    families = [
+        (["V", "I"], "V–I", "v_i",
+         "The dominant resolves home: after V, the arrival is I"),
+        (["V", "vi"], "V–vi", "v_vi",
+         "The dominant is denied: after V, the bass steps up to vi"),
+    ]
+    specs = []
+    for tokens, label, slug, blurb in families:
+        specs.append(HarmonyExerciseSpec(
+            exercise_id=f"cadence_ear_{slug}",
+            title=f"🎧 V→? by ear: {label} (C, G, F)",
+            drill="function", render="block", mode="major",
+            pattern=list(tokens), keys=list(_REFLEX_KEYS),
+            answer_mode="mcq", presentation="echo", mcq_focus="roman",
+            description=f"{blurb} — name each chord you hear."))
+    return specs
+
+
+def _cadence_orbit_specs(mode: str) -> List[HarmonyExerciseSpec]:
+    """Every two-chord cadence type transposed through the 12 keys (plan F8).
+
+    The transposition-orbit idea applied to cadences: the pattern is the
+    invariant, the key rotates — chunked six keys per spec exactly like the
+    function/seventh families.  Native drills, so echo twins are automatic.
+    """
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    entries = [e for e in _CADENCE_CATALOG if e[2] == mode and e[4] == "type"]
+    specs = []
+    for tokens, label, _m, ctype, _f in entries:
+        chunks = _chunk_keys(keys, len(tokens))
+        for ci, chunk in enumerate(chunks, start=1):
+            keys_label = _keys_label(chunk, keys)
+            suffix = "" if len(chunks) == 1 else f" (set {ci})"
+            specs.append(HarmonyExerciseSpec(
+                exercise_id=f"cadence_orbit_{'_'.join(tokens)}_{mode}_{ci}",
+                title=(f"{label} {ctype.replace('_', ' ')} cadence — "
+                       f"{keys_label}{suffix}"),
+                drill="function", render="block", mode=mode,
+                pattern=list(tokens), keys=list(chunk),
+                description=(f"The {label} cadence transposed through "
+                             f"{keys_label}: the pattern is the invariant, "
+                             f"the key rotates.")))
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -1521,21 +1758,37 @@ def build_curriculum() -> CurriculumNode:
                              "subtonic", "axis", "progression", "voice leading",
                              "satb"])
     l_cad = lesson(cadences, "cadence_types", "Two-chord cadences",
-                   "Major: V–I, IV–I, I–V, V–vi.  Minor: v–i, VII–i.",
+                   "Major: V–I, IV–I, I–V, ii–V, IV–V, V–vi.  Minor: v–i, VII–i.",
                    "Tell the core cadence types apart by their final bass motion "
                    "and sense of closure.", 3,
                    theory="A cadence type is defined by its final two-chord motion "
-                          "and degree of closure: authentic = strong arrival (V→I), "
-                          "plagal = the gentle 'amen' (IV→I), half = an unfinished "
-                          "pause on V, deceptive = the surprise V→vi, subtonic = the "
-                          "modal ♭VII→i (a whole-step subtonic, not a leading tone).",
-                   related=["lesson:voice_leading_cadences"])
+                          "and degree of closure: authentic = strong arrival (V→I; "
+                          "whether it is perfect or imperfect is the soprano's "
+                          "call — see PAC vs IAC), plagal = the gentle 'amen' "
+                          "(IV→I), half = an unfinished pause on V approached "
+                          "from any predominant (I–V, ii–V, IV–V), deceptive = "
+                          "the surprise V→vi, subtonic = the modal ♭VII→i (a "
+                          "whole-step subtonic, not a leading tone).",
+                   related=["lesson:voice_leading_cadences", "lesson:pac_iac",
+                            "lesson:half_cadence_family"])
     fill_cadences(group(l_cad, "cadence_types_major", "Major cadence types",
-                        "V–I, IV–I, I–V, V–vi (block, in C major).", 3),
+                        "V–I, IV–I, I–V, ii–V, IV–V, V–vi (block, in C major).",
+                        3),
                   types_major)
     fill_cadences(group(l_cad, "cadence_types_minor", "Minor cadence types",
                         "v–i and VII–i (block, in A natural minor).", 3),
                   types_minor)
+    # The deceptive-vs-authentic reflex (ticket 16 / plan G3 drill 4): the
+    # same V, two arrivals, identified by ear from the MCQ strip.
+    grp_reflex = group(l_cad, "cadence_reflex_ear",
+                       "🎧 V→? — authentic or deceptive (ear)",
+                       "Hear V resolve (V–I) or side-step (V–vi) in C, G and "
+                       "F; name each chord from the answer strip.", 4)
+    fill_native(grp_reflex, _cadence_reflex_specs(), 4)
+    reflex_leaves = [n for n in grp_reflex.children if n.kind == "exercise"]
+    for a in reflex_leaves:
+        a.related = _dedup(a.related + [b.id for b in reflex_leaves
+                                        if b.id != a.id])
     l_prog = lesson(cadences, "cadence_progressions", "Cadential progressions",
                     "Major: I–IV–V–I, ii–V–I, vi–ii–V–I, I–V–vi–IV.  "
                     "Minor: iv–v–i, i–iv–v–i, i–VI–VII–i.",
@@ -1573,6 +1826,137 @@ def build_curriculum() -> CurriculumNode:
     fill_vl(group(l_vl, "voice_leading_minor", "Minor cadences",
                   "v–i, VII–i, iv–v–i, i–iv–v–i, i–VI–VII–i in natural minor.", 3),
             vl_minor)
+
+    # --- PAC vs IAC (ticket 16 / plan G3, F9) --------------------------
+    l_pac = lesson(cadences, "pac_iac", "PAC vs IAC — the soprano decides",
+                   "The same root-position V–I, three sopranos: ending on 1̂ "
+                   "(perfect) vs 3̂ or 5̂ (imperfect).",
+                   "See and hear that 'authentic' is a family: the soprano's "
+                   "final degree makes a V–I perfect or imperfect.", 4,
+                   minutes=10,
+                   theory="Both chords can be identical and the cadence still "
+                          "differ: a PERFECT authentic cadence (PAC) has V–I in "
+                          "root position with the soprano ending on 1̂ — total "
+                          "closure. Keep the same two chords but let the soprano "
+                          "end on 3̂ or 5̂ and it becomes IMPERFECT (IAC): an "
+                          "arrival that leaves the phrase open enough to "
+                          "continue. Train the distinction with your eyes on "
+                          "the SATB voicing, then with your ears on the "
+                          "soprano-dictation twins.",
+                   related=["lesson:cadence_types",
+                            "lesson:voice_leading_cadences"],
+                   keywords=["PAC", "IAC", "perfect authentic",
+                             "imperfect authentic", "soprano"])
+    grp_pi_eye = group(l_pac, "pac_iac_eye",
+                       "See it: one cadence, three sopranos",
+                       "V–I in C major voiced with the soprano ending on 1̂, "
+                       "3̂ and 5̂.", 4)
+    fill_lab(grp_pi_eye, _pac_iac_specs(), 4)
+    grp_pi_ear = group(l_pac, "pac_iac_ear",
+                       "🎧 Hear it: dictate the soprano",
+                       "The same three voicings veiled: play back only the "
+                       "top line and feel where it comes to rest.", 4)
+    fill_lab(grp_pi_ear, _pac_iac_specs(ear=True), 4)
+    # Cross-link each eye leaf with its ear twin (same variant slug), and map
+    # every PAC/IAC leaf onto the V–I cadence Atlas node it refines.
+    vI_cad_node = atlas.cadence_node_id(["V", "I"], "major")
+    for eye, ear in zip(grp_pi_eye.children, grp_pi_ear.children):
+        eye.related = _dedup(eye.related + [ear.id])
+        ear.related = _dedup(ear.related + [eye.id])
+        if vI_cad_node:
+            eye.atlas_nodes = _dedup(eye.atlas_nodes + [vI_cad_node])
+            ear.atlas_nodes = _dedup(ear.atlas_nodes + [vI_cad_node])
+
+    # --- The half-cadence family (ticket 16 / plan G3) -----------------
+    l_half = lesson(cadences, "half_cadence_family", "The half-cadence family",
+                    "Any predominant can pause on V: ii–V and IV–V join I–V; "
+                    "minor adds i–V and the Phrygian iv6–V.",
+                    "Approach the half cadence from every predominant — and "
+                    "meet the Phrygian half, whose bass falls a semitone "
+                    "♭6̂→5̂.", 4, minutes=12,
+                    theory="A half cadence is not one progression but a "
+                           "FAMILY: the phrase pauses on the dominant, and any "
+                           "predominant can deliver it — the plain I–V, the "
+                           "stronger ii–V and IV–V (see the two-chord lesson), "
+                           "and in minor the i–V pause on the real major V "
+                           "(harmonic minor's raised 7̂). The oldest and most "
+                           "distinctive member is the PHRYGIAN half, iv6–V: "
+                           "first-inversion iv puts ♭6̂ in the bass, which "
+                           "falls a semitone onto 5̂ — a bass gesture so "
+                           "characteristic it kept its own name.",
+                    related=["lesson:cadence_types", "cat:harmonic_minor",
+                             "lesson:inversion_cadence_bridge"],
+                    keywords=["half cadence", "phrygian", "iv6", "predominant"])
+    grp_half_minor = group(l_half, "half_minor", "i–V in minor",
+                           "The minor-mode half cadence across all 12 minor "
+                           "keys (harmonic minor supplies the real V).", 4)
+    fill_native(grp_half_minor, _minor_half_specs(), 4)
+    grp_phryg = group(l_half, "half_phrygian", "The Phrygian half: iv6–V",
+                      "♭6̂ falls a semitone to 5̂ in the bass — the figure is "
+                      "graded (A, E and D minor).", 4)
+    fill_lab(grp_phryg, _phrygian_half_specs(), 4)
+    # The family's major-mode members live in the two-chord lesson; link the
+    # half-cadence lesson's minor leaves back to those catalogue leaves.
+    half_major_ids = [block_leaf_of[("major", t)]
+                      for t in (("I", "V"), ("ii", "V"), ("IV", "V"))]
+    for n in list(grp_half_minor.children) + list(grp_phryg.children):
+        if n.kind == "exercise":
+            n.related = _dedup(n.related + half_major_ids)
+
+    # --- The cadential 6/4 (ticket 16 / plan G3, F3) --------------------
+    l_c64 = lesson(cadences, "cadential_64", "The cadential 6/4",
+                   "Play IV–I6/4–V7–I, then relabel the same sounds "
+                   "IV–V(6–5/4–3)–I: the 6/4 is a dominant in tonic spelling.",
+                   "Explain why the cadential \"I6/4\" is not a tonic chord: "
+                   "its bass is already 5̂ and its 6th and 4th are suspensions "
+                   "resolving into V.", 4, minutes=10,
+                   theory="Second inversion is the one place Roman labels can "
+                          "lie. In IV–I6/4–V7–I the chord on the downbeat "
+                          "spells the tonic triad — but listen from the bass: "
+                          "5̂ arrives EARLY and holds, while the 6th and 4th "
+                          "above it are suspensions leaning down by step "
+                          "(6–5, 4–3) into the dominant. Function is carried "
+                          "by the bass and the "
+                          "voice-leading, not by the spelling, so this \"I6/4\" "
+                          "is an embellished DOMINANT: play the A leaf with "
+                          "its familiar labels, then the B leaf — identical "
+                          "sounds relabelled IV–V(6–5/4–3)–I — and hear that "
+                          "nothing changes except the truth of the label.",
+                   related=["lesson:chord_inversions",
+                            "lesson:inversion_cadence_bridge",
+                            "lesson:cadence_types"],
+                   keywords=["cadential 6/4", "I64", "second inversion",
+                             "suspension", "6-5", "4-3", "dominant"])
+    grp_c64 = group(l_c64, "cadential_64_drills", "Hear it, then relabel it",
+                    "Per key: the familiar reading, then the honest one — "
+                    "the same four chords both times (C, G, F major).", 4)
+    fill_lab(grp_c64, _cadential64_specs(), 4)
+    c64_leaves = [n for n in grp_c64.children if n.kind == "exercise"]
+    for a, b in zip(c64_leaves[0::2], c64_leaves[1::2]):
+        a.related = _dedup(a.related + [b.id])
+        b.related = _dedup(b.related + [a.id])
+
+    # --- Cadence orbits (ticket 16 / plan F8: multi-key cadences) ------
+    l_orbit = lesson(cadences, "cadence_orbits", "Cadences in every key",
+                     "Every two-chord cadence type transposed through the 12 "
+                     "keys, six keys per set.",
+                     "Free the cadences from their reference key: the pattern "
+                     "is the invariant, the key rotates.", 4, minutes=15,
+                     theory="Like the degree drills, a cadence orbit fixes the "
+                            "pattern and transposes it through every key: the "
+                            "spelling changes, the functional motion and the "
+                            "sense of closure do not. That invariance — not "
+                            "the C-major exemplar — is the cadence.",
+                     related=["lesson:cadence_types", "cat:degrees"],
+                     keywords=["transposition", "orbit", "all keys",
+                               "cadence"])
+    fill_native(group(l_orbit, "cadence_orbits_major", "Major cadence orbits",
+                      "V–I, IV–I, I–V, ii–V, IV–V and V–vi through the 12 "
+                      "major keys.", 4),
+                _cadence_orbit_specs("major"), 4)
+    fill_native(group(l_orbit, "cadence_orbits_minor", "Minor cadence orbits",
+                      "v–i and VII–i through the 12 natural-minor keys.", 4),
+                _cadence_orbit_specs("natural_minor"), 4)
 
     # ===================================================================
     # 6. SEVENTH CHORDS  (tickets 09+10 / plan G1a+G1b — 32 leaves)
@@ -1870,9 +2254,10 @@ def build_curriculum() -> CurriculumNode:
                           "too — but not always: in the cadential 6/4, a "
                           "second-inversion tonic shape over the dominant's bass "
                           "behaves as a dominant embellishment, not a stable tonic "
-                          "(a dedicated lesson on it is coming). C major I therefore "
-                          "reads C, C/E, C/G as the bass climbs root → third → "
-                          "fifth.")
+                          "(see The cadential 6/4 under Cadences). C major I "
+                          "therefore reads C, C/E, C/G as the bass climbs root → "
+                          "third → fifth.",
+                   related=["lesson:cadential_64"])
     fill_lab(group(l_inv, "inversion_intro", "Worked examples",
                    "An arpeggiated walk-through of one chord's three bass positions.",
                    2),

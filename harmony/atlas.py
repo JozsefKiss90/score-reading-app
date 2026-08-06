@@ -120,6 +120,10 @@ _CADENCE_TYPES = [
     (["V", "I"], "V–I", "major", "authentic"),
     (["IV", "I"], "IV–I", "major", "plagal"),
     (["I", "V"], "I–V", "major", "half"),
+    # The half-cadence family (ticket 16 / plan G3): any predominant can pause
+    # on the dominant, so ii-V and IV-V join I-V as half-cadence nodes.
+    (["ii", "V"], "ii–V", "major", "half"),
+    (["IV", "V"], "IV–V", "major", "half"),
     (["V", "vi"], "V–vi", "major", "deceptive"),
     (["v", "i"], "v–i", "natural_minor", "authentic"),
     (["VII", "i"], "VII–i", "natural_minor", "subtonic"),

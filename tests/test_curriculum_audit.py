@@ -35,8 +35,8 @@ class TestCurriculumAudit(unittest.TestCase):
     def test_required_cadences_and_inversions_fully_present(self):
         rc = self.audit["required"]["cadences"]
         self.assertEqual(rc["present"], rc["expected"])
-        self.assertEqual(rc["expected"], 13)
-        self.assertEqual(rc["twoChordTypes"], 6)
+        self.assertEqual(rc["expected"], 15)
+        self.assertEqual(rc["twoChordTypes"], 8)
         self.assertEqual(rc["progressions"], 7)
         self.assertEqual(rc["missing"], [])
         ri = self.audit["required"]["inversions"]

@@ -1,8 +1,8 @@
 {
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
-    "totalLeaves": 231,
-    "categories": 11,
+    "totalLeaves": 351,
+    "categories": 14,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
     "missingRequiredCount": 0,
@@ -11,9 +11,9 @@
   },
   "required": {
     "cadences": {
-      "expected": 13,
-      "present": 13,
-      "twoChordTypes": 6,
+      "expected": 15,
+      "present": 15,
+      "twoChordTypes": 8,
       "progressions": 7,
       "missing": []
     },
@@ -54,8 +54,8 @@
       "categoryIds": [
         "cat:chords"
       ],
-      "expected": "Major / minor / diminished quality drills (augmented reserved).",
-      "actualLeaves": 7,
+      "expected": "Major / minor / diminished quality drills, plus the III+ augmented drill in harmonic minor (ticket 14 / plan G2b).",
+      "actualLeaves": 8,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
@@ -68,7 +68,8 @@
       "unresolvedCircleMapping": [],
       "tests": [
         "tests/test_curriculum.py",
-        "tests/test_harmony_atlas.py"
+        "tests/test_harmony_atlas.py",
+        "tests/test_melodic_minor.py"
       ]
     },
     {
@@ -123,8 +124,8 @@
       "categoryIds": [
         "cat:cadences"
       ],
-      "expected": "13 cadences (6 two-chord types + 7 functional progressions), each as a block drill AND an SATB voice-leading variant (26 leaves).",
-      "actualLeaves": 26,
+      "expected": "15 catalogue cadences (8 two-chord types + 7 functional progressions), each as a block drill AND an SATB voice-leading variant (30 leaves), plus the G3 taxonomy lessons (ticket 16): PAC vs IAC eye+ear, the half-cadence family with the Phrygian iv6–V, the cadential 6/4 hear/relabel pairs, the V→? ear reflex and 16 multi-key cadence orbits (65 leaves total).",
+      "actualLeaves": 65,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
@@ -139,7 +140,77 @@
         "tests/test_curriculum.py",
         "tests/test_curriculum_cadences.py",
         "tests/test_content_truth.py",
-        "tests/test_harmony_atlas.py"
+        "tests/test_harmony_atlas.py",
+        "tests/test_cadence_taxonomy.py"
+      ]
+    },
+    {
+      "key": "sevenths",
+      "title": "Seventh Chords",
+      "categoryIds": [
+        "cat:sevenths"
+      ],
+      "expected": "The V7 tracer (plan G1a): add-the-7th + V7→I chunked across the 12 major keys, and the two-voice tritone-resolution frame per key (16 leaves; the remaining seventh qualities and V7 inversions are reserved).",
+      "actualLeaves": 56,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_seventh_chords.py",
+        "tests/test_curriculum.py"
+      ]
+    },
+    {
+      "key": "harmonic_minor",
+      "title": "Harmonic Minor",
+      "categoryIds": [
+        "cat:harmonic_minor"
+      ],
+      "expected": "A real V in minor (ticket 13 / plan G2a): the A/B one-accidental lesson plus V–i, vii°–i and i–iv–V–i across all 12 minor keys (12 leaves).",
+      "actualLeaves": 12,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_harmonic_minor.py",
+        "tests/test_curriculum.py"
+      ]
+    },
+    {
+      "key": "melodic_minor",
+      "title": "Melodic Minor",
+      "categoryIds": [
+        "cat:melodic_minor"
+      ],
+      "expected": "The two-way scale form (ticket 14 / plan G2b): ascent, descent and turn motive cells across the 12 minor keys (3 leaves).",
+      "actualLeaves": 3,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_melodic_minor.py",
+        "tests/test_curriculum.py"
       ]
     },
     {
@@ -171,7 +242,7 @@
         "cat:inversions"
       ],
       "expected": "96-key grid (I/ii/IV/V x 12 major + i/iv/v/VII x 12 minor) + worked example.",
-      "actualLeaves": 98,
+      "actualLeaves": 107,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
@@ -264,7 +335,7 @@
         "cat:advanced",
         "cat:reserved"
       ],
-      "expected": "7th chords, harmonic/melodic minor, modal, jazz, secondary dominants, real-score analysis, reduction (all reserved).",
+      "expected": "Modal, jazz, secondary dominants, real-score analysis, reduction (all reserved; seventh chords went live with G1a, harmonic minor with G2a, melodic minor & III+ with G2b).",
       "actualLeaves": 0,
       "reserved": true,
       "duplicateExerciseIds": [],

@@ -85,7 +85,9 @@ class TestCadenceTypeEnum(unittest.TestCase):
 
     def test_canonical_set_includes_subtonic_and_axis(self):
         for t in ("authentic", "plagal", "half", "deceptive",
-                  "subtonic", "aeolian", "axis"):
+                  "subtonic", "aeolian", "axis",
+                  # ticket 16 / plan G3: the taxonomy repair
+                  "perfect_authentic", "imperfect_authentic", "phrygian"):
             self.assertIn(t, CADENCE_TYPES)
 
     def test_curriculum_catalogue_within_enum(self):
@@ -139,30 +141,45 @@ class TestCadenceTypeEnum(unittest.TestCase):
 
 
 class TestOneCatalogueOneCategory(unittest.TestCase):
-    """F7: the 13-entry catalogue lives once, as two render variants."""
+    """F7: the 15-entry catalogue lives once, as two render variants.
+
+    Scoped to the six catalogue groups: since ticket 16 the Cadences category
+    also holds non-catalogue drills (PAC vs IAC, the half-cadence family, the
+    cadential 6/4, the V→? ear reflex, orbits) whose leaves are
+    single-variant by design — some sharing a catalogue pattern.
+    """
+
+    _CATALOGUE_GROUPS = ("group:cadence_types_major", "group:cadence_types_minor",
+                         "group:cadence_prog_major", "group:cadence_prog_minor",
+                         "group:voice_leading_major", "group:voice_leading_minor")
 
     @classmethod
     def setUpClass(cls):
         cls.root = build_curriculum()
         cls.cadences = cls.root.find("cat:cadences")
 
+    def _catalogue_leaves(self):
+        for gid in self._CATALOGUE_GROUPS:
+            for lf in self.root.find(gid).leaves():
+                yield lf
+
     def test_voice_leading_category_is_gone(self):
         self.assertIsNone(self.root.find("cat:voice_leading"))
 
     def test_each_cadence_has_block_and_satb_variant(self):
         by_key = {}
-        for lf in self.cadences.leaves():
+        for lf in self._catalogue_leaves():
             es = lf.lab_spec.to_exercise_specs()
             self.assertTrue(es, lf.id)
             by_key.setdefault((es[0].mode, tuple(es[0].pattern)), []).append(lf)
-        self.assertEqual(len(by_key), 13)
+        self.assertEqual(len(by_key), 15)
         for key, leaves in sorted(by_key.items()):
             renders = sorted(lf.lab_spec.render for lf in leaves)
             self.assertEqual(renders, ["block", "voice_leading"], key)
 
     def test_variants_cross_link_each_other(self):
         by_key = {}
-        for lf in self.cadences.leaves():
+        for lf in self._catalogue_leaves():
             es = lf.lab_spec.to_exercise_specs()
             by_key.setdefault((es[0].mode, tuple(es[0].pattern)), []).append(lf)
         for key, leaves in by_key.items():

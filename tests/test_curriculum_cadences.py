@@ -37,6 +37,16 @@ _REQUIRED_PROGRESSIONS = [
 
 
 class TestCadenceCurriculum(unittest.TestCase):
+    #: The six catalogue groups.  Since ticket 16 the Cadences category also
+    #: holds taxonomy lessons (PAC vs IAC, the half-cadence family, the
+    #: cadential 6/4, the ear reflex, orbits) that deliberately share patterns
+    #: and bridge skeletons; this file locks the CATALOGUE contract, so leaves
+    #: are collected from the catalogue groups only (the taxonomy leaves are
+    #: covered by tests.test_cadence_taxonomy).
+    _BLOCK_GROUPS = ("group:cadence_types_major", "group:cadence_types_minor",
+                     "group:cadence_prog_major", "group:cadence_prog_minor")
+    _VL_GROUPS = ("group:voice_leading_major", "group:voice_leading_minor")
+
     def setUp(self):
         self.root = build_curriculum()
         self.atlas = build_atlas()
@@ -44,12 +54,11 @@ class TestCadenceCurriculum(unittest.TestCase):
         self.assertIsNotNone(self.cadences)
         # The category holds both render variants of each cadence (F7); the
         # block drills live outside the SATB voice-leading lesson.
-        vl_lesson = self.root.find("lesson:voice_leading_cadences")
-        vl_leaf_ids = {lf.id for lf in vl_lesson.leaves()}
-        self.block_leaves = [lf for lf in self.cadences.leaves()
-                             if lf.id not in vl_leaf_ids]
-        self.vl_leaves = [lf for lf in self.cadences.leaves()
-                          if lf.id in vl_leaf_ids]
+        self.block_leaves = [lf for g in self._BLOCK_GROUPS
+                             for lf in self.root.find(g).leaves()]
+        self.vl_leaves = [lf for g in self._VL_GROUPS
+                          for lf in self.root.find(g).leaves()]
+        self.catalogue_leaves = self.block_leaves + self.vl_leaves
         # (mode, tokens) -> block leaf, from each cadence leaf's bridge pattern.
         self.by_cadence = {}
         for lf in self.block_leaves:
@@ -85,16 +94,20 @@ class TestCadenceCurriculum(unittest.TestCase):
             self.assertIn((mode, tokens), prog_keys)
 
     def test_no_duplicate_ids(self):
+        # Leaf and experiment ids are unique across the WHOLE category …
         leaf_ids = [lf.id for lf in self.cadences.leaves()]
         self.assertEqual(len(leaf_ids), len(set(leaf_ids)))
         exp_ids = [lf.lab_spec.experiment_id for lf in self.cadences.leaves()]
         self.assertEqual(len(exp_ids), len(set(exp_ids)))
+        # … while bridge-skeleton uniqueness is a catalogue contract: the
+        # taxonomy leaves share skeletons on purpose (three PAC/IAC voicings
+        # of one V–I; the 6/4 relabel drill is the same sounds relabelled).
         bridge_ids = [lf.lab_spec.to_exercise_specs()[0].exercise_id
-                      for lf in self.cadences.leaves()]
+                      for lf in self.catalogue_leaves]
         self.assertEqual([i for i, c in Counter(bridge_ids).items() if c > 1], [])
 
     def test_every_cadence_has_resolvable_atlas_mapping(self):
-        for lf in self.cadences.leaves():
+        for lf in self.catalogue_leaves:
             cad_refs = [n for n in lf.atlas_nodes if n.startswith("cadence:")]
             self.assertTrue(cad_refs, f"{lf.id} has no cadence atlas mapping")
             for nid in cad_refs:

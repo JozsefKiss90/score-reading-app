@@ -108,16 +108,20 @@ const PAYLOAD = loadPayload();
   const h = makeHarness(PAYLOAD);
   const r = h.ui.init(PAYLOAD);
   assert(r.ok, "init ok");
-  // 312 leaves = 102 native drills + 13 block cadences + 107 inversions
+  // 351 leaves = 102 native drills + 15 block cadences + 107 inversions
   // (96-key grid + 1 arpeggio worked example + 1 ii6 cadence bridge + 9
-  // bass-line dictations, ticket 11) + 13 SATB voice-leading cadences
+  // bass-line dictations, ticket 11) + 15 SATB voice-leading cadences
   // + 2 motives + 3 polyphonic examples + 56 seventh-chord drills
   // (ticket 09: 2 add-the-7th + 12 tritone + 2 V7–I; ticket 10: 7 quality
   // + 3 ear-ID + 6 ii7–V7–I; ticket 11: 12 V7 figured inversions + 12
   // resolution walks) + 12 harmonic-minor drills (ticket 13: 4 A/B
   // one-accidental pairs + 2 V–i + 2 vii°–i + 4 i–iv–V–i) + 4 G2b drills
-  // (ticket 14: 1 III+ quality drill + 3 melodic-minor motive cells).
-  assert(r.exercises === 312, "reports 312 exercise leaves, got " + r.exercises);
+  // (ticket 14: 1 III+ quality drill + 3 melodic-minor motive cells)
+  // + 35 G3 cadence-taxonomy drills (ticket 16: 2 V→? ear reflexes + 3
+  // PAC/IAC + 3 soprano dictations + 2 i–V halves + 3 Phrygian iv6–V + 6
+  // cadential 6/4 hear/relabel pairs + 16 cadence orbits; the 15s above
+  // already include the ticket's 2 new half-cadence catalogue entries).
+  assert(r.exercises === 351, "reports 351 exercise leaves, got " + r.exercises);
   // first category auto-expanded -> its lesson rows are visible
   const rows = h.ui._visibleRows();
   assert(rows.length > PAYLOAD.tree.children.length, "first category expanded");

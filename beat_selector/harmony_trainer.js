@@ -60,13 +60,15 @@
   // for review); navigating again re-veils the next pass.
   var presentation = "visual";  // "visual" | "echo"
 
-  // ---- bass-line dictation (plan A1 level 5, ticket 11) -------------------
+  // ---- line dictation (plan A1 level 5, tickets 11 + 16) ------------------
   // DICTATION "bass" payloads are echo drills whose graded target per measure
   // is the single bass pitch class (the notation + playback keep the full
   // chords).  Grading needs nothing new — pitchClasses already carries the
   // bass alone — but the veiled prompt must ask for the bass line, not for
-  // echoing a chord.
-  var dictation = null;         // null | "bass"
+  // echoing a chord.  DICTATION "soprano" (ticket 16, the PAC-vs-IAC ear) is
+  // the mirror image: the target is the top line, and a stray note held
+  // ABOVE the demanded soprano must fail.
+  var dictation = null;         // null | "bass" | "soprano"
 
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -137,6 +139,17 @@
       if (low === null || m < low) low = m;
     });
     return low;
+  }
+
+  // Soprano dictation answers with the TOP LINE (ticket 16): the highest
+  // sounding note IS the answer, so a stray note above the soprano must fail.
+  function highestHeldNote() {
+    var high = null;
+    app.state.midiDown.forEach(function (m) {
+      m = Math.trunc(Number(m));
+      if (high === null || m > high) high = m;
+    });
+    return high;
   }
 
   function resetAttempt() {
@@ -442,14 +455,20 @@
       if (t.pitchClasses.map(mod12).indexOf(pc) !== -1) satisfied.add(pc);
       if (!completed && coversAll(satisfied, t.pitchClasses)) {
         var wantBass = strictBassPc(t);
+        var wantTop = dictation === "soprano" ? mod12(t.pitchClasses[0]) : null;
         var low = wantBass === null ? null
           : dictation === "bass" ? lowestHeldNote() : lowestHeldChordTone(t);
-        if (wantBass === null || (low !== null && mod12(low) === wantBass)) {
+        var high = wantTop === null ? null : highestHeldNote();
+        var bassOk = wantBass === null ||
+          (low !== null && mod12(low) === wantBass);
+        var topOk = wantTop === null ||
+          (high !== null && mod12(high) === wantTop);
+        if (bassOk && topOk) {
           completed = true;
           bassMiss = false;
           bassMissText = "";
           renderProgress();
-        } else if (low !== null) {
+        } else if (!bassOk && low !== null) {
           // Right pitch classes, wrong sounding bass: fail with feedback naming
           // the demanded bass.  Recoverable by adding it below (no release) or
           // by releasing everything for a fresh attempt.
@@ -458,6 +477,14 @@
             " must be the lowest sounding note" +
             (t.figuredBass ? " (" + t.figuredBass + ")" : "") +
             " — you have " + toneName(t, low) + " in the bass.";
+          renderProgress();
+        } else if (!topOk && high !== null) {
+          // Soprano dictation with a stray note on top: the top line IS the
+          // answer, so name the demanded soprano (same recovery as bassMiss).
+          bassMiss = true;
+          bassMissText = "✗ Right note, wrong top: " + toneName(t, wantTop) +
+            " must be the highest sounding note — you have " +
+            toneName(t, high) + " on top.";
           renderProgress();
         }
       }
@@ -664,8 +691,11 @@
         : dictation === "bass"
           ? "hear the progression, then play only its bass line — one " +
             "bass note per measure (any octave)"
-          : "hear the target, then play it back on the keyboard. It is " +
-            "graded exactly like the visual drill";
+          : dictation === "soprano"
+            ? "hear the cadence, then play only its top line — one " +
+              "soprano note per measure (nothing above it)"
+            : "hear the target, then play it back on the keyboard. It is " +
+              "graded exactly like the visual drill";
       el.innerHTML =
         '<div class="row big">' + esc(t.key) + " — echo by ear</div>" +
         '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
@@ -841,7 +871,9 @@
             ? "🎧 Ear drill — listen, then identify  —  " + renderWord
             : dictation === "bass"
               ? "🎧 Bass-line dictation — listen, then play the bass line"
-              : "🎧 Echo drill — listen, then play it back  —  " + renderWord)
+              : dictation === "soprano"
+                ? "🎧 Soprano dictation — listen, then play the top line"
+                : "🎧 Echo drill — listen, then play it back  —  " + renderWord)
         : (data.title || "Exercise") + "  —  " + renderWord;
     }
     renderList();
@@ -868,7 +900,8 @@
     answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card")
       ? data.ANSWER_MODE : "midi";
     presentation = data.PRESENTATION === "echo" ? "echo" : "visual";
-    dictation = data.DICTATION === "bass" ? "bass" : null;
+    dictation = (data.DICTATION === "bass" || data.DICTATION === "soprano")
+      ? data.DICTATION : null;
     answerLog = [];
     lastAnswer = null;
     answeredCorrect = new Set();

@@ -184,9 +184,10 @@ class TestCadenceTemplate(unittest.TestCase):
 
     def test_major_path_catalogue(self):
         labels = [p.label for p in self.net.paths]
-        for expected in ("V–I", "IV–I", "V–vi", "ii–V–I", "I–IV–V–I", "vi–ii–V–I"):
+        for expected in ("V–I", "IV–I", "V–vi", "ii–V", "IV–V",
+                         "ii–V–I", "I–IV–V–I", "vi–ii–V–I"):
             self.assertIn(expected, labels)
-        self.assertEqual(len(self.net.paths), 8)
+        self.assertEqual(len(self.net.paths), 10)
 
     def test_paths_reference_real_nodes_and_edges(self):
         node_ids = {n.id for n in self.net.nodes}
@@ -207,7 +208,7 @@ class TestCadenceTemplate(unittest.TestCase):
 
     def test_payload_carries_paths(self):
         payload = self.net.to_payload()
-        self.assertEqual(len(payload["paths"]), 8)
+        self.assertEqual(len(payload["paths"]), 10)
         self.assertEqual(payload["paths"][0]["mode"], "major")
 
     def test_transposition_gives_fresh_key_scoped_paths(self):
