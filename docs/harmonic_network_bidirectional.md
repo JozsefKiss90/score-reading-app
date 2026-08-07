@@ -57,9 +57,10 @@ for a chord the template can't draw) · **theory edge** (an asserted harmonic re
 | `transposition_orbit_network_v1` | 1 degree + N instances | An abstract degree orbiting a set of keys as exact per-key instances. A `horizontal_degree` drill maps exact with `transpose_next` overlays — a transposition, never a modulation. |
 | `quality_class_network_v1` | 3–4 classes + 7 triads | A key's diatonic triads grouped by chord quality; a `quality` drill enumerates a class (`enumerate_next`, never a progression). |
 | `functional_equivalence_network_v1` | 4 | The dominant-function alternatives V / V7 / vii° (all launchable since ticket 12 — the V7 launches the real V7→I drill), showing the exact triad vs. seventh vs. diminished distinction. |
+| `secondary_dominant_network_v1` | 1 key + 7 triads + N applied | The key's tonicisable degrees and the applied dominants that tonicise them (ticket 18 / plan G5b). Only the diatonic triads carry `belongs_to_key`; each `V(7)/x` points at its target with the now-implemented `secondary_dominant_of` relation and launches the real resolution drill. |
 
-Genuinely-future reserved stubs remain in `PLANNED_TEMPLATES`: `modulation_path_network_v1`,
-`secondary_dominant_network_v1` (both need chromatic/pivot support the engine intentionally lacks).
+One genuinely-future reserved stub remains in `PLANNED_TEMPLATES`: `modulation_path_network_v1`
+(pivot-chord detection the engine intentionally lacks).
 
 ## Score adapter (Phase 9)
 
@@ -125,8 +126,9 @@ Clicking a graph node or timeline chip seeks the running drill to that occurrenc
 
 ## Known limitations / non-goals (unchanged from the plan §22)
 
-No seventh-chord trainer engine, secondary dominants, borrowed chords, tritone subs, chromatic
-modulation, pivot detection, harmonic/melodic-minor redesign, counterpoint validation, or
-automatic Bach analysis (the score adapter only *adapts* already-curated slices — it never invents
-harmonic certainty). `modulation_path` and `secondary_dominant` remain reserved templates until
-that chromatic support lands.
+No borrowed chords, tritone subs, chromatic modulation, pivot detection, counterpoint validation,
+or automatic Bach analysis (the score adapter only *adapts* already-curated slices — it never
+invents harmonic certainty). `modulation_path` remains a reserved template until pivot detection
+lands. Seventh chords (tickets 09–11), harmonic/melodic minor (13–14) and applied dominants
+(17–18) have since shipped: the `secondary_dominant_of` relation is implemented, and only where a
+launchable drill backs it.

@@ -36,6 +36,7 @@ from harmony.harmonic_flow import (
     default_sequence_semantics_for_drill,
     is_proxy_node_id,
     occurrence_id,
+    proxy_applied_id,
     proxy_triad_id,
     proxy_voicing_id,
     sequence_relation_for_drill,
@@ -55,7 +56,7 @@ from harmony.atlas import (
     layer_id,
     quality_id,
 )
-from theory.diatonic_harmony import note_pc
+from theory.diatonic_harmony import note_pc, parse_applied_token
 
 
 # Local-orbit radius for overlay proxy nodes placed around their key anchor (plan section 18).
@@ -95,6 +96,8 @@ class NetworkIndex:
         self.dim_by_pc: Dict[int, object] = {}
         self.dom7_by_pc: Dict[int, object] = {}
         self.triad_by_ref: Dict[str, object] = {}              # atlas triad ref -> exact node
+        #: (applied token, key tonic, mode) -> the exact applied-dominant node
+        self.applied_by_roman: Dict[Tuple[str, str, str], object] = {}
         self.function_by_key: Dict[Tuple[str, str], object] = {}  # (mode, function_label) -> node
         self._edge_by_pair: Dict[Tuple[str, str], List[object]] = {}
 
@@ -127,6 +130,15 @@ class NetworkIndex:
                 for aref in getattr(n, "atlas_refs", []) or []:
                     if isinstance(aref, str) and aref.startswith("triad:"):
                         self.triad_by_ref.setdefault(aref, n)
+
+            # Applied dominants are keyed by their TOKEN + key context (ticket 18 / plan G5b):
+            # V7/V has no scale degree of the home key, so nothing else may index it.
+            if kind == "applied_dominant":
+                data = getattr(n, "data", {}) or {}
+                roman, key = data.get("roman"), data.get("key")
+                if roman and key:
+                    self.applied_by_roman.setdefault(
+                        (roman, key, data.get("mode", "major")), n)
 
             if kind == "function_family":
                 data = getattr(n, "data", {}) or {}
@@ -175,6 +187,22 @@ def _resolve_chord(triad, index: NetworkIndex, atlas) -> _Resolution:
     mode = triad.mode
     degree = triad.degree_index
     root_pc = note_pc(triad.root)
+
+    # 0. an APPLIED dominant (V7/V) is not a degree of the home key: its ``degree_index`` is a
+    #    letter offset, so every diatonic match below would land it on the chord that merely
+    #    shares its root (D7 -> Dm). It maps to its own applied node or to an honest proxy --
+    #    never to a diatonic node (ticket 18 / plan G5b).
+    if parse_applied_token(triad.roman) is not None:
+        node = index.applied_by_roman.get((triad.roman, tonic, mode))
+        if node is not None:
+            return _Resolution(node.id, "exact", "chord_instance",
+                               f"exact applied-dominant node for {triad.chord_symbol} "
+                               f"({triad.roman} in {triad.key})")
+        return _Resolution(
+            proxy_applied_id(tonic, mode, triad.roman), "contextual", "chord_instance",
+            f"{triad.chord_symbol} ({triad.roman}) is chromatic in {triad.key} and has no "
+            f"node in this template; shown as an overlay, never on a diatonic node",
+            is_proxy=True, proxy_label=triad.chord_symbol, proxy_ref=None)
 
     atlas_triad_ref = _resolve_triad_ref(atlas, tonic, mode, degree)
 

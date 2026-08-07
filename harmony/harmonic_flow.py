@@ -183,6 +183,16 @@ def proxy_triad_id(tonic: str, mode: str, degree_index: int) -> str:
     return f"overlay:triad:{tonic}:{mode}:{degree_index}"
 
 
+def proxy_applied_id(tonic: str, mode: str, roman: str) -> str:
+    """Overlay proxy id for an applied dominant the active template cannot draw.
+
+    Keyed by the applied *token* (``V7/V``), never by a scale degree: an applied chord has
+    no degree of the home key, and reusing the triad proxy id would collide with the very
+    diatonic chord it must never be confused with (ticket 18 / plan G5b).
+    """
+    return f"overlay:applied:{tonic}:{mode}:{roman.replace('/', '_of_')}"
+
+
 def proxy_voicing_id(tonic: str, mode: str, degree_index: int, inversion: int) -> str:
     """Overlay proxy id for a single inversion/voicing state (plan section 6.3)."""
     return f"overlay:inversion:{tonic}:{mode}:{degree_index}:{inversion}"
@@ -932,7 +942,8 @@ __all__ = [
     "DRILL_FAMILY_DEFAULTS", "SEQUENCE_RELATION_BY_FAMILY",
     # helpers
     "default_group_for_drill", "default_sequence_semantics_for_drill",
-    "sequence_relation_for_drill", "occurrence_id", "proxy_triad_id", "proxy_voicing_id",
+    "sequence_relation_for_drill", "occurrence_id", "proxy_triad_id", "proxy_applied_id",
+    "proxy_voicing_id",
     "transition_id", "is_proxy_node_id",
     # dataclasses
     "HarmonicStep", "HarmonicTransition", "ProjectionNode", "ProjectionEdge",

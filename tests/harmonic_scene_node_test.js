@@ -32,6 +32,7 @@ function loadScenes() {
     "from harmony.atlas import full_key_spec, degree_spec, function_spec",
     "from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene",
     "from harmony.graph_scene_generators import build_unsupported",
+    "from harmony.lab_spec import LabExperimentSpec",
     "def scene(spec): return build_graph_scene(GraphSceneRequest(exercise_spec=spec)).to_dict()",
     "out = {",
     "  'field': scene(full_key_spec('C','major')),",
@@ -40,6 +41,12 @@ function loadScenes() {
     "  'prog': scene(function_spec(['I','IV','V','I'],'I-IV-V-I','major',['C'])),",
     "  'unsupported': build_unsupported(source_kind='lab', source_id='mot',"
       + " reason='melodic motive has no harmonic graph yet').to_dict(),",
+    // ticket 18 / plan G5b: the applied-chord scene (I-vi-V7/V-V-I in C major)
+    "  'applied': build_graph_scene(GraphSceneRequest(lab_spec=LabExperimentSpec("
+      + "experiment_id='js_applied', title='Spot the intruder',"
+      + " concept='applied_chord', mode='major', key='C major', render='block',"
+      + " parameters={'progression': ['I','vi','V7/V','V','I'],"
+      + " 'stages': ['spot']}))).to_dict(),",
     "}",
     "print(json.dumps(out))",
   ].join("\n");
@@ -249,6 +256,33 @@ HN.setScene(S.degree);
 ok(HN.sceneState().detailMode === "follow" && HN.sceneState().pinnedNode == null,
    "I: switching scenes clears the stale pin");
 console.log("Test I (follow / pin modes): " + (failures > before ? "FAIL" : "PASS"));
+
+// --- Test J: the applied-chord scene lights the tonicisation arrow (ticket 18 / G5b) --------
+before = failures;
+let stA = HN.setScene(S.applied);
+ok(stA.sceneType === "secondary_dominant_path",
+   "J: sceneType secondary_dominant_path (got " + stA.sceneType + ")");
+ok(stA.occurrences === 5, "J: 5 occurrences (got " + stA.occurrences + ")");
+let appliedOcc = S.applied.occurrenceMap.filter(function (o) { return o.roman === "V7/V"; })[0];
+let appliedEdge = S.applied.edges.filter(function (e) {
+  return e.relation === "secondary_dominant_of";
+})[0];
+ok(!!appliedOcc && !!appliedEdge, "J: the scene carries the intruder and its applied edge");
+HN.updateOccurrenceState({ sequenceIndex: appliedOcc.sequenceIndex });
+ok(HN.sceneNodeClass(appliedOcc.nodeId).indexOf("is-current-occurrence") >= 0,
+   "J: the intruder is the current chord");
+ok(HN.sceneEdgeClass(appliedEdge.id).indexOf("is-current-theory-edge") >= 0,
+   "J: the secondary_dominant_of edge lights as the active theory edge");
+let ra = deepText(doc.getElementById("hnRight"));
+ok(ra.indexOf("V7/V") >= 0, "J: the detail panel names V7/V");
+ok(ra.indexOf("intruder chord") >= 0, "J: the intruder occurrence role is shown");
+// the key anchor must NOT light as this chord's context: the applied chord is outside the key
+ok(HN.sceneNodeClass("appl:key:C:major").indexOf("is-current-context") < 0,
+   "J: the home key is not claimed as the intruder's context");
+HN.updateOccurrenceState({ sequenceIndex: 0 });
+ok(HN.sceneNodeClass("appl:key:C:major").indexOf("is-current-context") >= 0,
+   "J: a diatonic chord DOES light the key anchor");
+console.log("Test J (applied-chord scene): " + (failures > before ? "FAIL" : "PASS"));
 
 if (failures) { console.error("\n" + failures + " scene assertion(s) FAILED."); process.exit(1); }
 console.log("\nAll harmonic_network.js SCENE-mode checks passed.");

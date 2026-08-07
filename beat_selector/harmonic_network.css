@@ -86,6 +86,7 @@ body{
 .edge.edge--atlas    {stroke-dasharray:4 5;}                   /* dashed blue overlay  */
 .edge.edge--function {stroke-dasharray:1.5 4;}                 /* dotted violet/grey   */
 .edge.edge--reserved {stroke-dasharray:1.5 5;opacity:.3;}      /* dotted muted (hidden)*/
+.edge.edge--applied  {stroke-dasharray:none;stroke-width:2.2;} /* solid rose, arrow    */
 /* an edge connecting two trainer-synced nodes lights up (keeps its dash style) */
 .hnEdge.edge--sync{opacity:1;stroke-width:2.6;}
 

@@ -84,6 +84,7 @@ rather than rendering wrong):
 | `degree_transposition` | `horizontal_degree` | One invariant **degree** node + N exact per-key instances; `transpose_next`; no motion edges. |
 | `triad_quality_class` | `quality` | One **quality** anchor (with interval layer) + the drill's exact same-quality instances; `enumerate_next`; no theory. |
 | `functional_progression` | `function`, pattern ≥ 2 | **Bounded** path: one marker per occurrence (repeats → distinct markers of one identity), banded into Predominant / Tonic / Dominant lanes; sequence + theory + transition explanations (common tones, root motion). One local key at a time. |
+| `secondary_dominant_path` | An applied token in the pattern, or Lab `applied_chord` | The diatonic row with the chromatic intruder **lifted out of it**: only the diatonic markers link to the key anchor, and the applied chord's `secondary_dominant_of` arrow points at the degree it tonicises (drawn only where `secondary_dominant_network_v1` supports the pair). No other scene may claim an applied chord. |
 | `cadence_resolution` | Lab `cadence` (block render) | Source → arrival with the cadence type, reusing the progression layout. |
 | `inversion_space` | Lab `inversion` | One chord identity + its inversion voicings. |
 | `voice_leading_path` | Lab `voice_leading` (or `cadence` w/ voice-leading render) | Harmonic path **plus** a voice-motion layer (SATB lanes, per-voice motion, common/tendency tones). |
@@ -97,6 +98,10 @@ rather than rendering wrong):
 (`curriculum_node_id` / `lab_spec` / `exercise_spec` / `source_metadata` / `preferred_scene_type`)
 by this precedence — **never** by a chord's root pitch class:
 
+0. an **applied (chromatic) chord** — drill pattern or Lab `applied_chord` — takes
+   `secondary_dominant_path` and nothing else; decided *before* metadata so no hint or manual
+   override can route it onto a diatonic scene (with no compiled drill behind it, it still fails
+   closed);
 1. explicit curriculum `graph_scene_type` metadata (only when buildable here);
 2. Lab concept — *unless* `concept == "drill"`, the curriculum's native-drill wrapper, which is
    **unwrapped** to its `HarmonyExerciseSpec` and routed by drill family;
@@ -189,9 +194,10 @@ key-field spec explicitly wants theory edges in a separate optional layer).
 
 ## Non-goals / unsupported (honest by design)
 
-`motive` (melodic), `reduction` (reserved), secondary dominants, borrowed chords, modulation/pivot
-detection, and seventh-chord trainer drills are **not** implemented. They fail closed with an honest
-message; none is silently mis-mapped.
+`motive` (melodic), `reduction` (reserved), borrowed chords and modulation/pivot detection are
+**not** implemented. They fail closed with an honest message; none is silently mis-mapped.
+Seventh chords and applied dominants have since shipped — the latter with their own scene
+(`secondary_dominant_path`, ticket 18), which remains the *only* scene an applied chord may take.
 
 ## Tests & evidence
 

@@ -22,7 +22,7 @@ const cp = require("child_process");
 const ROOT = path.join(__dirname, "..");
 
 // --- load the real payload from Python --------------------------------------
-function loadPayload() {
+function loadPayload(templateId) {
   const candidates = [
     path.join(ROOT, ".venv", "Scripts", "python.exe"),
     path.join(ROOT, ".venv", "bin", "python"),
@@ -30,7 +30,8 @@ function loadPayload() {
   ];
   const code =
     "import json;from harmony.harmonic_network import build_network_payload;" +
-    "print(json.dumps(build_network_payload()))";
+    "print(json.dumps(build_network_payload(" +
+    (templateId ? JSON.stringify(templateId) : "") + ")))";
   for (const py of candidates) {
     try {
       const out = cp.execFileSync(py, ["-c", code],
@@ -389,7 +390,8 @@ const PAYLOAD = loadPayload();
   const h = makeHarness(PAYLOAD);
   h.ui.init(PAYLOAD);
   const VCS = ["fifth", "relative", "dominant", "resolve", "leading", "shared",
-    "samepc", "function", "trainer", "atlas", "reserved"];
+    "samepc", "function", "trainer", "atlas", "reserved",
+    "applied"];   // ticket 18: the secondary_dominant_of arrow
   function cssCategory(vc) {
     const m = new RegExp("\\.edge\\.edge--" + vc + "\\s*\\{([^}]*)\\}").exec(css);
     assert(m, "CSS defines a .edge.edge--" + vc + " rule");
@@ -546,6 +548,34 @@ function hasClass(n, c) { return n.className && n.className.split(" ").indexOf(c
   const cur = byClass("is-current");
   assert(cur.length >= 1, "the current canonical/proxy node is lit");
   console.log("Test Q (proxy + overlay rendering): PASS");
+})();
+
+// === Test R: the secondary-dominant template's payload renders (ticket 18 / G5b) ===
+// The template is new *and* the first to carry the applied_dominant kind + the
+// now-implemented secondary_dominant_of relation, so the legacy controller must be
+// able to init it: node classes/colours and edge toggles are payload-driven, and the
+// relation must appear as an ENABLED toggle, never in the "Reserved" strip.
+(function testSecondaryDominantTemplateRenders() {
+  const payload = loadPayload("secondary_dominant_network_v1");
+  const h = makeHarness(payload);
+  const st = h.ui.init(payload);
+  assert(st.ok && st.nodes === 18, "secondary-dominant network inits (18 nodes, got "
+    + st.nodes + ")");
+  const legend = payload.legend.edgeClasses;
+  const sd = legend.filter((ec) => ec.relation === "secondary_dominant_of")[0];
+  assert(sd && sd.implemented, "secondary_dominant_of is legended as IMPLEMENTED");
+  assert(legend.every((ec) => ec.implemented),
+    "the template names no reserved relation it cannot draw");
+  const state = h.ui.exportState();
+  assert(state.filters.relations.secondary_dominant_of === true,
+    "the applied relation is an enabled edge toggle");
+  assert(payload.edges.some((e) => e.relation === "secondary_dominant_of"
+    && e.visualClass === "applied"),
+    "applied edges carry the 'applied' visual class the CSS/JS style");
+  assert(payload.launchables.length >= 10
+    && payload.launchables.every((l) => l.status === "launchable"),
+    "every node in the template launches a real drill");
+  console.log("Test R (secondary-dominant template renders): PASS");
 })();
 
 console.log("\nAll harmonic_network.js behavioural checks passed (" + passed + " assertions).");

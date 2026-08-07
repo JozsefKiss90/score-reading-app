@@ -362,38 +362,51 @@ class TestResolvePayload(unittest.TestCase):
 
 
 class TestAppliedSceneRouting(unittest.TestCase):
-    """Applied chords refuse the diatonic scenes honestly (fail closed).
+    """Applied chords claim their own scene — and refuse every diatonic one.
 
-    The dedicated secondary-dominant scene is ticket 18 (plan G5b); until it
-    ships, projecting D7 onto a diatonic graph would land it on a node it
-    does not match — so the router must return an honest ``unsupported``.
+    Ticket 17 shipped the drills with the router failing closed; ticket 18
+    (plan G5b) gave them the secondary-dominant scene.  What must never change
+    is the second half: projecting D7 onto a diatonic graph would land it on a
+    node it does not match, so no other scene may claim it.  The scene's own
+    contract is covered in ``tests/test_secondary_dominant_network.py``.
     """
 
-    def test_applied_lab_spec_fails_closed(self):
+    def test_applied_lab_spec_routes_to_the_secondary_dominant_scene(self):
         from harmony.graph_scene_router import (
             GraphSceneRequest, decide_graph_scene)
         decision = decide_graph_scene(
             GraphSceneRequest(lab_spec=_applied_spec(["spot"])))
-        self.assertEqual(decision.status, "unsupported")
-        self.assertIn("secondary-dominant", decision.reason)
+        self.assertEqual(decision.status, "supported")
+        self.assertEqual(decision.scene_type, "secondary_dominant_path")
 
-    def test_native_applied_function_drill_fails_closed(self):
+    def test_native_applied_function_drill_routes_too(self):
         from harmony.graph_scene_router import (
             GraphSceneRequest, decide_graph_scene)
         spec = HarmonyExerciseSpec(
             exercise_id="t_applied_fn", title="Applied", drill="function",
             mode="major", pattern=["V7/V", "V"], keys=["C"])
         decision = decide_graph_scene(GraphSceneRequest(exercise_spec=spec))
-        self.assertEqual(decision.status, "unsupported")
-        self.assertIn("secondary-dominant", decision.reason)
+        self.assertEqual(decision.scene_type, "secondary_dominant_path")
 
-    def test_build_returns_an_honest_unsupported_scene(self):
+    def test_no_diatonic_scene_may_claim_an_applied_chord(self):
+        from harmony.graph_scene_router import (
+            GraphSceneRequest, decide_graph_scene)
+        spec = HarmonyExerciseSpec(
+            exercise_id="t_applied_fn2", title="Applied", drill="function",
+            mode="major", pattern=["V7/V", "V"], keys=["C"])
+        for hint in ("functional_progression", "diatonic_key_field",
+                     "cadence_resolution"):
+            decision = decide_graph_scene(GraphSceneRequest(
+                exercise_spec=spec, source_metadata={"graph_scene_type": hint}))
+            self.assertEqual(decision.scene_type, "secondary_dominant_path", hint)
+
+    def test_build_returns_the_applied_scene(self):
         from harmony.graph_scene_router import (
             GraphSceneRequest, build_graph_scene)
         scene = build_graph_scene(
             GraphSceneRequest(lab_spec=_applied_spec(["spot"])))
         self.assertIsNotNone(scene)
-        self.assertEqual(scene.scene_type, "unsupported")
+        self.assertEqual(scene.scene_type, "secondary_dominant_path")
 
     def test_diatonic_function_drills_still_route(self):
         from harmony.graph_scene_router import (

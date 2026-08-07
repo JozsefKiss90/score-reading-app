@@ -636,14 +636,15 @@ class TestPlannedTemplates(unittest.TestCase):
                 get_template(pt.template_id)
 
     def test_audited_candidates_are_present(self):
-        # Genuinely-future templates remain planned stubs; all seven built templates graduated.
+        # Genuinely-future templates remain planned stubs; all eight built templates graduated.
         ids = {pt.template_id for pt in PLANNED_TEMPLATES}
-        for expected in ("modulation_path_network_v1", "secondary_dominant_network_v1"):
-            self.assertIn(expected, ids)
+        # modulation still needs pivot-chord detection the engine does not have
+        self.assertIn("modulation_path_network_v1", ids)
         # every buildable template has graduated OUT of the planned list
         for graduated in ("core_triad_function_network_v1", "cadence_resolution_network_v1",
                           "inversion_space_network_v1", "transposition_orbit_network_v1",
-                          "quality_class_network_v1", "functional_equivalence_network_v1"):
+                          "quality_class_network_v1", "functional_equivalence_network_v1",
+                          "secondary_dominant_network_v1"):   # ticket 18 / plan G5b
             self.assertNotIn(graduated, ids)
 
     def test_list_templates_mixes_implemented_and_planned(self):

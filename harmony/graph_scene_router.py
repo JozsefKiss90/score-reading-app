@@ -5,6 +5,7 @@ active learning objective?"* -- replacing the old "one fixed graph, project ever
 runtime.  It routes from **semantics**, never from a root pitch class (plan sections 4, 6):
 
     precedence
+      0. applied (chromatic) chords           -> the secondary-dominant scene, and NOTHING else
       1. explicit curriculum graph metadata   (source_metadata['graph_scene_type'])
       2. Lab concept                          (inversion / voice_leading / cadence / polyphonic)
       3. native trainer drill family          (full_key / horizontal_degree / quality / function)
@@ -93,6 +94,7 @@ _LAB_CONCEPT_SCENE = {
 #: Scene types built from a native trainer HarmonyExerciseSpec.
 _IMPLEMENTED_EXERCISE_SCENES = frozenset({
     "diatonic_key_field", "degree_transposition", "triad_quality_class", "functional_progression",
+    "secondary_dominant_path",
 })
 #: Scene types built from a Lab experiment.
 _LAB_SCENES = frozenset({
@@ -121,15 +123,19 @@ def _tetrad_inversion_lab(lab) -> bool:
     return parse_seventh_token(degree) is not None
 
 
-#: Why applied chords refuse every diatonic scene (ticket 17 / plan G5a).
-#: The dedicated scene arrives with the secondary-dominant network template
-#: (ticket 18 / plan G5b); until then, projecting an applied chord (D7 in C)
-#: onto a diatonic graph would land it on a node that merely shares its root
-#: — the exact dishonesty the base_roman rule forbids.
-_APPLIED_REFUSAL = (
-    "applied chords have no diatonic scene: the secondary-dominant network "
-    "template (ticket 18 / plan G5b) will own the V7/x → x edge; projecting "
-    "the applied chord onto a diatonic graph would mislabel it")
+#: Why an applied chord may claim ONLY its own scene (ticket 17 / plan G5a,
+#: scene shipped by ticket 18 / plan G5b).  Projecting an applied chord (D7 in
+#: C) onto a diatonic graph would land it on a node that merely shares its root
+#: — the exact dishonesty the base_roman rule forbids — so every other scene
+#: stays refused for it, whatever metadata or manual override asks for.
+_APPLIED_SCENE = "secondary_dominant_path"
+_APPLIED_REASON = (
+    "applied chord → the secondary-dominant scene: the chromatic chord is drawn "
+    "outside the key's diatonic row with its tonicisation arrow, never projected "
+    "onto a diatonic node that merely shares its root")
+_APPLIED_NO_DRILL = (
+    "the applied-chord experiment did not compile to a drill, so there is no "
+    "progression to draw the tonicisation over")
 
 
 def _applied_exercise(ex) -> bool:
@@ -140,13 +146,21 @@ def _applied_exercise(ex) -> bool:
                for t in (getattr(ex, "pattern", None) or []))
 
 
+def _is_applied(ex, lab) -> bool:
+    """True when the active exercise is chromatic-applied (drill pattern or Lab concept)."""
+    return _applied_exercise(ex) or getattr(lab, "concept", None) == "applied_chord"
+
+
 def _buildable(scene_type: Optional[str], ex, lab) -> bool:
     """True when this router has the input it needs to actually build ``scene_type``.
 
     Prevents ``decide`` from returning ``supported`` for a scene that ``build`` would then have to
     degrade to ``unsupported`` (e.g. curriculum metadata naming ``inversion_space`` with no lab)."""
-    if _applied_exercise(ex) or getattr(lab, "concept", None) == "applied_chord":
-        return False   # no diatonic scene may claim an applied chord (G5a)
+    if _is_applied(ex, lab):
+        # An applied chord may claim its OWN scene and nothing else (G5a/G5b).
+        return scene_type == _APPLIED_SCENE and ex is not None
+    if scene_type == _APPLIED_SCENE:
+        return False   # ...and nothing else may claim the applied scene
     if scene_type in _IMPLEMENTED_EXERCISE_SCENES:
         return ex is not None
     if scene_type == "inversion_space":
@@ -158,13 +172,18 @@ def _buildable(scene_type: Optional[str], ex, lab) -> bool:
     return True   # legacy_key_relation needs no input
 
 
+#: Lab concepts whose experiment is *realised* by a native drill the scene is drawn from: the
+#: curriculum's native-drill wrapper, and ``applied_chord`` (whose spot/resolve stages each
+#: compile to one function drill the secondary-dominant scene draws over).
+_UNWRAPPED_LAB_CONCEPTS = frozenset({"drill", "applied_chord"})
+
+
 def _effective_exercise_spec(request: GraphSceneRequest):
-    """The HarmonyExerciseSpec to route by: an explicit one, or a native drill unwrapped from a
-    ``concept='drill'`` Lab spec (the curriculum's native-drill wrapper)."""
+    """The HarmonyExerciseSpec to route by: an explicit one, or one unwrapped from a Lab spec."""
     if request.exercise_spec is not None:
         return request.exercise_spec
     lab = request.lab_spec
-    if lab is not None and getattr(lab, "concept", None) == "drill":
+    if lab is not None and getattr(lab, "concept", None) in _UNWRAPPED_LAB_CONCEPTS:
         try:
             specs = lab.to_exercise_specs()
         except Exception:
@@ -218,12 +237,14 @@ def _classify(request: GraphSceneRequest, ex, lab) -> GraphSceneDecision:
     meta = request.source_metadata or {}
     lab_concept = getattr(lab, "concept", None) if lab is not None else None
 
-    # 0. Applied chords (ticket 17 / plan G5a) fail closed everywhere until
-    #    the secondary-dominant scene ships — checked before metadata so a
-    #    graph_scene_type hint can never route a chromatic exercise onto a
-    #    diatonic scene.
-    if (lab is not None and lab_concept == "applied_chord") or _applied_exercise(ex):
-        return _decision("unsupported", "unsupported", _APPLIED_REFUSAL)
+    # 0. Applied chords own exactly one scene (ticket 18 / plan G5b) — decided
+    #    before metadata so a graph_scene_type hint can never route a chromatic
+    #    exercise onto a diatonic scene.  With no compiled drill behind it there
+    #    is nothing honest to draw, so it still fails closed.
+    if _is_applied(ex, lab):
+        if ex is None:
+            return _decision("unsupported", "unsupported", _APPLIED_NO_DRILL)
+        return _decision("supported", _APPLIED_SCENE, _APPLIED_REASON, ex)
 
     # 1. explicit curriculum graph metadata wins -- but only when this router can actually build it
     #    (a metadata value naming a lab scene with no lab, or 'unsupported'/'score_harmonic_path',

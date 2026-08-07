@@ -51,6 +51,7 @@ SCENE_TYPES = frozenset({
     "degree_transposition",      # C: horizontal_degree -- one degree across 12 keys
     "triad_quality_class",       # D: quality -- a key's triads grouped by quality
     "functional_progression",    # E: function -- a bounded progression path
+    "secondary_dominant_path",   # K: an applied dominant tonicising a diatonic degree (G5b)
     "cadence_resolution",        # F: two-chord cadence drills
     "inversion_space",           # G: one chord identity + its inversion voicings
     "voice_leading_path",        # H: harmonic path + voice-motion layer
@@ -117,6 +118,9 @@ KIND_TO_ENTITY_TYPE: Dict[str, str] = {
     "function_family": "function",
     "quality_class": "quality",
     "inversion_state": "inversion",
+    # An applied dominant is a real chord of its own; the generators refine this to ``seventh``
+    # for a ``V7/x`` tetrad (a ``V/x`` head is a plain major triad).
+    "applied_dominant": "triad",
     # projection-only overlay kinds
     "proxy_triad": "occurrence",
     "proxy_voicing": "occurrence",
@@ -760,7 +764,7 @@ _FAMILY_ENTITY_TYPES = frozenset({"function", "quality"})
 #: goes somewhere), as opposed to a flat enumeration/classification.
 _PROGRESSION_SCENE_TYPES = frozenset({
     "functional_progression", "cadence_resolution", "voice_leading_path",
-    "polyphonic_harmony_path", "score_harmonic_path",
+    "polyphonic_harmony_path", "score_harmonic_path", "secondary_dominant_path",
 })
 
 

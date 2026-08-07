@@ -36,10 +36,13 @@ from typing import Dict, List, Optional
 
 from theory.diatonic_harmony import (
     DiatonicTriad,
+    applied_tokens_for_mode,
+    build_applied_dominant,
     generate_scale,
     generate_diatonic_triads,
     key_signature_fifths,
     note_pc,
+    parse_applied_token,
     roman_token_to_index,
 )
 from harmony.harmonic_flow import HarmonicPath
@@ -89,6 +92,7 @@ NETWORK_GROUP_BY_KIND = OrderedDict([
     ("key_center", "Network — Key drills"),
     ("diatonic_triad", "Network — Diatonic triads"),
     ("function_family", "Network — Function families"),
+    ("applied_dominant", "Network — Applied dominants"),
 ])
 
 #: The seven fine ``DiatonicTriad.function_label`` values collapsed to the three broad function
@@ -164,6 +168,17 @@ def dom7_node_id(root: str) -> str:
 
 def dim_node_id(root: str) -> str:
     return f"hn:dim:{root}"
+
+
+def applied_node_id(key: str, mode: str, token: str) -> str:
+    """Stable id for an applied dominant, e.g. ``hn:applied:C:major:V7_of_V``.
+
+    The head is kept in full so ``V/V`` and ``V7/V`` stay distinct nodes, and the
+    ``/`` is spelled ``_of_`` because node ids travel through edge ids and DOM
+    data attributes.
+    """
+    head, target = parse_applied_token(token)
+    return f"hn:applied:{key}:{mode}:{head}_of_{target}"
 
 
 def edge_id(source: str, target: str, relation: str) -> str:
@@ -326,6 +341,17 @@ def _lab_ref(concept: str, title: str, status: str = "reference") -> Dict:
 # ---------------------------------------------------------------------------
 # Layout (deterministic, template-driven)
 # ---------------------------------------------------------------------------
+
+#: Angular nudge (degrees) that keeps the two applied heads of one target apart on its spoke:
+#: the plain ``V/x`` sits counter-clockwise of the target, the ``V7/x`` clockwise.
+_APPLIED_HEAD_ANGLE = {"V": -9.0, "V7": 9.0}
+
+
+def _chromatic_tones(chord: DiatonicTriad) -> List[str]:
+    """The chord tones that are NOT in its key's scale (what makes it the intruder)."""
+    scale_pcs = {note_pc(p) for p in chord.scale_pitches}
+    return [p for p in chord.pitches if note_pc(p) not in scale_pcs]
+
 
 def _spoke_xy(index: int, n_spokes: int, radius: float,
               angle_offset: float) -> "tuple[float, float]":
@@ -566,6 +592,8 @@ class _NetworkBuilder:
         self.orbit_instance_ids: List[str] = []
         self.quality_class_ids: Dict[str, str] = {}
         self.quality_membership: List[tuple] = []
+        # secondary-dominant template state: (applied node id, target degree index, token)
+        self.applied_links: List[tuple] = []
         self.fe_family_id: Optional[str] = None
         self.fe_v_id: Optional[str] = None
         self.fe_v7_id: Optional[str] = None
@@ -1200,6 +1228,60 @@ class _NetworkBuilder:
             canonical_ref=(dim_ref or triad_id(key, chord_mode, 6)),
         ))
 
+    def _node_secondary_dominant_nodes(self) -> None:
+        """The applied dominants of the key's tonicisable degrees (ticket 18 / plan G5b).
+
+        The vocabulary comes from :func:`applied_tokens_for_mode`, which derives it by *building*
+        the chords -- so the graph can never claim an applied dominant the engine cannot spell.
+        A node is emitted only when its ``V(7)/x -> x`` resolution drill actually compiles: that
+        is the honesty gate behind un-reserving ``secondary_dominant_of`` (no relation without a
+        launchable drill).  Both heads of one target share the target's spoke, nudged apart.
+        """
+        key, mode = self.ctx.key, self.ctx.mode
+        lay = self.t.layout_for("applied_dominant")
+        vc = self.t.node_class("applied_dominant").visual_class
+        self.applied_links = []
+        for token in applied_tokens_for_mode(mode):
+            head, target = parse_applied_token(token)
+            try:
+                chord = build_applied_dominant(token, key, mode)
+                deg = roman_token_to_index(target)
+            except ValueError:
+                continue                      # the engine refuses it -> no node, no edge
+            spec = function_spec([token, target], f"{token}–{target}", mode, [key])
+            entries = self._safe_launch(
+                spec, f"{token}→{target} ({chord.chord_symbol} resolving in {chord.key})")
+            if not entries:
+                continue                      # no launchable drill -> no node, no edge
+            x, y = _spoke_xy(deg, 7, lay.radius,
+                             lay.angle_offset + _APPLIED_HEAD_ANGLE.get(head, 0.0))
+            node_id = applied_node_id(key, mode, token)
+            self.applied_links.append((node_id, deg, token))
+            self._add_node(NetNode(
+                id=node_id,
+                label=chord.chord_symbol,
+                kind="applied_dominant",
+                pitch_class=note_pc(chord.root),
+                spelling=chord.root,
+                quality=chord.chord_quality,
+                key_contexts=[chord.key],
+                # No Atlas ref by design: the Atlas ontology is diatonic, so claiming a triad
+                # node for D7-in-C would be the base_roman dishonesty this layer forbids.
+                atlas_refs=[],
+                trainer_specs=entries,
+                x=x, y=y, radius=lay.node_radius,
+                visual_class=vc,
+                explanation=chord.explanation_text,
+                data={"key": key, "mode": mode, "roman": token, "sublabel": token,
+                      "head": head, "target": target, "targetDegreeIndex": deg,
+                      "root": chord.root, "chordSymbol": chord.chord_symbol,
+                      "quality": chord.chord_quality,
+                      "intervalLayer": chord.interval_layer,
+                      "chordTones": list(chord.pitches),
+                      "chromaticTones": _chromatic_tones(chord)},
+                semantic_level="chord", entity_role="instance", canonical_ref="",
+            ))
+
     # -- edge construction (one method per generation rule) --------------
     def run_rule(self, rule: str) -> None:
         method = getattr(self, f"_rule_{rule}", None)
@@ -1253,8 +1335,30 @@ class _NetworkBuilder:
                            explanation="V7 and vii° share the dominant function "
                                        "(vii° is a rootless V7).", strength=0.5)
 
+    def _rule_secondary_dominant_edges(self) -> None:
+        """Each applied dominant tonicises its target triad (ticket 18 / plan G5b).
+
+        Only the arrows: the diatonic triads' ``belongs_to_key`` edges come from
+        :meth:`_rule_diatonic_membership_edges`, which the template runs first.  The applied
+        nodes deliberately get NO ``belongs_to_key`` edge -- the missing edge is the graph's own
+        statement that the chord is chromatic.
+        """
+        for node_id, deg, token in self.applied_links:
+            target_id = self.core_triad_by_deg.get(deg)
+            if not target_id:
+                continue
+            target = parse_applied_token(token)[1]
+            self._add_edge(node_id, target_id, "secondary_dominant_of",
+                           explanation=(f"{token} tonicises {target}: the target is heard as a "
+                                        f"momentary tonic, then the music returns to the key."),
+                           strength=0.9)
+
     def _rule_diatonic_membership_edges(self) -> None:
-        """Each triad belongs_to_key its key centre and is member_of_function its family."""
+        """Each triad belongs_to_key its key centre and is member_of_function its family.
+
+        A template that declares no function-family nodes (the secondary-dominant one) simply
+        gets the ``belongs_to_key`` half -- there is no family to be a member of.
+        """
         key_id = self.core_key_center_id
         for deg, tid in self.core_triad_by_deg.items():
             if key_id:

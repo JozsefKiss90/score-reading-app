@@ -41,6 +41,9 @@ from theory.diatonic_harmony import generate_diatonic_triads
 # Relations that are genuine harmonic *motion* (become a 2-item progression drill).
 _MOTION_RELATIONS = frozenset({
     "resolves_to", "leading_tone_to", "prepares", "prolongs", "dominant_of",
+    # ticket 18 / plan G5b: V(7)/x -> x IS harmonic motion (the tonicisation the
+    # learner performs), so the edge launches the real resolution drill.
+    "secondary_dominant_of",
 })
 # Relations between whole keys (become a comparison / transposition, never a progression).
 _KEY_RELATIONS = frozenset({"fifth_relation", "relative_minor_of", "relative_major_of"})
@@ -137,6 +140,11 @@ def _node_actions(node, network: HarmonicNetwork, request: GraphDrillRequest) ->
         return _inversion_node_actions(node, network, request)
     if kind in ("key_center", "major_key", "minor_key") or level == "key":
         return _key_node_actions(node, network, request)
+    # Checked BEFORE the generic chord branch: an applied dominant is not a diatonic
+    # triad, so it must never be offered its "function-family neighbours" (it has no
+    # family in the home key) nor an inversion experiment (ticket 18 / plan G5b).
+    if kind == "applied_dominant":
+        return _applied_node_actions(node, network, request)
     if kind == "diatonic_triad" or level == "chord":
         return _triad_node_actions(node, network, request)
     if kind == "function_family" or level == "function":
@@ -234,6 +242,36 @@ def _triad_node_actions(node, network, request) -> List[LaunchAction]:
 
     # play all inversions in the Lab (routed in phase 7 -> network_lab)
     out.append(_inversion_lab_action(node, tonic, mode, roman, symbol))
+    return out
+
+
+def _applied_node_actions(node, network, request) -> List[LaunchAction]:
+    """An applied-dominant node -> hear it, then resolve it (ticket 18 / plan G5b).
+
+    Deliberately three actions and no more: the chord alone, and its resolution to the
+    tonicised degree in block then arpeggio render -- exactly the drills the curriculum's
+    spot/resolve stages ship.  No family enumeration and no inversion experiment: the
+    chord has no function family in the home key, and the Lab cannot voice it.
+    """
+    data = node.data or {}
+    tonic = data.get("key")
+    mode = data.get("mode", "major")
+    token, target = data.get("roman"), data.get("target")
+    symbol = data.get("chordSymbol", node.label)
+    if not (tonic and token and target):
+        return []
+    key_label = f"{tonic} {'minor' if mode != 'major' else 'major'}"
+    out = [_trainer_action(
+        f"act:node:{node.id}:identity", f"Play {symbol} ({token})",
+        function_spec([token], symbol, mode, [tonic], render="block"),
+        "node_identity", "node", network, key_context=key_label,
+        reason=f"the applied dominant itself — chromatic in {key_label}")]
+    for render, verb in (("block", "Resolve"), ("arpeggio", "Arpeggiate the resolution")):
+        out.append(_trainer_action(
+            f"act:node:{node.id}:resolve_{render}", f"{verb}: {token}→{target}",
+            function_spec([token, target], f"{token}–{target}", mode, [tonic], render=render),
+            "functional_path", "node", network, key_context=key_label,
+            reason=f"{token} tonicises {target}: the chromatic tone resolves as it arrives"))
     return out
 
 
@@ -408,6 +446,17 @@ def _actions_for_edge(edge, network, request) -> List[LaunchAction]:
 def _edge_progression_action(edge, src, dst, network) -> Optional[LaunchAction]:
     """A harmonic-motion edge -> a real 2-item function progression, when both endpoints
     resolve to supported diatonic triads in one key."""
+    # an applied dominant tonicising its target -> the real V(7)/x -> x resolution drill
+    if src.kind == "applied_dominant" and dst.kind == "diatonic_triad":
+        sk, sm = src.data.get("key"), src.data.get("mode")
+        if sk and sk == dst.data.get("key") and sm == dst.data.get("mode"):
+            romans = [src.data["roman"], dst.data["roman"]]
+            label = "–".join(romans)
+            return _trainer_action(
+                f"act:edge:{_slug(edge.id)}", f"Tonicise: {label}",
+                function_spec(romans, label, sm, [sk]),
+                "functional_path", "edge", network, key_context=f"{sk} {sm}",
+                reason="the applied dominant resolving to the degree it tonicises")
     # both endpoints are exact diatonic triads in the same key context
     if src.kind == "diatonic_triad" and dst.kind == "diatonic_triad":
         sk, sm = src.data.get("key"), src.data.get("mode")

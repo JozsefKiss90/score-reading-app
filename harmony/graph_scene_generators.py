@@ -37,14 +37,16 @@ from harmony.network_template import get_template
 from harmony.network_projection import project_harmony_exercise, project_lab_experiment
 from harmony.harmonic_flow import DrillGraphProjection, occurrence_id
 from harmony.atlas import build_atlas, quality_id
-from harmony.harmonic_network import _resolve_triad_ref, _spoke_xy, _present
+from harmony.harmonic_network import (
+    _chromatic_tones, _resolve_triad_ref, _spoke_xy, _present,
+)
 from harmony.harmonic_roles import (
     role_profile,
     broad_function_family,
     internal_family_to_broad,
     broad_family_label,
 )
-from theory.diatonic_harmony import note_pc
+from theory.diatonic_harmony import note_pc, parse_applied_token
 from harmony.graph_scene import (
     GraphScene,
     GraphSceneEdge,
@@ -70,6 +72,7 @@ SCENE_TEMPLATE: Dict[str, str] = {
     "functional_progression": "cadence_resolution_network_v1",
     "cadence_resolution": "cadence_resolution_network_v1",
     "inversion_space": "inversion_space_network_v1",
+    "secondary_dominant_path": "secondary_dominant_network_v1",
 }
 
 #: The musical scope each scene spans (GraphScene.semantic_scope).
@@ -79,6 +82,7 @@ SCENE_SCOPE: Dict[str, str] = {
     "degree_transposition": "cross_key",
     "triad_quality_class": "class",
     "functional_progression": "progression",
+    "secondary_dominant_path": "progression",
     "cadence_resolution": "progression",
     "inversion_space": "voicing",
     "voice_leading_path": "voicing",
@@ -98,6 +102,9 @@ SCENE_GOAL: Dict[str, str] = {
                            "not a progression.",
     "functional_progression": "Follow a bounded functional route: tonic -> predominant -> dominant "
                               "-> tonic, with the active harmonic motion shown honestly.",
+    "secondary_dominant_path": "Spot the chord that does not live in the key: an applied dominant "
+                               "lifted out of the diatonic row, pointing at the degree it "
+                               "tonicises.",
     "cadence_resolution": "Study a cadence: the source chord, its tendency/common tones and the "
                           "arrival chord.",
     "inversion_space": "One chord identity across its inversion voicings -- same chord, changing "
@@ -133,6 +140,7 @@ RELATION_TO_LAYER: Dict[str, str] = {
     "prolongs": "theory",
     "leading_tone_to": "theory",
     "dominant_of": "theory",
+    "secondary_dominant_of": "theory",
     # voice-leading: individual-voice motion
     "voice_leads_to": "voice_leading",
 }
@@ -156,6 +164,7 @@ _LAYER_DESC = {
 #: scale-order is never mistaken for progression (plan sections 1, 5.A/B).
 _THEORY_DEFAULT_ON = frozenset({
     "functional_progression", "cadence_resolution", "legacy_key_relation", "voice_leading_path",
+    "secondary_dominant_path",
 })
 
 #: Per-scene-type layer presentation (plan section 6): ``{scene_type: {layer: (label, desc,
@@ -181,6 +190,14 @@ _SCENE_LAYER_OVERRIDES: Dict[str, Dict[str, Tuple[str, str, bool]]] = {
     "cadence_resolution": {
         "theory": ("Cadential motion",
                    "The cadential relation from the source chord to its arrival.", True),
+    },
+    "secondary_dominant_path": {
+        "theory": ("Tonicisation & resolution",
+                   "The applied dominant pointing at the degree it tonicises, plus the diatonic "
+                   "motions the key itself supports.", True),
+        "context": ("Key membership",
+                    "Which chords belong to the home key. The applied dominant has no such link "
+                    "— that is exactly what makes it the intruder.", True),
     },
     "degree_transposition": {
         "sequence": ("Transposition order",
@@ -302,6 +319,9 @@ def _scene_node_from_netnode(n) -> GraphSceneNode:
     if n.kind == "diatonic_triad" and str(quality).startswith("dim"):
         etype = "diminished"
         visual_class = "purple"
+    # An applied dominant is a V7/x tetrad or a V/x triad -- the kind alone cannot say which.
+    elif n.kind == "applied_dominant":
+        etype = _chord_entity_type(quality)
     refs = _dedupe(list(n.atlas_refs or []) + ([n.canonical_ref] if n.canonical_ref else []))
     is_chord = etype in ("triad", "seventh", "diminished", "inversion")
     # The two-level role model (plan sections 3-4): chords carry specific role + broad family;
@@ -521,6 +541,11 @@ def build_exercise_scene(scene_type: str, spec: HarmonyExerciseSpec, *, source_k
     # occurrence markers for repeated chords (plan section 5.E).
     if scene_type == "functional_progression":
         return build_functional_progression_scene(
+            spec, source_kind=source_kind, source_id=source_id, scene_id=scene_id,
+            extra_warnings=extra_warnings)
+    # K: an applied dominant lifted out of the diatonic row (ticket 18 / plan G5b).
+    if scene_type == "secondary_dominant_path":
+        return build_secondary_dominant_scene(
             spec, source_kind=source_kind, source_id=source_id, scene_id=scene_id,
             extra_warnings=extra_warnings)
     # D: one quality anchor + the drill's exact same-quality instances (no cross-key proxies).
@@ -779,6 +804,303 @@ def build_functional_progression_scene(
         metadata={"drill": "function", "invariantRomans": romans, "groups": groups_meta,
                   "shownGroup": gi, "totalGroups": n_groups, "cadenceType": cadence_type},
         generator_id=scene_type)
+    return _finalise(scene)
+
+
+# --------------------------------------------------------------------------------------------- #
+# K. secondary_dominant_path -- an applied dominant tonicising a degree (ticket 18 / plan G5b)
+# --------------------------------------------------------------------------------------------- #
+
+#: The applied chord is drawn ABOVE the diatonic row; the key anchor sits below it.  The vertical
+#: offset is the scene's whole argument: the intruder is not on the same plane as the key.
+_APPLIED_Y = -190.0
+_KEY_ANCHOR_Y = 210.0
+
+
+def _applied_support_map(tonic: str, mode: str) -> Dict[str, str]:
+    """``{applied token: target roman}`` the canonical secondary-dominant network supports.
+
+    Built from ``secondary_dominant_network_v1`` rather than restated here, so a scene edge can
+    only be drawn where the template independently generates the relation -- and the template
+    only generates it where a launchable drill exists (the ticket-18 honesty gate).
+    """
+    net = build_network(get_template("secondary_dominant_network_v1"),
+                        context=NetworkBuildContext(key=tonic, mode=mode))
+    by_id = {n.id: n for n in net.nodes}
+    out: Dict[str, str] = {}
+    for e in net.edges:
+        if e.relation != "secondary_dominant_of":
+            continue
+        src, tgt = by_id.get(e.source), by_id.get(e.target)
+        if src is not None and tgt is not None:
+            out[str(src.data.get("roman", ""))] = str(tgt.data.get("roman", ""))
+    return out
+
+
+def build_secondary_dominant_scene(
+        spec: HarmonyExerciseSpec, *, source_kind: str = "harmony_exercise",
+        source_id: Optional[str] = None, scene_id: Optional[str] = None,
+        extra_warnings: Optional[List[str]] = None,
+        title: Optional[str] = None) -> GraphScene:
+    """The applied-chord scene: a diatonic row with the chromatic intruder lifted out of it.
+
+    Every chord of the drill is its own marker (repeats stay distinct, as in the progression
+    scene).  The diatonic markers sit on one row and carry a ``belongs_to_key`` edge to the key
+    anchor; the applied dominant sits above the row with **no** such edge -- the missing link is
+    how the graph says "this chord does not live here".  Its ``secondary_dominant_of`` arrow points
+    at the marker it tonicises, so while the intruder is the current chord the activation map
+    lights exactly that edge (D7 → G in C major).
+
+    The arrow is drawn only where ``secondary_dominant_network_v1`` independently supports the
+    token → target pair; anything else degrades to an honest warning rather than a claimed
+    relation.
+    """
+    compiled = compile_exercise(spec)
+    chords = list(compiled.chords)
+    sid = source_id or spec.exercise_id
+    mode = spec.mode
+    if not chords:
+        return build_unsupported(source_kind=source_kind, source_id=sid,
+                                 reason="the applied-chord drill compiled to no chords")
+    warnings: List[str] = list(extra_warnings or [])
+    key_label = chords[0].triad.key
+    tonic = _tonic_of(key_label)
+    keys = _dedupe(c.triad.key for c in chords)
+    if len(keys) > 1:
+        # Every chord stays on screen (its own key anchor) rather than being dropped: the scene's
+        # sequence indices must line up 1:1 with the trainer's, and this scene has no group map.
+        warnings.append(f"cross-key applied drill: {len(keys)} keys shown side by side "
+                        f"({', '.join(keys)}) — a transposition, not a modulation")
+    n = len(chords)
+    supported = {k: _applied_support_map(_tonic_of(k), mode) for k in keys}
+
+    # Diatonic motions each key itself supports (reused from the core network, never restated).
+    core_rel: Dict[str, Dict[Tuple[str, str], str]] = {}
+    for k in keys:
+        core = build_network(get_template("core_triad_function_network_v1"),
+                             context=NetworkBuildContext(key=_tonic_of(k), mode=mode))
+        core_rel[k] = {(e.source, e.target): e.relation for e in core.edges
+                       if e.relation in _PROGRESSION_THEORY_RELS}
+
+    def _core_id(key: str, deg) -> str:
+        return f"hn:triad:{_tonic_of(key)}:{mode}:{deg}"
+
+    nodes: List[GraphSceneNode] = []
+    edges: List[GraphSceneEdge] = []
+    occurrences: List[SceneOccurrence] = []
+    atlas = build_atlas()
+
+    key_id_of: Dict[str, str] = {}
+    for j, k in enumerate(keys):
+        kid = f"appl:key:{_tonic_of(k)}:{mode}"
+        key_id_of[k] = kid
+        kx = 0.0 if len(keys) == 1 else -260.0 + 520.0 * (j / (len(keys) - 1))
+        nodes.append(GraphSceneNode(
+            id=kid, label=k, entity_type="key", entity_role="anchor",
+            semantic_level="key", key_context=k, visual_class="slate",
+            x=kx, y=_KEY_ANCHOR_Y, radius=24.0,
+            explanation=(f"The home key: {k}. Every chord linked to it is diatonic; the "
+                         f"applied dominant deliberately is not.")))
+    key_id = key_id_of[key_label]
+
+    per: List[Dict] = []
+    for i, c in enumerate(chords):
+        t = c.triad
+        applied = parse_applied_token(t.roman)
+        etype = _chord_entity_type(t.chord_quality)
+        x = -260.0 + (520.0 * (i / (n - 1)) if n > 1 else 0.0)
+        mid = f"appl:{sid}:{i}"
+        if applied:
+            head, target = applied
+            chromatic = _chromatic_tones(t)
+            role_fields = {
+                "specific_role": "applied dominant",
+                "specific_role_label": f"Applied dominant of {target}",
+                "broad_function_family": broad_function_family(t.function_label),
+                "broad_function_family_label": broad_family_label(
+                    broad_function_family(t.function_label)),
+                "family_membership_type": "contextual",
+                "family_membership_strength": "context_dependent",
+                "family_membership_explanation": (
+                    f"{t.roman} borrows its function from {target}, not from {key_label}: it is "
+                    f"the dominant of a momentary tonic."),
+            }
+            nodes.append(GraphSceneNode(
+                id=mid, label=t.chord_symbol, entity_type=etype, sublabel=t.roman,
+                semantic_level="chord", entity_role="instance", key_context=t.key, roman=t.roman,
+                chord_symbol=t.chord_symbol, chord_tones=tuple(t.pitches),
+                quality=t.chord_quality, function_label=t.function_label,
+                degree_index=None,           # NOT a scale degree of the home key
+                visual_class="rose", x=x, y=_APPLIED_Y, radius=21.0,
+                # No Atlas ref: the Atlas ontology is diatonic (base_roman honesty rule).
+                data={"key": t.key, "roman": t.roman, "applied": True, "appliedHead": head,
+                      "appliedTarget": target, "chromaticTones": chromatic,
+                      "chordSymbol": t.chord_symbol, "globalIndex": c.index},
+                explanation=t.explanation_text, **role_fields))
+        else:
+            broad = BROAD_FUNCTION.get(t.function_label, "tonic")
+            role_fields = _role_node_fields(mode, t.degree_index, t.roman,
+                                            getattr(t, "scale_degree_name", None))
+            ref = (None if etype == "seventh"
+                   else _resolve_triad_ref(atlas, _tonic_of(t.key), mode, t.degree_index))
+            nodes.append(GraphSceneNode(
+                id=mid, label=t.chord_symbol, entity_type=etype, sublabel=t.roman,
+                semantic_level="chord", entity_role="instance", key_context=t.key, roman=t.roman,
+                chord_symbol=t.chord_symbol, chord_tones=tuple(t.pitches),
+                quality=t.chord_quality, function_label=t.function_label,
+                degree_index=t.degree_index,
+                visual_class=("purple" if etype == "diminished" else "teal"),
+                x=x, y=0.0, radius=20.0, canonical_refs=((ref,) if ref else ()),
+                data={"key": t.key, "roman": t.roman, "degreeIndex": t.degree_index,
+                      "broadFunction": broad, "chordSymbol": t.chord_symbol,
+                      "globalIndex": c.index},
+                explanation=f"{t.chord_symbol} is {t.roman} in {t.key} — diatonic.",
+                **role_fields))
+            edges.append(GraphSceneEdge(
+                id=f"appl:ctx:{i}", source=mid, target=key_id_of[t.key],
+                relation="belongs_to_key", layer="context", directed=False,
+                explanation=f"{t.chord_symbol} is diatonic to {t.key}.",
+                visual_class="membership"))
+        per.append({"id": mid, "etype": etype, "triad": t, "applied": applied,
+                    "global": c.index})
+
+    # -- the applied arrows: only where the canonical network supports the pair -------------- #
+    applied_edge_by_index: Dict[int, str] = {}
+    applied_target_index: Dict[int, int] = {}
+    applied_target_symbol: Dict[int, str] = {}
+    for i, p in enumerate(per):
+        if not p["applied"]:
+            continue
+        token, target = p["triad"].roman, p["applied"][1]
+        p_key = p["triad"].key
+        if supported.get(p_key, {}).get(token) != target:
+            warnings.append(
+                f"{token}: the secondary-dominant network does not support tonicising {target} "
+                f"in {p_key}, so no applied edge is drawn")
+            continue
+        j = next((k for k in range(i + 1, len(per))
+                  if per[k]["triad"].roman == target and per[k]["triad"].key == p_key), None)
+        if j is None:
+            warnings.append(f"{token} never reaches its target {target} in this drill, so the "
+                            f"tonicisation is shown without its resolution")
+            continue
+        eid = f"appl:sd:{i}"
+        applied_edge_by_index[i] = eid
+        applied_target_index[i] = j
+        applied_target_symbol[i] = per[j]["triad"].chord_symbol
+        edges.append(GraphSceneEdge(
+            id=eid, source=p["id"], target=per[j]["id"], relation="secondary_dominant_of",
+            layer="theory", directed=True,
+            explanation=(f"{token} is the dominant of {target}: "
+                         f"{p['triad'].chord_symbol} → {per[j]['triad'].chord_symbol}, "
+                         f"tonicising {target} for a moment."),
+            visual_class="applied",
+            data={"appliedTarget": target,
+                  "chromaticTones": _chromatic_tones(p["triad"])}))
+
+    # -- sequence + diatonic theory edges + occurrences --------------------------------------- #
+    for i in range(n):
+        t = per[i]["triad"]
+        rel = None
+        expl = ""
+        common = 0
+        root_motion = None
+        if i < n - 1:
+            b = per[i + 1]["triad"]
+            if per[i]["applied"]:
+                # The relation to the NEXT chord may only be claimed when the next chord IS the
+                # tonicised target: a drill that delays the resolution (V7/V – I – V) still draws
+                # the arrow to the real target, but this step is then sequence-only.
+                if applied_target_index.get(i) == i + 1:
+                    rel = "secondary_dominant_of"
+                    expl = (f"{t.roman} → {b.roman}: the applied dominant resolves to the degree "
+                            f"it tonicises")
+                else:
+                    expl = (f"{t.roman} → {b.roman}: the tonicisation of "
+                            f"{per[i]['applied'][1]} is not resolved yet")
+            elif not per[i + 1]["applied"]:
+                if t.key == b.key:
+                    rel = core_rel.get(t.key, {}).get(
+                        (_core_id(t.key, t.degree_index), _core_id(b.key, b.degree_index)))
+                common = len(set(t.pitch_classes) & set(b.pitch_classes))
+                root_motion = (note_pc(b.root) - note_pc(t.root)) % 12
+                expl = _progression_expl(t, b, rel, common, root_motion)
+                if rel:
+                    edges.append(GraphSceneEdge(
+                        id=f"appl:th:{i}", source=per[i]["id"], target=per[i + 1]["id"],
+                        relation=rel, layer="theory", directed=True,
+                        explanation=f"{t.roman} {rel.replace('_', ' ')} {b.roman}",
+                        visual_class=_THEORY_VC.get(rel, "resolve")))
+            else:
+                expl = (f"{t.roman} → {b.roman}: the next chord steps outside "
+                        f"{b.key}")
+            edges.append(GraphSceneEdge(
+                id=f"appl:seq:{i}", source=per[i]["id"], target=per[i + 1]["id"],
+                relation="drill_next", layer="sequence", directed=True,
+                explanation=expl, visual_class="overlay-drill"))
+        is_applied = bool(per[i]["applied"])
+        detail = {
+            "keyContext": t.key, "roman": t.roman, "chordSymbol": t.chord_symbol,
+            "chordTones": list(t.pitches), "quality": t.chord_quality,
+            "intervalLayer": t.interval_layer, "functionLabel": t.function_label,
+            "relationToNext": expl, "edgeType": ("theory" if rel else "sequence only"),
+            "globalIndex": per[i]["global"], "applied": is_applied,
+        }
+        if is_applied:
+            target = per[i]["applied"][1]
+            chromatic = _chromatic_tones(t)
+            target_symbol = applied_target_symbol.get(i, "")
+            detail.update({
+                "appliedTarget": target,
+                "appliedTargetSymbol": target_symbol,
+                "chromaticTones": chromatic,
+                "broadFunction": "",
+                "whyBelongs": (
+                    f"{', '.join(chromatic) or 'this chord'} does not belong to {t.key}: "
+                    f"{t.chord_symbol} is {t.roman}, the dominant of {target}"
+                    + (f" ({target_symbol})." if target_symbol else ".")),
+            })
+        else:
+            detail.update({
+                "commonTones": common, "rootMotion": root_motion,
+                "broadFunction": BROAD_FUNCTION.get(t.function_label, "tonic"),
+                "whyBelongs": f"{t.chord_symbol} is the diatonic {t.roman} of {t.key}",
+                **_role_detail(mode, t.degree_index, t.roman,
+                               getattr(t, "scale_degree_name", None)),
+            })
+        occurrences.append(SceneOccurrence(
+            occurrence_id=occurrence_id(sid, 0, i, i), sequence_index=i, node_id=per[i]["id"],
+            entity_type=per[i]["etype"], mapping_status="exact", group_index=0, index_in_group=i,
+            primary_node_id=per[i]["id"],
+            context_node_ids=(() if is_applied else (key_id_of[t.key],)),
+            roman=t.roman, chord_symbol=t.chord_symbol, key_context=t.key,
+            quality=t.chord_quality,
+            mapping_reason=(f"the applied dominant {t.chord_symbol} ({t.roman}) — chromatic in "
+                            f"{t.key}" if is_applied else
+                            f"exact {t.chord_symbol} ({t.roman}) marker in {t.key}"),
+            next_sequence_relation=("drill_next" if i < n - 1 else None),
+            next_theory_relation=rel,
+            next_relation_status=("exact" if rel else ("sequence_only" if i < n - 1 else None)),
+            next_is_group_boundary=False, next_explanation=expl,
+            occurrence_role=("intruder" if is_applied else ""),
+            detail=detail))
+
+    intruder = next((p["triad"].roman for p in per if p["applied"]), "")
+    subtitle = f"{' / '.join(keys)} · {'–'.join(p['triad'].roman for p in per)}"
+    if intruder:
+        subtitle += f"  ·  intruder {intruder}"
+    scene = GraphScene(
+        scene_id=(scene_id or f"scene:secondary_dominant_path:{sid}"),
+        scene_type="secondary_dominant_path", title=(title or spec.title), subtitle=subtitle,
+        source_kind=source_kind, source_id=sid,
+        pedagogical_goal=SCENE_GOAL["secondary_dominant_path"], semantic_scope="progression",
+        key_context=key_label, mode=mode, nodes=nodes, edges=edges, paths=[],
+        occurrence_map=occurrences,
+        layer_definitions=_layer_defs(edges, "secondary_dominant_path"),
+        supported_actions=[], warnings=warnings,
+        metadata={"drill": spec.drill, "render": spec.render, "appliedToken": intruder,
+                  "answerMode": getattr(spec, "answer_mode", "") or ""},
+        generator_id="secondary_dominant_network_v1")
     return _finalise(scene)
 
 
@@ -1368,6 +1690,7 @@ __all__ = [
     "SCENE_TEMPLATE", "SCENE_SCOPE", "SCENE_GOAL", "RELATION_TO_LAYER",
     "context_from_spec", "assemble_scene",
     "build_exercise_scene", "build_functional_progression_scene", "progression_group_map",
+    "build_secondary_dominant_scene",
     "build_quality_class_scene", "build_cadence_scene",
     "build_voice_leading_scene", "build_polyphonic_scene", "build_score_scene",
     "build_inversion_scene", "build_legacy_scene", "build_unsupported",

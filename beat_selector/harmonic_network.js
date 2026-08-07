@@ -1167,6 +1167,9 @@
       // canonical theory relations used by the core / cadence / inversion templates
       membership: "#64748b", prepare: "#f59e0b", prolong: "#64748b",
       inversion: "#f43f5e", voicing: "#f472b6", substitute: "#f59e0b",
+      // the applied-dominant (secondary_dominant_of) arrow -- chromatic rose, matching
+      // the applied node's own colour so the intruder reads as one unit
+      applied: "#f43f5e",
       // runtime projection overlay edges (sequence relations)
       "overlay-drill": "#eab308", "overlay-transpose": "#38bdf8",
       "overlay-enumerate": "#64748b", "overlay-voicing": "#f472b6",
@@ -1174,13 +1177,13 @@
   }
   // Dash style per edge visual class -- the SINGLE source of truth shared by the
   // left-panel legend swatch and (via CSS class .edge--<vc>) the SVG paths.
-  //   solid : fifth, dominant, resolve, leading
+  //   solid : fifth, dominant, resolve, leading, applied
   //   dashed: relative, shared, samepc, trainer, atlas
   //   dotted: function, reserved
   var EDGE_STYLE = {
     fifth: "solid", relative: "dashed", dominant: "solid", resolve: "solid",
     leading: "solid", shared: "dashed", samepc: "dashed", function: "dotted",
-    trainer: "dashed", atlas: "dashed", reserved: "dotted",
+    trainer: "dashed", atlas: "dashed", reserved: "dotted", applied: "solid",
   };
   function edgeStyleOf(visualClass) { return EDGE_STYLE[visualClass] || "solid"; }
 
