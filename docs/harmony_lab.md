@@ -261,10 +261,10 @@ The non-goals were given explicit seams:
 * **Seventh chords** — `LabMeasure.target_pitch_classes` already allows *N* pcs;
   `coversAll` handles *N* tones. Add `generate_diatonic_sevenths` upstream and the
   lab consumes it unchanged.
-* **Secondary dominants / tonicizations** — chromatic/secondary tokens are
-  currently rejected at validation (the diatonic engine can't spell them); the
-  open `parameters` dict and `is_diatonic_roman` gate are the seam where a future
-  chromatic engine + a `tonicization` concept plug in.
+* **Secondary dominants / tonicizations** — shipped by ticket 17 (plan G5a):
+  the gate widened to `is_supported_roman` (applied `V/x` / `V7/x` tokens), the
+  theory engine builds applied dominants (`build_applied_dominant`), and the
+  `applied_chord` concept stages the spot/resolve intruder drills.
 * **Harmonic / melodic minor** — add a `_MODE_STEPS` entry in
   `theory.diatonic_harmony`; the lab inherits it with no lab-side change.
 ```

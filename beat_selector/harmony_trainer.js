@@ -36,13 +36,15 @@
   var bassMiss = false;     // full set played but with the wrong lowest note
   var bassMissText = "";    // feedback naming the expected bass
 
-  // ---- answer modes (plan U2, ticket 06) ---------------------------------
+  // ---- answer modes (plan U2, ticket 06; "spot" ticket 17) ---------------
   // "midi" is the classic play-the-chord flow.  "mcq" renders an answer
   // strip for identification drills; "card" turns the chord-card list into
-  // the answer surface.  In both non-midi modes MIDI events keep their
-  // monitoring visuals but never grade.
+  // the answer surface; "spot" is the single-question intruder hunt (plan
+  // G5a) — clicking the chord that is not diatonic to the key (payload
+  // SPOT_INDEX) finishes the whole exercise.  In every non-midi mode MIDI
+  // events keep their monitoring visuals but never grade.
   var ANSWER_ADVANCE_MS = 600;
-  var answerMode = "midi";  // "midi" | "mcq" | "card"
+  var answerMode = "midi";  // "midi" | "mcq" | "card" | "spot"
   var answerLog = [];       // {idx, mode, given, expected, correct}
   var lastAnswer = null;    // latest entry (feedback for the current target)
   var answeredCorrect = new Set();   // target indexes answered correctly
@@ -69,6 +71,15 @@
   // the mirror image: the target is the top line, and a stray note held
   // ABOVE the demanded soprano must fail.
   var dictation = null;         // null | "bass" | "soprano"
+
+  // ---- applied-chord highlights (ticket 17, plan G5a) --------------------
+  // spotIds: the intruder's chromatic noteheads, lit (amber pulse) when the
+  // learner spots it.  tritoneIds: the resolution noteheads (payload
+  // tritoneResolution.toPcs), lit green when the resolve stage's resolution
+  // chord completes.  Both are display-only and never touch grading state.
+  var spotIds = [];             // note ids currently pulsing amber
+  var tritoneIds = [];          // note ids currently lit green
+  var resolveMsg = "";          // "✓ Tritone resolved: F#→G, C→B"
 
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -346,6 +357,94 @@
     return true;
   }
 
+  // ---- applied-chord highlights (ticket 17, plan G5a) --------------------
+  // Style injected into the SVG like the playback style: the intruder's
+  // chromatic noteheads pulse amber, the tritone's landing tones go green.
+  function appliedEnsureStyle() {
+    try {
+      var root = app && app._svgRoot ? app._svgRoot() : null;
+      if (!root) return;
+      var doc = root.ownerDocument;
+      if (!doc || (doc.getElementById && doc.getElementById("ht-applied-style"))) return;
+      var style = doc.createElementNS(
+        "http://www.w3.org/2000/svg", "style");
+      style.setAttribute("id", "ht-applied-style");
+      style.textContent = [
+        "@keyframes htIntruderPulse {",
+        "  0%, 100% { opacity: 1; }",
+        "  50% { opacity: 0.25; }",
+        "}",
+        ".ht-intruder { animation: htIntruderPulse 0.9s ease-in-out 4; }",
+        ".ht-intruder .notehead use, .ht-intruder .notehead path,",
+        ".ht-intruder .notehead ellipse, .ht-intruder .notehead polygon,",
+        ".ht-intruder .notehead rect {",
+        "  fill: #d97706 !important;",
+        "  stroke: #d97706 !important;",
+        "}",
+        ".ht-tritone-ok .notehead use, .ht-tritone-ok .notehead path,",
+        ".ht-tritone-ok .notehead ellipse, .ht-tritone-ok .notehead polygon,",
+        ".ht-tritone-ok .notehead rect {",
+        "  fill: #16a34a !important;",
+        "  stroke: #16a34a !important;",
+        "}",
+      ].join("\n");
+      root.appendChild(style);
+    } catch (e) { /* ignore */ }
+  }
+
+  function svgSetClass(id, cls, on) {
+    var node = app && app._svgGetById ? app._svgGetById(id) : null;
+    if (!node) return;
+    try { node.classList.toggle(cls, !!on); } catch (e) { /* ignore */ }
+  }
+
+  // Note ids of `pcs` in `absMeasure` (octave-agnostic, like grading).
+  function idsForPcs(absMeasure, pcs) {
+    var byPc = idsByPcForMeasure(absMeasure);
+    var ids = [];
+    (pcs || []).forEach(function (pc) {
+      var set = byPc.get(mod12(pc));
+      if (set) set.forEach(function (id) { ids.push(id); });
+    });
+    return ids;
+  }
+
+  // Light the intruder's chromatic noteheads (spot success feedback).
+  function spotPulse() {
+    var s = targets()[spotIndex()];
+    if (!s) return;
+    appliedEnsureStyle();
+    spotIds = idsForPcs(s.absMeasure, s.chromaticPcs);
+    spotIds.forEach(function (id) { svgSetClass(id, "ht-intruder", true); });
+  }
+
+  // Light the whole resolution as the tritone resolves (resolve stage): the
+  // origin tritone tones (fromPcs, in the applied chord's measure) AND the
+  // landing tones (toPcs) — the plan's "F#+C → G+B flagged green".
+  function tritoneFlash(t) {
+    var res = t && t.tritoneResolution;
+    if (!res) return;
+    appliedEnsureStyle();
+    tritoneIds = idsForPcs(t.absMeasure, res.toPcs);
+    if (res.fromMeasure !== undefined && res.fromMeasure !== null) {
+      tritoneIds = tritoneIds.concat(idsForPcs(res.fromMeasure, res.fromPcs));
+    }
+    tritoneIds.forEach(function (id) { svgSetClass(id, "ht-tritone-ok", true); });
+    resolveMsg = "✓ Tritone resolved: " + (res.text || "");
+  }
+
+  function clearAppliedHighlights() {
+    spotIds.forEach(function (id) { svgSetClass(id, "ht-intruder", false); });
+    tritoneIds.forEach(function (id) { svgSetClass(id, "ht-tritone-ok", false); });
+    spotIds = [];
+    tritoneIds = [];
+    resolveMsg = "";
+  }
+
+  function spotIndex() {
+    return data ? Math.trunc(Number(data.SPOT_INDEX)) : -1;
+  }
+
   // ---- echo veil (plan A1, ticket 07) ------------------------------------
   function isVeiled() { return presentation === "echo" && !finished; }
 
@@ -410,6 +509,7 @@
     resetAttempt();
     lastAnswer = null;               // feedback belongs to the left target
     finished = false;
+    clearAppliedHighlights();        // fresh pass: no stale intruder/tritone
     updateVeil();                    // a fresh echo pass re-hides the notation
     applySelection();
     placeHighlight(cur().absMeasure);
@@ -445,6 +545,7 @@
         arpIndex += 1;
         if (arpIndex >= t.pitchClasses.length) {
           completed = true;
+          tritoneFlash(t);           // resolve stage: light the landing tones
           advance();
         } else {
           applySelection();        // keep played tones green, light next tone
@@ -467,6 +568,7 @@
           completed = true;
           bassMiss = false;
           bassMissText = "";
+          tritoneFlash(t);           // resolve stage: light the landing tones
           renderProgress();
         } else if (!bassOk && low !== null) {
           // Right pitch classes, wrong sounding bass: fail with feedback naming
@@ -533,7 +635,9 @@
   // ---- non-MIDI answering (plan U2) --------------------------------------
   // MCQ: `given` is an option string, graded against the target's mcq.answer.
   // Card: `given` is a card index, graded against the current target index —
-  // or a per-target `answerIndex` override (the "spot the intruder" seam).
+  // or a per-target `answerIndex` override.  Spot (ticket 17): `given` is a
+  // card index graded against the payload's SPOT_INDEX — one correct click
+  // finishes the whole exercise (a single question, not one per chord).
   // Returns the recorded log entry, or null when answering is not available.
   function submitAnswer(given) {
     var t = cur();
@@ -547,6 +651,9 @@
         ? idx : Math.trunc(Number(t.answerIndex));
       entry = { idx: idx, mode: "card", given: Math.trunc(Number(given)),
                 expected: want };
+    } else if (answerMode === "spot") {
+      entry = { idx: idx, mode: "spot", given: Math.trunc(Number(given)),
+                expected: spotIndex() };
     } else {
       return null;                    // midi mode: cards navigate, not answer
     }
@@ -556,6 +663,16 @@
     if (entry.correct) {
       completed = true;
       answeredCorrect.add(entry.idx);
+      if (answerMode === "spot") {
+        // Single question: the correct click finishes the exercise.  The
+        // full re-render reveals the hidden roman, marks the intruder card
+        // amber, and pulses its chromatic noteheads.
+        finished = true;
+        spotPulse();
+        renderPanel();
+        emitTargetChange();
+        return entry;
+      }
       if (answerMode === "card") markCardDone(entry.expected);
       renderProgress();
       renderAnswerUI();
@@ -599,6 +716,8 @@
       "#htCurrent.done{background:#dcfce7;border-color:#86efac;}",
       "#htBassMsg{display:none;margin:6px 0;padding:6px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#991b1b;font-size:12px;}",
       "#htBassMsg.show{display:block;}",
+      "#htResMsg{display:none;margin:6px 0;padding:6px 8px;background:#dcfce7;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:12px;font-weight:600;}",
+      "#htResMsg.show{display:block;}",
       "#htList{max-height:34vh;overflow:auto;margin-top:4px;}",
       "#htList .htGroup{font-weight:600;color:#475569;margin:8px 2px 2px;font-size:12px;}",
       "#htCard{}",
@@ -610,6 +729,9 @@
       ".htCard.active{border-color:#2563eb;background:#dbeafe;}",
       ".htCard.done{border-color:#16a34a;}",
       ".htCard.done .rn{color:#16a34a;}",
+      /* the found intruder (ticket 17): amber card, amber roman */
+      ".htCard.intruder{border-color:#d97706;background:#fef3c7;}",
+      ".htCard.intruder .rn{color:#b45309;}",
       "#htDone{display:none;margin:6px 0;padding:6px 8px;background:#dcfce7;border:1px solid #16a34a;border-radius:6px;color:#14532d;font-weight:600;}",
       "#htDone.show{display:block;}",
       /* answer strip (plan U2) */
@@ -632,6 +754,9 @@
       ".dark-score #htCurrent .exp{color:#cbd5e1;}",
       ".dark-score .htCard{background:#0b0b0b;border-color:#1f2933;color:#e5e7eb;}",
       ".dark-score .htCard.active{background:#1e3a8a;border-color:#60a5fa;}",
+      ".dark-score .htCard.intruder{background:#451a03;border-color:#d97706;}",
+      ".dark-score .htCard.intruder .rn{color:#fbbf24;}",
+      ".dark-score #htResMsg{background:#052e16;border-color:#166534;color:#86efac;}",
       ".dark-score #htAnswer .prompt{color:#93c5fd;}",
       ".dark-score #htAnswer button.htOpt{background:#1f2937;border-color:#374151;color:#e5e7eb;}",
       ".dark-score #htAnsMsg.ok{color:#86efac;}",
@@ -661,6 +786,7 @@
       '</div>' +
       '<div id="htDone">✓ Exercise complete!</div>' +
       '<div id="htBassMsg"></div>' +
+      '<div id="htResMsg"></div>' +
       '<div id="htCurrent"></div>' +
       '<div id="htAnswer"></div>' +
       '<div id="htList"></div>';
@@ -715,6 +841,26 @@
         esc(t.measureNumber) + " (highlighted)</div>";
       return;
     }
+    // Spot the intruder (ticket 17): the question is about the whole
+    // progression, not the current chord.  After the find, the panel owns
+    // the reveal — the intruder's name and its one-liner explanation.
+    if (answerMode === "spot") {
+      var s = targets()[spotIndex()];
+      if (finished && s) {
+        el.className = "done";
+        el.innerHTML =
+          '<div class="row big">' + esc(s.chordSymbol) + " is " +
+          esc(s.roman) + "</div>" +
+          '<div class="exp">' + esc(s.explanation) + "</div>";
+      } else {
+        el.className = "";
+        el.innerHTML =
+          '<div class="row big">' + esc(t.key) + " — spot the intruder</div>" +
+          '<div class="row"><span class="lbl">Mode</span>' + esc(modeWord) + "</div>" +
+          '<div class="row"><span class="lbl">Scale</span>' + esc(t.scale.join(" ")) + "</div>";
+      }
+      return;
+    }
     // Card matching: the card labels carry the Roman/symbol, so the prompt
     // describes the chord without naming it.
     if (answerMode === "card") {
@@ -754,6 +900,11 @@
       bm.textContent = bassMissText;
       bm.className = bassMissText ? "show" : "";
     }
+    var rm = document.getElementById("htResMsg");
+    if (rm) {
+      rm.textContent = resolveMsg;
+      rm.className = resolveMsg ? "show" : "";
+    }
     renderCurrent();
     // reflect completion state on the active card
     var card = document.querySelector('.htCard.active');
@@ -774,6 +925,7 @@
     // targets advance in exactly the list's order and clicking top-to-bottom
     // would complete the drill without reading the prompt.  Group headers are
     // dropped there (they assume measure order); grading indexes unchanged.
+    // Spot mode keeps measure order — the order IS the progression.
     var order = targets().map(function (_, i) { return i; });
     if (answerMode === "card") {
       if (!cardOrder || cardOrder.length !== order.length) {
@@ -798,17 +950,31 @@
       var card = document.createElement("div");
       // Card-answer mode: marking the active card would answer the question,
       // so only correctly answered cards get a state.
-      var active = answerMode === "card" ? "" : (i === idx ? " active" : "");
+      var active = (answerMode === "card" || answerMode === "spot")
+        ? "" : (i === idx ? " active" : "");
       var done = answerMode === "card" && answeredCorrect.has(i) ? " done" : "";
-      card.className = "htCard" + active + done;
+      // Spot reveal: the found intruder's card turns amber.
+      var intruder = (answerMode === "spot" && finished && t.intruder)
+        ? " intruder" : "";
+      card.className = "htCard" + active + done + intruder;
       card.dataset.index = String(i);
-      card.innerHTML =
-        '<span class="rn">' + esc(t.roman) + "</span>" +
-        '<span class="sym">' + esc(t.chordSymbol) + "</span>" +
-        '<span class="meta">' + esc(t.intervalLayer) + " · " +
-        esc(t.functionLabel) + "</span>";
+      if (answerMode === "spot" && !finished) {
+        // The hunt: the intruder's roman IS the answer, so it shows "?";
+        // function/degree metadata would leak it too — every card shows its
+        // bar number instead.
+        card.innerHTML =
+          '<span class="rn">' + esc(t.romanHidden ? "?" : t.roman) + "</span>" +
+          '<span class="sym">' + esc(t.chordSymbol) + "</span>" +
+          '<span class="meta">bar ' + esc(t.measureNumber) + "</span>";
+      } else {
+        card.innerHTML =
+          '<span class="rn">' + esc(t.roman) + "</span>" +
+          '<span class="sym">' + esc(t.chordSymbol) + "</span>" +
+          '<span class="meta">' + esc(t.intervalLayer) + " · " +
+          esc(t.functionLabel) + "</span>";
+      }
       card.addEventListener("click", function () {
-        if (answerMode === "card") submitAnswer(i);
+        if (answerMode === "card" || answerMode === "spot") submitAnswer(i);
         else goTo(i);
       });
       list.appendChild(card);
@@ -829,7 +995,9 @@
     prompt.className = "prompt";
     prompt.textContent = answerMode === "mcq"
       ? ((t.mcq && t.mcq.prompt) || "Identify the chord:")
-      : "Click the matching chord card below.";
+      : answerMode === "spot"
+        ? "One of these chords doesn't live in " + t.key + ". Click it."
+        : "Click the matching chord card below.";
     box.appendChild(prompt);
 
     if (answerMode === "mcq") {
@@ -854,7 +1022,10 @@
         ? "✓ Correct — " + (answerMode === "mcq" ? String(lastAnswer.given) : "that's the one") + "!"
         : (answerMode === "mcq"
             ? "✗ Not " + String(lastAnswer.given) + " — try again."
-            : "✗ Not that card — try again.");
+            : answerMode === "spot"
+              ? "✗ That chord lives in " + ((cur() || {}).key || "the key") +
+                " — try again."
+              : "✗ Not that card — try again.");
       box.appendChild(msg);
     }
   }
@@ -897,7 +1068,8 @@
     resetAttempt();
     finished = false;
     pbStamp = new Map();
-    answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card")
+    answerMode = (data.ANSWER_MODE === "mcq" || data.ANSWER_MODE === "card" ||
+                  data.ANSWER_MODE === "spot")
       ? data.ANSWER_MODE : "midi";
     presentation = data.PRESENTATION === "echo" ? "echo" : "visual";
     dictation = (data.DICTATION === "bass" || data.DICTATION === "soprano")
@@ -906,6 +1078,9 @@
     lastAnswer = null;
     answeredCorrect = new Set();
     cardOrder = null;
+    spotIds = [];
+    tritoneIds = [];
+    resolveMsg = "";
 
     ensureStyles();
     if (document.body) document.body.classList.add("ht-active");
@@ -948,5 +1123,9 @@
     playbackFlash: playbackFlash,
     playbackClear: playbackClear,
     playbackActiveIds: function () { return Array.from(pbStamp.keys()); },
+    // Applied-chord highlights (ticket 17): the intruder's pulsing chromatic
+    // noteheads and the resolve stage's green tritone-resolution noteheads.
+    spotActiveIds: function () { return spotIds.slice(); },
+    tritoneActiveIds: function () { return tritoneIds.slice(); },
   };
 })();

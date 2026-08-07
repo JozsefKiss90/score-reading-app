@@ -197,6 +197,11 @@ _CONCEPT_PRACTICE = {
         "Play each line alone, then together, and hear the harmony appear.",
         "Compare each implied chord with its full block triad.",
     ],
+    "applied_chord": [
+        "Scan the progression for the tone that is not in the key signature.",
+        "Name the tonicised chord, then hear the applied chord as ITS dominant.",
+        "Play the resolution and feel the chromatic leading tone rise a semitone.",
+    ],
 }
 
 _CONCEPT_MISTAKES = {
@@ -231,6 +236,10 @@ _CONCEPT_MISTAKES = {
     "function": [
         "Calling every non-tonic chord 'dominant'.",
         "Missing that vi can substitute for I (a deceptive resolution).",
+    ],
+    "applied_chord": [
+        "Labelling D7 in C major as 'ii' — the chromatic F# disqualifies it.",
+        "Thinking the applied chord changes the key (tonicisation ≠ modulation).",
     ],
 }
 

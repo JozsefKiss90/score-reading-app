@@ -31,11 +31,13 @@ Design rules (shared with the rest of the project):
   measure count at the same value so every example renders on a single page.
 
 The schema is intentionally open (``parameters`` is a free dict) so the
-non-goals -- secondary dominants, harmonic/melodic minor, full counterpoint,
-Schenkerian reduction, real-score analysis -- extend without breaking existing
-fields.  The first seventh chord (``V7``, ticket 09 / plan G1a) is already in:
-the roman gate accepts exactly the tokens
-:data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS` knows how to build.
+remaining non-goals -- full counterpoint, Schenkerian reduction, real-score
+analysis -- extend without breaking existing fields.  Seventh chords arrived
+with ticket 09 (plan G1a), harmonic/melodic minor with tickets 13-14 (G2),
+and secondary dominants with ticket 17 (G5a): the roman gate
+(:func:`is_supported_roman`) accepts exactly the tokens the theory engine
+knows how to build -- :data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS`
+plus the applied ``V/x`` / ``V7/x`` vocabulary.
 """
 
 from __future__ import annotations
@@ -48,7 +50,9 @@ from theory.diatonic_harmony import (
     key_signature_fifths,
     roman_token_to_index,
     parse_seventh_token,
+    parse_applied_token,
     seventh_tokens_for_mode,
+    applied_tokens_for_mode,
     generate_scale,
     transpose_degree_pattern,
     note_pc,
@@ -86,10 +90,16 @@ SCHEMA_VERSION = "harmony-lab/v1"
 #: :func:`harmony.lab.compile_lab`, which only synthesises the non-trainer
 #: concepts).  This is how the curriculum (:mod:`harmony.curriculum`) makes the
 #: trainer the execution engine and the Lab the canonical source.
+#: ``applied_chord`` (ticket 17 / plan G5a) is the first chromatic concept:
+#: a diatonic progression with exactly one applied dominant (the intruder),
+#: staged as *spot* (click the chord that does not live in the key) and
+#: *resolve* (play the intruder and its resolution).  The *ear* stage is
+#: reserved for G5c (ticket 19).  Each stage compiles to one native trainer
+#: drill, so the launch path is the trainer, not the lab renderer.
 CONCEPTS = {
     "inversion", "voice_leading", "cadence",
     "polyphonic_harmony", "motive", "reduction",
-    "drill",
+    "drill", "applied_chord",
 }
 
 #: Render styles.  ``block`` / ``arpeggio`` reuse the trainer's renderers;
@@ -110,6 +120,7 @@ _CONCEPT_RENDERS = {
     "motive":             {"melody"},
     "reduction":          {"block", "voice_leading"},   # reserved
     "drill":              {"block", "arpeggio"},         # mirrors the trainer's renders
+    "applied_chord":      {"block", "arpeggio"},         # arpeggio: resolve stage only
 }
 
 #: Concepts whose ``parameters`` may carry ``strict_bass`` (require render="block";
@@ -132,20 +143,26 @@ def tonic_of(key: str) -> str:
     return parse_key(key)[0]
 
 
-def is_diatonic_roman(token: str) -> bool:
-    """True iff ``token`` is a Roman numeral the diatonic engine can build.
+def is_supported_roman(token: str) -> bool:
+    """True iff ``token`` is a Roman numeral an engine can actually build.
 
-    Rejects chromatic / secondary tokens (``bII``, ``V/V``, ``#iv``) -- which are
-    a non-goal of this slice and cannot be rendered by the diatonic engine -- while
-    accepting quality-decorated diatonic numerals (``vii°``, ``III+``) and the
+    Ticket 17 (plan G5a) widened this gate from diatonic-only
+    (``is_diatonic_roman``) to a *supported-roman allowlist*: it now also
+    accepts the applied-dominant tokens (``V/x`` / ``V7/x``, per
+    :func:`theory.diatonic_harmony.parse_applied_token`) alongside the
+    quality-decorated diatonic numerals (``vii°``, ``III+``) and the
     *supported* seventh tokens (``V7``, per
-    :data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS`).  Any other
-    digit-bearing token (``ii7``, ``V9``) is rejected explicitly rather than
-    tolerantly stripped down to its triad.  Use it on a token already passed
-    through :func:`normalise_pattern` (so ``T``/``S``/``D`` shorthand has become
-    Roman).
+    :data:`theory.diatonic_harmony.SEVENTH_DEGREE_TOKENS`).  Everything the
+    engines cannot build stays rejected -- other chromatic tokens (``bII``,
+    ``#iv``, ``N6``), applied leading-tone chords (``vii°7/V``), and any
+    other digit-bearing token (``ii7``, ``V9``), explicitly rather than
+    tolerantly stripped down to a triad.  Use it on a token already passed
+    through :func:`normalise_pattern` (so ``T``/``S``/``D`` shorthand has
+    become Roman).
     """
     t = (token or "").strip()
+    if parse_applied_token(t) is not None:
+        return True
     if any(c in t for c in "/()"):
         return False
     if parse_seventh_token(t) is not None:
@@ -285,6 +302,22 @@ class ReductionParams:
     source: dict = field(default_factory=dict)
 
 
+#: The applied-chord stages this slice ships (ticket 17 / plan G5a).  The
+#: *ear* stage ("hear the progression, click the chromatic chord") is
+#: reserved for the applied ramps ticket (19 / plan G5c) -- it needs the A1
+#: chromatic-spotting level, not just a payload flag.
+APPLIED_STAGES = ("spot", "resolve")
+
+
+@dataclass(frozen=True)
+class AppliedChordParams:
+    #: Roman tokens with exactly ONE applied dominant (the intruder),
+    #: immediately followed by its target (the resolve stage and the spot
+    #: explanation both promise that resolution).
+    progression: tuple = ("I", "vi", "V7/V", "V", "I")
+    stages: tuple = ("spot",)         # subset of APPLIED_STAGES, in order
+
+
 def inversion_params(p: Dict) -> InversionParams:
     return InversionParams(
         degree=str(p.get("degree", "I")),
@@ -323,6 +356,14 @@ def reduction_params(p: Dict) -> ReductionParams:
     return ReductionParams(
         skeleton=tuple(p.get("skeleton", ())),
         source=dict(p.get("source", {})),
+    )
+
+
+def applied_chord_params(p: Dict) -> AppliedChordParams:
+    return AppliedChordParams(
+        progression=tuple(str(t) for t in p.get(
+            "progression", ("I", "vi", "V7/V", "V", "I"))),
+        stages=tuple(str(s) for s in p.get("stages", ("spot",))),
     )
 
 
@@ -396,13 +437,34 @@ class LabExperimentSpec:
                 f"signatures only support -7..+7. Use the practical enharmonic "
                 f"spelling instead (e.g. Ab major rather than G# major).")
 
-    def _check_diatonic(self, tokens) -> None:
-        """Reject chromatic / secondary tokens (a non-goal) after normalisation."""
+    def _check_supported(self, tokens, allow_applied: bool = False) -> None:
+        """Reject unsupported chromatic tokens after normalisation.
+
+        Applied dominants pass the widened :func:`is_supported_roman` gate,
+        but each concept must opt in (``allow_applied``): only the
+        ``applied_chord`` concept (and the native function drills it compiles
+        to) can render them -- the SATB / polyphonic / inversion paths have
+        no applied voicing yet.
+        """
         for orig, norm in zip(tokens, normalise_pattern(list(tokens))):
-            if not is_diatonic_roman(norm):
+            if not is_supported_roman(norm):
                 raise ValueError(
                     f"chromatic/secondary token {orig!r} is not supported yet "
                     f"(a non-goal); use diatonic Roman numerals or T/S/D shorthand")
+            if parse_applied_token(norm) is not None:
+                if not allow_applied:
+                    raise ValueError(
+                        f"applied token {orig!r} is only supported by the "
+                        f"applied_chord concept (and the native function "
+                        f"drills it compiles to) for now; the "
+                        f"{self.concept!r} render paths have no applied "
+                        f"voicing yet")
+                if norm not in applied_tokens_for_mode(self.mode):
+                    raise ValueError(
+                        f"{orig!r} is not honest in {self.mode}: the "
+                        f"applied-dominant vocabulary of this mode is "
+                        f"{sorted(applied_tokens_for_mode(self.mode))}")
+                continue
             if (parse_seventh_token(norm) is not None
                     and norm not in seventh_tokens_for_mode(self.mode)):
                 raise ValueError(
@@ -428,7 +490,7 @@ class LabExperimentSpec:
                 # A seventh degree (ticket 11 / plan G1c) owns FOUR voicings
                 # (7 · 6/5 · 4/3 · 4/2); the mode gate mirrors the pattern
                 # tokens' (natural minor has no V7 until harmonic minor).
-                self._check_diatonic([ip.degree])
+                self._check_supported([ip.degree])
                 allowed, shapes = (0, 1, 2, 3), "{0,1,2,3} (seventh chords)"
             else:
                 roman_token_to_index(ip.degree)     # raises on a bad token
@@ -446,7 +508,8 @@ class LabExperimentSpec:
             romans, figures = split_figured_pattern(cp.pattern)
             for orig, head in zip(cp.pattern, romans):
                 if (any(ch.isdigit() for ch in head)
-                        and parse_seventh_token(head) is None):
+                        and parse_seventh_token(head) is None
+                        and parse_applied_token(head) is None):
                     raise ValueError(
                         f"unrecognised figured-bass suffix in {orig!r}; the "
                         f"understood triad figures are 5/3, 6 (6/3) and 6/4, "
@@ -464,7 +527,7 @@ class LabExperimentSpec:
                     "seventh tokens require render='block'; the SATB "
                     "voice-leading render voices triads only (a later "
                     "seventh slice widens it)")
-            self._check_diatonic(romans)            # raises on bad/chromatic token
+            self._check_supported(romans)            # raises on bad/chromatic token
             self._check_len(len(cp.pattern))
             if cp.relabel and len(cp.relabel) != len(cp.pattern):
                 raise ValueError(
@@ -540,7 +603,7 @@ class LabExperimentSpec:
             pp = polyphonic_params(p)
             if not pp.progression:
                 raise ValueError("polyphonic_harmony requires a 'progression'")
-            self._check_diatonic(pp.progression)
+            self._check_supported(pp.progression)
             if len(pp.upper_degrees) != len(pp.progression):
                 raise ValueError(
                     "polyphonic_harmony needs one upper_degree per progression chord")
@@ -556,8 +619,48 @@ class LabExperimentSpec:
         elif self.concept == "reduction":
             rp = reduction_params(p)
             if rp.skeleton:
-                self._check_diatonic(rp.skeleton)
+                self._check_supported(rp.skeleton)
                 self._check_len(len(rp.skeleton))
+
+        elif self.concept == "applied_chord":
+            ap = applied_chord_params(p)
+            if not ap.stages:
+                raise ValueError("applied_chord requires a non-empty 'stages'")
+            for s in ap.stages:
+                if s == "ear":
+                    raise ValueError(
+                        "the applied 'ear' stage is reserved for the applied "
+                        "ramps slice (ticket 19 / plan G5c); this slice ships "
+                        "the 'spot' and 'resolve' stages")
+                if s not in APPLIED_STAGES:
+                    raise ValueError(
+                        f"unknown applied stage {s!r}; the stages are "
+                        f"{APPLIED_STAGES}")
+            if "spot" in ap.stages and self.render != "block":
+                raise ValueError(
+                    "the spot stage requires render='block': the intruder "
+                    "hunt reads a block progression (the arpeggio render is "
+                    "the resolve stage's second pass)")
+            if not ap.progression:
+                raise ValueError("applied_chord requires a 'progression'")
+            roman = normalise_pattern(list(ap.progression))
+            self._check_supported(roman, allow_applied=True)
+            applied = [(i, t) for i, t in enumerate(roman)
+                       if parse_applied_token(t) is not None]
+            if len(applied) != 1:
+                raise ValueError(
+                    f"applied_chord requires exactly one applied token in "
+                    f"the progression (the intruder); got {len(applied)} in "
+                    f"{list(ap.progression)!r}")
+            pos, tok = applied[0]
+            target = parse_applied_token(tok)[1]
+            if pos + 1 >= len(roman) or roman[pos + 1] != target:
+                raise ValueError(
+                    f"the applied chord must resolve: {tok} must be "
+                    f"immediately followed by its target {target} (the spot "
+                    f"explanation and the resolve stage both promise that "
+                    f"resolution)")
+            self._check_len(len(roman))
 
         elif self.concept == "drill":
             raw = p.get("exercise")
@@ -673,6 +776,41 @@ class LabExperimentSpec:
                 pattern=normalise_pattern(list(rp.skeleton)), keys=[tonic],
                 description="The explicit reduced harmonic skeleton.",
             ))
+
+        elif self.concept == "applied_chord":
+            ap = applied_chord_params(p)
+            roman = normalise_pattern(list(ap.progression))
+            tok = next(t for t in roman
+                       if parse_applied_token(t) is not None)
+            target = parse_applied_token(tok)[1]
+            label = "–".join(ap.progression)
+            for stage in ap.stages:
+                if stage == "spot":
+                    specs.append(HarmonyExerciseSpec(
+                        exercise_id=(f"lab_applied_spot_{self.mode}_"
+                                     f"{_key_slug(tonic)}_"
+                                     f"{_ident('_'.join(roman))}"),
+                        title=f"Spot the intruder: {label} in {tonic} "
+                              f"{_mode_word(self.mode)}",
+                        drill="function", render="block", mode=self.mode,
+                        pattern=roman, keys=[tonic], answer_mode="spot",
+                        description=(f"One chord of {label} does not live in "
+                                     f"{tonic} {_mode_word(self.mode)} — "
+                                     f"click it."),
+                    ))
+                else:  # resolve — the intruder and its promised target
+                    specs.append(HarmonyExerciseSpec(
+                        exercise_id=(f"lab_applied_resolve_{self.mode}_"
+                                     f"{_key_slug(tonic)}_{_ident(tok)}_"
+                                     f"{self.render}"),
+                        title=f"Resolve the intruder: {tok}→{target} in "
+                              f"{tonic} {_mode_word(self.mode)}",
+                        drill="function", render=self.render, mode=self.mode,
+                        pattern=[tok, target], keys=[tonic],
+                        description=(f"Play {tok}, then resolve it to "
+                                     f"{target}: the tritone pulls the "
+                                     f"chromatic tone home."),
+                    ))
 
         elif self.concept == "drill":
             # Passthrough: the embedded native HarmonyExerciseSpec *is* the

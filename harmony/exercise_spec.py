@@ -33,7 +33,9 @@ from theory.diatonic_harmony import (
     transpose_degree_pattern,
     roman_token_to_index,
     parse_seventh_token,
+    parse_applied_token,
     seventh_tokens_for_mode,
+    applied_tokens_for_mode,
     SEVENTH_QUALITY_LABELS,
     key_signature_fifths,
     parse_key,
@@ -68,8 +70,11 @@ _VALID_QUALITY = {"major", "minor", "diminished", "augmented"} | _SEVENTH_QUALIT
 #: classic play-the-chord flow (hardware, on-screen piano, or QWERTY — all
 #: three feed the same grader); ``mcq`` renders a multiple-choice strip for
 #: identification drills; ``card`` turns the chord-card list into the answer
-#: surface (click the matching card).
-_VALID_ANSWER_MODES = {"midi", "mcq", "card"}
+#: surface (click the matching card); ``spot`` (ticket 17 / plan G5a) is the
+#: single-question intruder hunt — a ``function`` drill whose pattern holds
+#: exactly one applied chord, answered by clicking the chord that does not
+#: live in the key.
+_VALID_ANSWER_MODES = {"midi", "mcq", "card", "spot"}
 
 #: How the exercise is presented (plan A1, ticket 07).  ``visual`` is the
 #: classic notation-first drill; ``echo`` is its aural twin — the target plays
@@ -173,12 +178,13 @@ class HarmonyExerciseSpec:
             raise ValueError(
                 f"Unknown presentation {self.presentation!r}; expected "
                 f"{sorted(_VALID_PRESENTATIONS)}")
-        if self.presentation == "echo" and self.answer_mode == "card":
+        if self.presentation == "echo" and self.answer_mode in ("card", "spot"):
             raise ValueError(
-                "presentation='echo' cannot use answer_mode='card': the card "
-                "list is the answer surface and is withheld while the "
-                "notation is veiled. Echo drills answer by midi (play back "
-                "what you hear) or mcq (identify what you hear).")
+                f"presentation='echo' cannot use answer_mode="
+                f"{self.answer_mode!r}: the card list is the answer surface "
+                f"and is withheld while the notation is veiled. Echo drills "
+                f"answer by midi (play back what you hear) or mcq (identify "
+                f"what you hear).")
         if self.mcq_focus not in _VALID_MCQ_FOCUS:
             raise ValueError(
                 f"Unknown mcq_focus {self.mcq_focus!r}; expected "
@@ -242,7 +248,22 @@ class HarmonyExerciseSpec:
             # silently downgrade "ii7" to a ii triad).
             roman = normalise_pattern(self.pattern)
             allowed = None
+            applied_allowed = None
             for t in roman:
+                if parse_applied_token(t) is not None:
+                    # Applied honesty mirrors the seventh gate: the target
+                    # numeral must name a triad the mode actually contains
+                    # (natural minor's dominant triad is v, so V7/V refuses
+                    # there -- its honest spelling is V7/v).
+                    if applied_allowed is None:
+                        applied_allowed = set(
+                            applied_tokens_for_mode(self.mode))
+                    if t not in applied_allowed:
+                        raise ValueError(
+                            f"{t!r} is not honest in {_mode_word(self.mode)}: "
+                            f"the {_mode_word(self.mode)} applied-dominant "
+                            f"vocabulary is {sorted(applied_allowed)}.")
+                    continue
                 if parse_seventh_token(t) is None:
                     continue
                 if allowed is None:
@@ -254,6 +275,28 @@ class HarmonyExerciseSpec:
                         f"{seventh_tokens_for_mode(self.mode)}. (The "
                         f"minor-key V7 needs harmonic minor's raised leading "
                         f"tone: mode 'harmonic_minor'.)")
+
+        if self.answer_mode == "spot":
+            # The intruder hunt is a single question over one rendered
+            # progression: exactly one applied chord (the intruder) in
+            # exactly one key -- several keys would stack several
+            # progressions (and several intruders) into one exercise.
+            if self.drill != "function":
+                raise ValueError(
+                    "answer_mode='spot' requires drill='function' (a "
+                    "progression to hunt the intruder in)")
+            applied = [t for t in normalise_pattern(self.pattern or [])
+                       if parse_applied_token(t) is not None]
+            if len(applied) != 1:
+                raise ValueError(
+                    f"answer_mode='spot' requires exactly one applied chord "
+                    f"in the pattern (the intruder); got {len(applied)} in "
+                    f"{self.pattern!r}")
+            if len(self._all_keys()) != 1:
+                raise ValueError(
+                    "answer_mode='spot' requires exactly one key: the "
+                    "exercise is a single question over one rendered "
+                    "progression")
 
         # Reject theoretical keys that need more than 7 sharps/flats (e.g.
         # "G# major" = 8 sharps); MusicXML key signatures only span -7..+7.
@@ -355,10 +398,11 @@ def normalise_pattern(pattern: List[str]) -> List[str]:
 
     ``["T", "S", "D", "T"]`` -> ``["I", "IV", "V", "I"]``;
     Roman tokens (``"ii"``, ``"V"``, ``"vii°"``) pass through unchanged, as do
-    the supported seventh tokens (``"V7"``).  Any *other* digit-bearing token
-    (``"ii7"``, ``"V9"``, a figured ``"ii6"``) raises: the tolerant
-    ``roman_token_to_index`` would silently strip the digits and play a
-    root-position triad under a label it does not match -- exactly the
+    the supported seventh tokens (``"V7"``) and the applied-dominant tokens
+    (``"V/x"`` / ``"V7/x"``, ticket 17 / plan G5a).  Any *other* digit- or
+    slash-bearing token (``"ii7"``, ``"V9"``, a figured ``"ii6"``) raises: the
+    tolerant ``roman_token_to_index`` would silently strip the digits and play
+    a root-position triad under a label it does not match -- exactly the
     dishonesty the roman gate exists to prevent.
     """
     out: List[str] = []
@@ -371,6 +415,14 @@ def normalise_pattern(pattern: List[str]) -> List[str]:
         if parse_seventh_token(raw) is not None:
             out.append(raw)
             continue
+        if parse_applied_token(raw) is not None:
+            out.append(raw)
+            continue
+        if "/" in raw:
+            raise ValueError(
+                f"Unsupported chord token {raw!r}: the only slash tokens are "
+                f"the applied dominants V/x and V7/x with a diatonic "
+                f"Roman-numeral target (e.g. 'V7/V', 'V/ii').")
         if any(ch.isdigit() for ch in raw):
             raise ValueError(
                 f"Unsupported chord token {raw!r}: the buildable seventh "

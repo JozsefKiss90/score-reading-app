@@ -26,7 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
-from theory.diatonic_harmony import parse_seventh_token
+from theory.diatonic_harmony import parse_applied_token, parse_seventh_token
 from harmony.graph_scene import GraphScene, SCENE_TYPES, SCENE_SOURCE_KINDS
 from harmony.graph_scene_generators import (
     SCENE_TEMPLATE,
@@ -121,11 +121,32 @@ def _tetrad_inversion_lab(lab) -> bool:
     return parse_seventh_token(degree) is not None
 
 
+#: Why applied chords refuse every diatonic scene (ticket 17 / plan G5a).
+#: The dedicated scene arrives with the secondary-dominant network template
+#: (ticket 18 / plan G5b); until then, projecting an applied chord (D7 in C)
+#: onto a diatonic graph would land it on a node that merely shares its root
+#: — the exact dishonesty the base_roman rule forbids.
+_APPLIED_REFUSAL = (
+    "applied chords have no diatonic scene: the secondary-dominant network "
+    "template (ticket 18 / plan G5b) will own the V7/x → x edge; projecting "
+    "the applied chord onto a diatonic graph would mislabel it")
+
+
+def _applied_exercise(ex) -> bool:
+    """A native drill whose pattern contains an applied token (``V7/V``)."""
+    if ex is None:
+        return False
+    return any(parse_applied_token(str(t)) is not None
+               for t in (getattr(ex, "pattern", None) or []))
+
+
 def _buildable(scene_type: Optional[str], ex, lab) -> bool:
     """True when this router has the input it needs to actually build ``scene_type``.
 
     Prevents ``decide`` from returning ``supported`` for a scene that ``build`` would then have to
     degrade to ``unsupported`` (e.g. curriculum metadata naming ``inversion_space`` with no lab)."""
+    if _applied_exercise(ex) or getattr(lab, "concept", None) == "applied_chord":
+        return False   # no diatonic scene may claim an applied chord (G5a)
     if scene_type in _IMPLEMENTED_EXERCISE_SCENES:
         return ex is not None
     if scene_type == "inversion_space":
@@ -196,6 +217,13 @@ def _decision(status, scene_type, reason, spec=None, alternatives=()) -> GraphSc
 def _classify(request: GraphSceneRequest, ex, lab) -> GraphSceneDecision:
     meta = request.source_metadata or {}
     lab_concept = getattr(lab, "concept", None) if lab is not None else None
+
+    # 0. Applied chords (ticket 17 / plan G5a) fail closed everywhere until
+    #    the secondary-dominant scene ships — checked before metadata so a
+    #    graph_scene_type hint can never route a chromatic exercise onto a
+    #    diatonic scene.
+    if (lab is not None and lab_concept == "applied_chord") or _applied_exercise(ex):
+        return _decision("unsupported", "unsupported", _APPLIED_REFUSAL)
 
     # 1. explicit curriculum graph metadata wins -- but only when this router can actually build it
     #    (a metadata value naming a lab scene with no lab, or 'unsupported'/'score_harmonic_path',

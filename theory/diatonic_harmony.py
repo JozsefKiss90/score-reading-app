@@ -23,10 +23,19 @@ Scope
   choice per melody note is :func:`melodic_minor_raised`.  Chord generation
   refuses the mode -- a two-way scale has no single honest diatonic chord
   set (drills use natural or harmonic minor for harmony).
-* No secondary dominants or cadences yet -- but the data model is designed
-  so those extend without refactoring: quality (and therefore Roman-numeral
-  case, chord symbol, and function) is always *derived* from the actual
-  interval content, never hard-coded per mode.
+* Applied dominants (ticket 17 / plan G5a): ``V/x`` and ``V7/x`` tokens
+  build the major triad / dominant seventh a perfect fifth above the
+  tonicised degree, spelled from the target's own scale (``V7/V`` in C is
+  D-F#-A-C, never Gb).  :func:`parse_applied_token` is the lexical gate,
+  :func:`build_applied_dominant` the builder; the target token must match
+  the home key's diatonic roman exactly, and only major/minor triads can
+  be tonicised (a diminished chord cannot be a momentary tonic).
+* For the diatonic builders, quality (and therefore Roman-numeral case,
+  chord symbol, and function) is always *derived* from the actual interval
+  content, never hard-coded per mode.  The applied builder runs the same
+  canonical table the other way: its dominant quality is the construction
+  target, and the tones are spelled from
+  :data:`QUALITY_TO_INTERVAL_LAYER` -- one table either direction.
 
 Chord interval layers (the canonical table)
 -------------------------------------------
@@ -47,7 +56,9 @@ Public API
 * :func:`generate_diatonic_sevenths`
 * :func:`build_seventh_chord`
 * :func:`build_dominant_seventh`
+* :func:`build_applied_dominant`
 * :func:`parse_seventh_token`
+* :func:`parse_applied_token`
 * :func:`seventh_tokens_for_mode`
 * :func:`transpose_degree_pattern`
 * :func:`identify_triad_from_pitches`
@@ -78,8 +89,11 @@ __all__ = [
     "generate_diatonic_sevenths",
     "build_seventh_chord",
     "build_dominant_seventh",
+    "build_applied_dominant",
     "parse_seventh_token",
+    "parse_applied_token",
     "seventh_tokens_for_mode",
+    "applied_tokens_for_mode",
     "transpose_degree_pattern",
     "identify_triad_from_pitches",
     "key_signature_fifths",
@@ -839,6 +853,184 @@ def build_dominant_seventh(key: str, mode: str = "major") -> DiatonicTriad:
 
 
 # ---------------------------------------------------------------------------
+# Applied dominants (secondary dominants) -- ticket 17 / plan G5a
+# ---------------------------------------------------------------------------
+
+#: Applied-chord heads this slice can build, mapped to the quality of the
+#: chord stacked on the applied root.  Deliberately dominants only: the
+#: applied leading-tone chords (vii°7/x) stay refused until their own ticket.
+_APPLIED_HEADS = {"V": "major", "V7": "dominant_seventh"}
+
+#: A target must be a bare diatonic numeral (optionally quality-decorated,
+#: so the exact-match gate in :func:`build_applied_dominant` can refuse it
+#: honestly); accidentals and figures never lex.
+_APPLIED_TARGET_RE = re.compile(r"^(?:[IV]+|[iv]+)[°+]?$")
+
+
+def parse_applied_token(token: str) -> "Optional[tuple[str, str]]":
+    """Split an applied-dominant token into ``(head, target)``, else ``None``.
+
+    Purely lexical: ``"V7/V" -> ("V7", "V")``.  The head must be exactly
+    ``V`` or ``V7`` and the target a plain Roman numeral -- whether that
+    numeral is honest for a given key/mode is :func:`build_applied_dominant`'s
+    decision, not the lexer's.
+    """
+    t = (token or "").strip()
+    if t.count("/") != 1:
+        return None
+    head, target = (part.strip() for part in t.split("/"))
+    if head not in _APPLIED_HEADS:
+        return None
+    if not _APPLIED_TARGET_RE.match(target):
+        return None
+    try:
+        roman_token_to_index(target)
+    except ValueError:
+        return None
+    return head, target
+
+
+def build_applied_dominant(token: str, key: str,
+                           mode: str = "major") -> DiatonicTriad:
+    """The applied dominant ``token`` names (``V/x`` / ``V7/x``) in ``key``.
+
+    The chord is the major triad / dominant seventh built on the *fifth of
+    the tonicised triad* (the dominant of the target), spelled by stacking
+    thirds from that root -- which is what puts the chromatic tones on the
+    page (``V7/V`` in C major is D-F#-A-C; the F# is G's leading tone).
+
+    Honesty gates, in order:
+
+    * the target token must match the home key's diatonic roman exactly
+      (``V7/V`` refuses natural minor, whose degree-5 triad is ``v``);
+    * the target must not be the tonic (``V7/I`` is just the home ``V7``);
+    * the target triad must be major or minor -- a diminished (or augmented)
+      chord cannot act as a momentary tonic, so ``V7/vii°`` refuses.
+    """
+    parsed = parse_applied_token(token)
+    if parsed is None:
+        raise ValueError(
+            f"Unsupported applied token {token!r}; supported applied "
+            f"dominants are V/x and V7/x with a diatonic Roman-numeral "
+            f"target (e.g. 'V7/V', 'V/ii')")
+    head, target = parsed
+    mode = _refuse_melodic_minor_harmony(mode)
+    scale = generate_scale(key, mode)
+    triads = generate_diatonic_triads(key, mode)
+    t_idx = roman_token_to_index(target)
+    home = triads[t_idx]
+    if home.roman != target:
+        raise ValueError(
+            f"{scale.key} has no diatonic {target}: its degree-{t_idx + 1} "
+            f"triad is {home.roman}, so {head}/{target} would tonicise a "
+            f"chord the key does not contain (did you mean "
+            f"{head}/{home.roman}?)")
+    if t_idx == 0:
+        raise ValueError(
+            f"{head}/{target} tonicises the tonic itself -- that chord is "
+            f"simply the home {head}; write {head}")
+    if home.chord_quality not in ("major", "minor"):
+        raise ValueError(
+            f"cannot tonicise {home.roman} in {scale.key}: a "
+            f"{home.chord_quality} triad cannot act as a momentary tonic")
+
+    # The applied root is the fifth of the target triad (the dominant of the
+    # tonicised degree); the target's major/minor quality guarantees it sits
+    # a perfect fifth above the target root.  The chord's interval content
+    # comes from the canonical layer table (never restated here), and each
+    # tone is spelled with the minimal alteration on its stacked-third letter
+    # -- which is what puts the chromatic accidentals on the page.
+    root = home.pitches[2]
+    root_letter, _ = parse_pitch_class(root)
+    root_pc = note_pc(root)
+    quality = _APPLIED_HEADS[head]
+    layer = QUALITY_TO_INTERVAL_LAYER[quality]
+    semis, total = [], 0
+    for part in layer.split("+"):
+        total += {"m3": 3, "M3": 4}[part]
+        semis.append(total)
+    tones = [root]
+    for k, semi in enumerate(semis, start=1):
+        letter = LETTERS[(LETTER_INDEX[root_letter] + 2 * k) % 7]
+        target_pc = (root_pc + semi) % 12
+        alter = ((target_pc - LETTER_BASE_PC[letter] + 6) % 12) - 6
+        tones.append(spell_pitch_class(letter, alter))
+
+    roman = f"{head}/{target}"
+    chord_symbol = root + _QUALITY_SYMBOL_SUFFIX[quality]
+
+    tonic_letter, _ = parse_pitch_class(scale.tonic)
+    degree_index = (LETTER_INDEX[root_letter]
+                    - LETTER_INDEX[tonic_letter]) % 7
+    _, degree_names = _mode_tables(mode)
+    target_name = degree_names[t_idx]
+
+    scale_pcs = {note_pc(p) for p in scale.scale_pitches}
+    chromatics = [p for p in tones if note_pc(p) not in scale_pcs]
+    mode_label = _mode_label(mode)
+    third = tones[1]
+    target_third = home.pitches[1]
+    if chromatics:
+        verb = "is not" if len(chromatics) == 1 else "are not"
+        intro = (f"{', '.join(chromatics)} {verb} in the {scale.tonic} "
+                 f"{mode_label} scale — {chord_symbol} does not live in "
+                 f"{scale.key}. ")
+    else:
+        intro = ""
+    explanation = (
+        f"{intro}{third} is the leading tone of {home.root}: {chord_symbol} "
+        f"is {roman}, the dominant of the {target_name} ({home.roman}). ")
+    if quality == "dominant_seventh":
+        seventh = tones[3]
+        explanation += (
+            f"Its third ({third}) and seventh ({seventh}) form a tritone "
+            f"that resolves {third}→{home.root} and {seventh}→{target_third} "
+            f"as {roman} moves to {home.roman}.")
+    else:
+        explanation += f"It resolves to {home.roman} ({home.chord_symbol})."
+
+    return DiatonicTriad(
+        key=scale.key,
+        mode=mode,
+        scale_pitches=list(scale.scale_pitches),
+        degree_index=degree_index,
+        degree_number=degree_index + 1,
+        roman=roman,
+        root=root,
+        chord_symbol=chord_symbol,
+        chord_quality=quality,
+        pitches=tones,
+        midi_pitches=_stack_voicing_midi(tones),
+        interval_layer=layer,
+        function_label="applied dominant",
+        scale_degree_name=f"dominant of the {target_name}",
+        explanation_text=explanation,
+    )
+
+
+def applied_tokens_for_mode(mode: str) -> List[str]:
+    """The buildable applied-dominant tokens of ``mode``, in degree order.
+
+    Derived by actually building the chords (mirroring
+    :func:`seventh_tokens_for_mode`'s honesty: the list can never drift from
+    what the engine produces), so it contains exactly the targets whose
+    triads can act as a momentary tonic -- e.g. major's ``V/ii`` ... ``V7/vi``
+    but never ``V7/I`` (the home dominant) or ``V7/vii°``.
+    """
+    mode = _canon_mode(mode)
+    exemplar = "C" if mode == "major" else "A"
+    out: List[str] = []
+    for triad in generate_diatonic_triads(exemplar, mode):
+        for head in ("V", "V7"):
+            try:
+                out.append(build_applied_dominant(
+                    f"{head}/{triad.roman}", exemplar, mode).roman)
+            except ValueError:
+                continue
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Transposition of degree / function patterns
 # ---------------------------------------------------------------------------
 
@@ -860,8 +1052,10 @@ def transpose_degree_pattern(pattern: List[str], key: str, mode: str) -> List[Di
 
     Supported seventh tokens (:data:`SEVENTH_DEGREE_TOKENS`, e.g. ``"V7"``,
     ``"ii7"``, ``"viiø7"``) build their tetrad -- and raise when the token
-    belongs to the other mode (see :func:`build_seventh_chord`); every other
-    token is a diatonic triad.  Example::
+    belongs to the other mode (see :func:`build_seventh_chord`); applied
+    tokens (``"V/x"`` / ``"V7/x"``) build their applied dominant (see
+    :func:`build_applied_dominant`); every other token is a diatonic triad.
+    Example::
 
         transpose_degree_pattern(["ii", "V", "I"], "C", "major")
         # -> [Dm, G, C]
@@ -871,7 +1065,9 @@ def transpose_degree_pattern(pattern: List[str], key: str, mode: str) -> List[Di
     triads = generate_diatonic_triads(key, mode)
     out: List[DiatonicTriad] = []
     for tok in pattern:
-        if parse_seventh_token(tok) is not None:
+        if parse_applied_token(tok) is not None:
+            out.append(build_applied_dominant(tok, key, mode))
+        elif parse_seventh_token(tok) is not None:
             out.append(build_seventh_chord(tok, key, mode))
         else:
             out.append(triads[roman_token_to_index(tok)])

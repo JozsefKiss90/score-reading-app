@@ -635,6 +635,8 @@ class HarmonyLabWindow(QWidget):
                 return
         if spec.concept == "drill":
             self._launch_drill(node_id, spec, echo=echo)
+        elif spec.concept == "applied_chord":
+            self._launch_applied(node_id, spec)
         else:
             self._launch_experiment(node_id, spec)
         if echo or _is_aural_drill(spec):
@@ -657,10 +659,17 @@ class HarmonyLabWindow(QWidget):
         self._progress.started(node_id, _now_iso())
         self._push_progress()
 
+    def _load_inner_drill(self, inner: HarmonyExerciseSpec):
+        """Load a native trainer exercise (shared tail of the drill launchers)."""
+        from harmony.atlas import level_for_spec
+        self._experiment = None
+        self._cadence_node_id = None
+        self.trainer.load_external_spec(inner)
+        self.atlas_view.set_current_level(level_for_spec(inner))
+
     def _launch_drill(self, node_id: str, spec: LabExperimentSpec,
                       echo: bool = False):
         """A native trainer drill (passthrough concept) -> load straight into the trainer."""
-        from harmony.atlas import level_for_spec
         try:
             inner = HarmonyExerciseSpec.from_dict(spec.parameters["exercise"])
         except Exception as exc:
@@ -668,10 +677,27 @@ class HarmonyLabWindow(QWidget):
             return
         if echo:
             inner = echo_variant(inner)   # same chords, ear-first presentation
-        self._experiment = None
-        self._cadence_node_id = None
-        self.trainer.load_external_spec(inner)
-        self.atlas_view.set_current_level(level_for_spec(inner))
+        self._load_inner_drill(inner)
+
+    def _launch_applied(self, node_id: str, spec: LabExperimentSpec):
+        """An applied-chord experiment (ticket 17) -> its native trainer drill.
+
+        Each stage compiles to one trainer exercise; curriculum leaves are
+        single-stage, so this launches the first (and normally only) one.
+        """
+        try:
+            inners = spec.to_exercise_specs()
+        except Exception as exc:
+            print("[LAB] invalid applied_chord experiment:", exc)
+            return
+        if not inners:
+            print("[LAB] applied_chord experiment compiled to no drills:",
+                  spec.experiment_id)
+            return
+        if len(inners) > 1:
+            print("[LAB] applied_chord launches its first stage "
+                  f"({inners[0].exercise_id}); author one stage per leaf")
+        self._load_inner_drill(inners[0])
 
     def _launch_experiment(self, node_id: str, spec: LabExperimentSpec):
         """A synthetic lab concept -> compile + render through the lab pipeline."""

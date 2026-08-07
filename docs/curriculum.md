@@ -224,9 +224,9 @@ The reserved branches already name the seams; each needs only a new
   triads* group activates automatically.
 - **Modal & jazz harmony** — new modes + a `function`-style drill family for
   ii–V–I voicings and extensions.
-- **Secondary dominants** — relax `is_diatonic_roman` to accept `V/V`-style
-  tokens behind a feature flag; the lab spec already rejects them today as a
-  non-goal.
+- **Secondary dominants** — live since ticket 17 (plan G5a): the widened
+  `is_supported_roman` gate accepts `V/x` / `V7/x`, and the *Advanced Topics ›
+  Secondary dominants* lesson owns the 12 spot/resolve applied-chord leaves.
 - **Schenkerian reduction & real-score analysis** — the Atlas `ScoreAnalysis`
   contract (`HarmonySlice` / `CadenceSpan` / `PolyphonicTexture`) is already
   shaped; implementing the analysis algorithm lands each structural chord on an

@@ -186,16 +186,17 @@ class TestLabRomanGate(unittest.TestCase):
     """The gate accepts V7 while still rejecting every not-yet-supported token."""
 
     def test_gate_accepts_v7(self):
-        from harmony.lab_spec import is_diatonic_roman
-        self.assertTrue(is_diatonic_roman("V7"))
+        from harmony.lab_spec import is_supported_roman
+        self.assertTrue(is_supported_roman("V7"))
 
     def test_gate_still_rejects_unsupported_tokens(self):
         # ii7 / Imaj7 / v7 etc. became real tokens with G1b, vii°7 with
-        # G2a's harmonic minor; chromatic, secondary, figured and
-        # mislabelled tokens still fail the gate.
-        from harmony.lab_spec import is_diatonic_roman
-        for bad in ("V9", "V7/V", "V/V", "bII", "#iv", "I7", "IV7", "I64"):
-            self.assertFalse(is_diatonic_roman(bad), bad)
+        # G2a's harmonic minor, and the applied dominants (V/V, V7/V) with
+        # G5a's widened supported-roman gate (tests/test_applied_chords.py);
+        # chromatic, figured and mislabelled tokens still fail the gate.
+        from harmony.lab_spec import is_supported_roman
+        for bad in ("V9", "bII", "#iv", "I7", "IV7", "I64"):
+            self.assertFalse(is_supported_roman(bad), bad)
 
     def test_cadence_concept_accepts_v7_block(self):
         from harmony.lab_spec import LabExperimentSpec

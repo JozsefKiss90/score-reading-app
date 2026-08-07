@@ -265,11 +265,18 @@ class TestReservedBranches(unittest.TestCase):
         self.root = build_curriculum()
 
     def test_reserved_categories_have_no_exercises(self):
-        for cid in ("cat:advanced", "cat:reserved"):
-            node = self.root.find(cid)
-            self.assertIsNotNone(node, cid)
-            self.assertEqual(node.exercise_count, 0, cid)
-            self.assertTrue(node.reserved, cid)
+        # cat:advanced went live with ticket 17 (G5a: the secondary-dominants
+        # stub owns 12 applied-chord leaves); its remaining topics and the
+        # score-analysis category stay honestly reserved and exercise-free.
+        node = self.root.find("cat:reserved")
+        self.assertIsNotNone(node)
+        self.assertEqual(node.exercise_count, 0)
+        self.assertTrue(node.reserved)
+        for lid in ("lesson:adv_modal", "lesson:adv_jazz"):
+            node = self.root.find(lid)
+            self.assertIsNotNone(node, lid)
+            self.assertEqual(node.exercise_count, 0, lid)
+            self.assertTrue(node.reserved, lid)
 
     def test_bridge_categories_present(self):
         for cid in ("cat:atlas", "cat:circle"):

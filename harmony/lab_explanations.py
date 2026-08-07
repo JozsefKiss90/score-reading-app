@@ -45,7 +45,7 @@ from theory.diatonic_harmony import _mode_word
 
 #: Canonical concept keys for the theory layer.
 CONCEPT_KEYS = ["inversion", "voice_leading", "motive", "polyphonic_harmony",
-                "reduction"]
+                "reduction", "applied_chord"]
 
 #: Map every name a caller might pass (spec.concept values, the run-demo concept
 #: catalogue selector ids) onto a canonical concept key.
@@ -59,6 +59,8 @@ _CONCEPT_ALIASES = {
     "polyphonic": "polyphonic_harmony",
     "reduction": "reduction",
     "real_score_analysis": "reduction",
+    "applied_chord": "applied_chord",
+    "secondary_dominant": "applied_chord",
 }
 
 
@@ -290,6 +292,58 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
         "next_steps": [
             "Implement ScoreAnalysis to emit HarmonySlice / CadenceSpan from a score.",
             "Add the reduction algorithm; it slots into the existing contract.",
+        ],
+    },
+    "applied_chord": {
+        "title": "Applied chords (secondary dominants)",
+        "short_definition": (
+            "An applied dominant is the dominant OF another chord: V7/V is the "
+            "dominant seventh built on the fifth of the dominant, briefly "
+            "treating that chord as a tonic."),
+        "core_idea": (
+            "Any major or minor triad can be preceded by its own dominant - a "
+            "chord borrowed from the key it would be tonic of. The applied "
+            "chord imports a chromatic tone (the target's leading tone: F# in "
+            "C major's V7/V), which is exactly what makes it audible as an "
+            "intruder, and its tritone resolves into the target just as V7 "
+            "resolves into I. This is tonicisation - a momentary lean toward "
+            "another key - not yet modulation: the home key never actually "
+            "changes."),
+        "what_to_listen_for": [
+            "The chromatic tone that does not belong to the home scale.",
+            "The extra pull toward the tonicised chord (a dominant in miniature).",
+            "The tritone (applied third + seventh) collapsing into the target.",
+        ],
+        "what_to_play": [
+            "Spot: click the one chord of the progression that leaves the key.",
+            "Resolve: play the applied chord, then its target, and feel the "
+            "leading tone rise by a semitone.",
+            "Arpeggiate the applied chord and stop on the chromatic tone.",
+        ],
+        "theory_terms": [
+            "applied dominant", "secondary dominant", "tonicisation",
+            "leading tone", "tritone resolution", "chromaticism",
+        ],
+        "atlas_connections": [
+            "The applied chord claims NO diatonic Atlas node: D7 in C major is "
+            "not ii - the base_roman honesty rule keeps it off the graph.",
+            "The secondary-dominant network scene (plan G5b) will own the "
+            "V7/x -> x edge once its template ships.",
+            "The resolve pair mirrors the circle of fifths: every applied "
+            "dominant is one fifths-step of borrowed gravity.",
+        ],
+        "common_misconceptions": [
+            "\"D7 in C major is some kind of ii\" - the chromatic F# disqualifies "
+            "it; it is V7/V, the dominant of the dominant.",
+            "\"An applied chord changes the key\" - tonicisation is momentary; "
+            "modulation (a real key change) is a later topic.",
+            "\"Any chromatic chord is an applied dominant\" - only chords built "
+            "as the dominant (V or V7) of a diatonic major/minor triad are.",
+        ],
+        "next_steps": [
+            "Random intruder positions, more targets, and the ear stage (G5c).",
+            "The secondary-dominant network graph (G5b).",
+            "Dominant chains (V/V/V...) around the circle of fifths.",
         ],
     },
 }

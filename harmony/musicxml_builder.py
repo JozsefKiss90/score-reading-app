@@ -31,6 +31,8 @@ from harmony.exercise_spec import (
 from theory.diatonic_harmony import (
     DiatonicTriad,
     key_signature_fifths,
+    note_pc,
+    parse_applied_token,
     parse_pitch_class,
     LETTER_INDEX,
     LETTER_BASE_PC,
@@ -228,7 +230,8 @@ def _treble_arpeggio(triad: DiatonicTriad, fifths: int) -> str:
 
 
 def _measure_xml(chord: CompiledChord, m_no: int, fifths: int,
-                 prev_fifths: Optional[int], is_last: bool) -> str:
+                 prev_fifths: Optional[int], is_last: bool,
+                 hide_roman: bool = False) -> str:
     triad = chord.triad
 
     if m_no == 1:
@@ -251,7 +254,10 @@ def _measure_xml(chord: CompiledChord, m_no: int, fifths: int,
     else:
         attr_block = ""
 
-    annotation = _annotation_xml(triad)
+    # The spot stage hides the intruder's Roman label on the score — the
+    # roman ("V7/V") IS the answer; its chord symbol (D7) stays visible.
+    annotation = (_chord_symbol_harmony(triad) if hide_roman
+                  else _annotation_xml(triad))
 
     if chord.render == "arpeggio":
         treble = _treble_arpeggio(triad, fifths)
@@ -283,6 +289,7 @@ def build_musicxml(compiled: CompiledExercise, title: Optional[str] = None) -> s
         raise ValueError("Cannot build MusicXML for an empty exercise")
 
     title = title or compiled.title
+    spot = compiled.spec.answer_mode == "spot"
     measures: List[str] = []
     prev_fifths: Optional[int] = None
     n = len(compiled.chords)
@@ -291,6 +298,8 @@ def build_musicxml(compiled: CompiledExercise, title: Optional[str] = None) -> s
         measures.append(_measure_xml(
             chord, m_no=i + 1, fifths=fifths, prev_fifths=prev_fifths,
             is_last=(i == n - 1),
+            hide_roman=(spot and
+                        parse_applied_token(chord.triad.roman) is not None),
         ))
         prev_fifths = fifths
 
@@ -318,7 +327,7 @@ def _target_for(chord: CompiledChord) -> Dict:
     voicing = triad_treble_voicing(triad)
     midi_pitches = [_midi_of(step, alter, octave) for (step, alter, octave) in voicing]
     pitch_classes = [m % 12 for m in midi_pitches]  # ordered root/third/fifth
-    return {
+    target = {
         "absMeasure": chord.index,
         "measureNumber": chord.index + 1,
         "group": chord.group,
@@ -341,6 +350,18 @@ def _target_for(chord: CompiledChord) -> Dict:
         "scaleDegreeName": triad.scale_degree_name,
         "explanation": triad.explanation_text,
     }
+    if parse_applied_token(triad.roman) is not None:
+        # The intruder metadata (ticket 17 / plan G5a): which tones are
+        # chromatic to the home key (the pulsing noteheads of the spot
+        # stage), and the tritone the resolve stage watches.
+        scale_pcs = {note_pc(p) for p in triad.scale_pitches}
+        target["intruder"] = True
+        target["chromaticPcs"] = [note_pc(p) for p in triad.pitches
+                                  if note_pc(p) not in scale_pcs]
+        if triad.chord_quality == "dominant_seventh":
+            target["tritonePcs"] = [note_pc(triad.pitches[1]),
+                                    note_pc(triad.pitches[3])]
+    return target
 
 
 def _mcq_for(target: Dict, focus: str = "roman") -> Dict:
@@ -392,6 +413,30 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         for t in targets:
             t["mcq"] = _mcq_for(t, compiled.spec.mcq_focus)
 
+    # Tritone-resolution metadata (ticket 17): when an applied dominant is
+    # immediately followed by its target (same key group), the resolution
+    # target learns which noteheads to flag green as the tritone resolves.
+    for prev, nxt in zip(targets, targets[1:]):
+        applied = parse_applied_token(prev["roman"])
+        if (applied is None or "tritonePcs" not in prev
+                or nxt["roman"] != applied[1]
+                or nxt["group"] != prev["group"]):
+            continue
+        third, seventh = prev["chordTones"][1], prev["chordTones"][3]
+        root, res_third = nxt["chordTones"][0], nxt["chordTones"][1]
+        nxt["tritoneResolution"] = {
+            "fromPcs": list(prev["tritonePcs"]),
+            "fromMeasure": prev["absMeasure"],
+            "toPcs": [nxt["pitchClasses"][0], nxt["pitchClasses"][1]],
+            "text": f"{third}→{root}, {seventh}→{res_third}",
+        }
+
+    spot_index = None
+    if answer_mode == "spot":
+        spot_index = next(i for i, t in enumerate(targets)
+                          if t.get("intruder"))
+        targets[spot_index]["romanHidden"] = True
+
     target_by_measure: Dict[str, Dict] = {str(t["absMeasure"]): t for t in targets}
 
     expected: Dict[str, object] = {}
@@ -406,7 +451,7 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         else:
             expected[abs_key] = list(t["pitchClasses"])
 
-    return {
+    payload = {
         "TRAINER_MODE": True,
         "schema": "harmony-trainer/payload-v1",
         "exerciseId": compiled.spec.exercise_id,
@@ -419,6 +464,9 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         "TARGET_BY_MEASURE": target_by_measure,
         "EXPECTED_MIDI_BY_MEASURE_OR_BEAT": expected,
     }
+    if spot_index is not None:
+        payload["SPOT_INDEX"] = spot_index
+    return payload
 
 
 def build_exercise(compiled: CompiledExercise) -> Tuple[str, Dict]:

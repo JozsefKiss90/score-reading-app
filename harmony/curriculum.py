@@ -48,6 +48,7 @@ from typing import Dict, List, Optional
 from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
+    parse_applied_token,
     parse_seventh_token,
     seventh_tokens_for_mode,
     SEVENTH_QUALITY_LABELS,
@@ -1453,6 +1454,68 @@ def _inversion_curriculum_specs(mode: str, degree: str) -> List[LabExperimentSpe
 # ---------------------------------------------------------------------------
 # Tree assembly
 # ---------------------------------------------------------------------------
+# Applied chords (ticket 17 / plan G5a): "Spot the intruder"
+# ---------------------------------------------------------------------------
+#
+# The first chromatic drills, in C major only (the fixed-position / one-key
+# first rung of plan §7's difficulty ramp; random positions, more keys and
+# the ear stage are ticket 19 / G5c).  Each tonicisable degree gets a short
+# diatonic progression with its applied dominant as the intruder, at varying
+# positions, plus block + arpeggio resolve pairs.
+
+_APPLIED_PROGRESSIONS = [
+    # (applied token, progression) — intruder positions deliberately vary
+    ("V7/V", ["I", "vi", "V7/V", "V", "I"]),     # the plan §7 flagship
+    ("V7/IV", ["I", "V7/IV", "IV", "V", "I"]),
+    ("V7/ii", ["I", "IV", "V7/ii", "ii", "V"]),
+    ("V7/vi", ["I", "V7/vi", "vi", "IV", "I"]),
+]
+
+
+def _applied_slug(token: str) -> str:
+    """``"V7/V" -> "v7_of_v"`` — the full head keeps a future ``V/x`` spec's
+    id distinct from its ``V7/x`` sibling (same rule as the figured ids)."""
+    head, target = parse_applied_token(token)
+    return f"{head.lower()}_of_{target.lower()}"
+
+
+def _applied_spot_specs() -> List[LabExperimentSpec]:
+    """The four spot-the-intruder experiments (one per tonicisable target)."""
+    out = []
+    for token, progression in _APPLIED_PROGRESSIONS:
+        target = parse_applied_token(token)[1]
+        out.append(LabExperimentSpec(
+            experiment_id=f"applied_spot_{_applied_slug(token)}_c",
+            title=f"Spot the intruder: {token} in C major",
+            concept="applied_chord", mode="major", key="C major",
+            render="block",
+            parameters={"progression": list(progression),
+                        "stages": ["spot"]},
+            description=(f"One chord of {'–'.join(progression)} does not live "
+                         f"in C major: {token}, the dominant of {target}. "
+                         f"Click it."),
+        ))
+    return out
+
+
+def _applied_resolve_specs(render: str) -> List[LabExperimentSpec]:
+    """The resolve-the-intruder experiments (block, or arpeggio second pass)."""
+    out = []
+    for token, progression in _APPLIED_PROGRESSIONS:
+        target = parse_applied_token(token)[1]
+        out.append(LabExperimentSpec(
+            experiment_id=(f"applied_resolve_{_applied_slug(token)}_c_"
+                           f"{render}"),
+            title=f"Resolve the intruder: {token}→{target} in C major",
+            concept="applied_chord", mode="major", key="C major",
+            render=render,
+            parameters={"progression": list(progression),
+                        "stages": ["resolve"]},
+            description=(f"Play {token}, then {target}: the chromatic leading "
+                         f"tone rises a semitone as the tritone resolves."),
+        ))
+    return out
+
 
 def _grouped_specs() -> "OrderedDict[str, List[HarmonyExerciseSpec]]":
     return default_exercise_groups()
@@ -2421,30 +2484,59 @@ def build_curriculum() -> CurriculumNode:
     circle_lesson.keywords = ["circle", "open circle"]
 
     # ===================================================================
-    # 13. ADVANCED TOPICS  (reserved — the future-expansion seams)
+    # 13. ADVANCED TOPICS  (secondary dominants live — ticket 17 / G5a;
+    #     modal & jazz still reserved)
     # ===================================================================
-    advanced = cat("advanced", "Advanced Topics (reserved)",
-                   "Where the curriculum grows next.",
-                   "Preview the reserved expansion: modal & jazz harmony, "
-                   "secondary dominants.", 5,
-                   kind="reserved", reserved=True,
-                   theory="These topics are reserved. The data model already shapes "
-                          "for them: a new LabExperimentSpec (or a new theory mode) "
-                          "is all each one needs. (Seventh chords graduated with "
-                          "the V7 tracer; harmonic minor with ticket 13; melodic "
-                          "minor & III+ with ticket 14.)",
-                   keywords=["advanced", "reserved", "future"])
+    advanced = cat("advanced", "Advanced Topics",
+                   "Where the curriculum grows next — secondary dominants "
+                   "are live.",
+                   "Spot and resolve the first applied chords; preview the "
+                   "reserved expansion (modal & jazz harmony).", 4,
+                   theory="Secondary dominants graduated with ticket 17 (the "
+                          "spot-the-intruder drill); modal and jazz harmony "
+                          "stay reserved — the data model already shapes for "
+                          "them: a new LabExperimentSpec (or a new theory "
+                          "mode) is all each one needs.",
+                   keywords=["advanced", "secondary dominant", "applied",
+                             "future"])
     for i, (aid, title, blurb) in enumerate([
         ("modal", "Modal harmony",
          "Dorian, Phrygian, Lydian, Mixolydian colour."),
         ("jazz", "Jazz harmony",
          "Extensions, ii–V–I voicings, tritone substitution."),
-        ("secondary", "Secondary dominants",
-         "V/V and friends — tonicising a non-tonic degree."),
     ]):
         ln = lesson(advanced, f"adv_{aid}", title, blurb,
                     f"(Reserved) {blurb}", 5, kind="reserved", reserved=True,
                     theory=blurb, keywords=[aid, "reserved"])
+
+    # -- Secondary dominants (ticket 17 / plan G5a): the reserved stub goes
+    #    live.  Spot the intruder (click the chromatic chord), then resolve
+    #    it (play V7/x → x, tritone flagged green), block then arpeggio.
+    l_sec = lesson(
+        advanced, "adv_secondary", "Secondary dominants",
+        "V/V and friends — tonicising a non-tonic degree.",
+        "Spot the applied dominant in a progression, name what it "
+        "tonicises, and play its resolution.", 4, minutes=25,
+        theory="Any major or minor triad can be preceded by its OWN "
+               "dominant — a chord borrowed from the key it would be tonic "
+               "of. The borrowed chord imports the target's leading tone (a "
+               "chromatic intruder in the home key: F# in C major's V7/V = "
+               "D7), and its tritone resolves into the target exactly as V7 "
+               "resolves into I. This is tonicisation, not modulation: the "
+               "home key never changes.",
+        keywords=["secondary dominant", "applied dominant", "V/V",
+                  "tonicisation", "intruder", "chromatic"])
+    grp_spot = group(l_sec, "applied_spot", "Spot the intruder",
+                     "Click the chord that doesn't live in the key.", 4)
+    fill_lab(grp_spot, _applied_spot_specs(), 4)
+    grp_resolve = group(l_sec, "applied_resolve", "Resolve the intruder",
+                        "Play the applied chord, then its target — the "
+                        "tritone resolves.", 4)
+    fill_lab(grp_resolve, _applied_resolve_specs("block"), 4)
+    grp_resolve_arp = group(l_sec, "applied_resolve_arp",
+                            "Arpeggio resolves (second pass)",
+                            "The same resolutions, tone by tone.", 4)
+    fill_lab(grp_resolve_arp, _applied_resolve_specs("arpeggio"), 4)
 
     # ===================================================================
     # 14. RESERVED — Real-score analysis & reduction
