@@ -125,6 +125,19 @@ function resolvePayload() {
   };
 }
 
+// The ear stage (ticket 19 / plan G5c): the same hunt, veiled, plus the
+// follow-up question about which degree was tonicised.
+function earPayload() {
+  const p = spotPayload();
+  p.PRESENTATION = "echo";
+  p.SPOT_FOLLOWUP = {
+    prompt: "Which degree did that chord tonicise?",
+    options: ["ii", "iii", "IV", "V", "vi"],
+    answer: "V",
+  };
+  return p;
+}
+
 let passed = 0;
 function assert(cond, msg) {
   if (!cond) { console.error("FAIL:", msg); process.exitCode = 1; throw new Error(msg); }
@@ -210,6 +223,60 @@ function assert(cond, msg) {
   assert(h.HT.tritoneActiveIds().length === 0,
          "no tritone highlight without the payload field");
   console.log("Test E (no spot fields, no change): PASS");
+})();
+
+// === Test F: the ear stage asks two questions and keeps the veil until both =
+(function testEarStageTwoQuestions() {
+  const h = makeHarness(earPayload());
+  h.HT.init(earPayload());
+  let st = h.HT.state();
+  assert(st.answerMode === "spot" && st.presentation === "echo",
+         "a veiled spot payload is the ear stage");
+  assert(st.veiled === true, "the notation starts veiled");
+  assert(h.HT.currentTarget().echoVeiled === true,
+         "external panes see the redacted target, not the chords");
+
+  const wrongBar = h.HT.answer(0);
+  assert(wrongBar.correct === false, "a diatonic bar is the wrong position");
+  assert(h.HT.state().veiled === true, "a wrong guess does not lift the veil");
+
+  const rightBar = h.HT.answer(2);
+  assert(rightBar.correct === true, "clicking the intruder's bar is correct");
+  st = h.HT.state();
+  assert(st.finished === false,
+         "the position answer alone does NOT finish the ear stage");
+  assert(st.followupPending === true, "the degree question is now open");
+  assert(st.veiled === true,
+         "the veil holds while the follow-up is unanswered (the score would " +
+         "answer it)");
+
+  const wrongDegree = h.HT.answer("ii");
+  assert(wrongDegree.mode === "spot_followup" && wrongDegree.correct === false,
+         "a wrong degree is logged as a follow-up attempt and re-askable");
+  assert(h.HT.state().finished === false, "and does not finish the drill");
+
+  const rightDegree = h.HT.answer("V");
+  assert(rightDegree.correct === true && rightDegree.expected === "V",
+         "naming the tonicised degree is graded against SPOT_FOLLOWUP.answer");
+  st = h.HT.state();
+  assert(st.finished === true, "both answers finish the ear stage");
+  assert(st.veiled === false, "finishing reveals the notation");
+  assert(JSON.stringify(h.HT.spotActiveIds()) === JSON.stringify(["n2_1"]),
+         "the reveal pulses the chromatic notehead, as in the visual stage");
+  assert(h.HT.answerState().log.length === 4, "every attempt is logged");
+  assert(h.HT.answer("IV") === null, "answering after the finish is inert");
+  console.log("Test F (ear stage: position then degree): PASS");
+})();
+
+// === Test G: a spot payload with no follow-up still finishes in one click ===
+(function testVisualSpotUnchangedByTheEarStage() {
+  const h = makeHarness(spotPayload());
+  h.HT.init(spotPayload());
+  h.HT.answer(2);
+  const st = h.HT.state();
+  assert(st.finished === true, "the visual spot drill still finishes at once");
+  assert(st.followupPending === false, "and asks no follow-up");
+  console.log("Test G (visual spot unchanged): PASS");
 })();
 
 console.log("\nAll spot/tritone checks passed (" + passed + " assertions).");

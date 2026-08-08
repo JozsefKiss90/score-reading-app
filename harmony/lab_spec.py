@@ -302,11 +302,18 @@ class ReductionParams:
     source: dict = field(default_factory=dict)
 
 
-#: The applied-chord stages this slice ships (ticket 17 / plan G5a).  The
-#: *ear* stage ("hear the progression, click the chromatic chord") is
-#: reserved for the applied ramps ticket (19 / plan G5c) -- it needs the A1
-#: chromatic-spotting level, not just a payload flag.
-APPLIED_STAGES = ("spot", "resolve")
+#: The applied-chord stages, in teaching order (ticket 17 / plan G5a; the
+#: *ear* stage landed with ticket 19 / plan G5c).  ``spot`` hunts the
+#: intruder by eye, ``resolve`` plays it into its target, and ``ear`` is the
+#: same hunt with the notation veiled: the progression is heard, the learner
+#: clicks the *position* of the chromatic chord and then names the degree it
+#: tonicised (the payload's follow-up question).
+APPLIED_STAGES = ("spot", "resolve", "ear")
+
+#: The stages that render the whole progression as a block hunt (an arpeggio
+#: render spreads one chord over four beats -- fine for the resolve pass, but
+#: it stops the progression reading as a row of chords to pick from).
+_APPLIED_BLOCK_STAGES = ("spot", "ear")
 
 
 @dataclass(frozen=True)
@@ -627,20 +634,16 @@ class LabExperimentSpec:
             if not ap.stages:
                 raise ValueError("applied_chord requires a non-empty 'stages'")
             for s in ap.stages:
-                if s == "ear":
-                    raise ValueError(
-                        "the applied 'ear' stage is reserved for the applied "
-                        "ramps slice (ticket 19 / plan G5c); this slice ships "
-                        "the 'spot' and 'resolve' stages")
                 if s not in APPLIED_STAGES:
                     raise ValueError(
                         f"unknown applied stage {s!r}; the stages are "
                         f"{APPLIED_STAGES}")
-            if "spot" in ap.stages and self.render != "block":
+            block_stages = [s for s in ap.stages if s in _APPLIED_BLOCK_STAGES]
+            if block_stages and self.render != "block":
                 raise ValueError(
-                    "the spot stage requires render='block': the intruder "
-                    "hunt reads a block progression (the arpeggio render is "
-                    "the resolve stage's second pass)")
+                    f"the {block_stages[0]} stage requires render='block': the "
+                    f"intruder hunt reads a block progression (the arpeggio "
+                    f"render is the resolve stage's second pass)")
             if not ap.progression:
                 raise ValueError("applied_chord requires a 'progression'")
             roman = normalise_pattern(list(ap.progression))
@@ -797,6 +800,25 @@ class LabExperimentSpec:
                         description=(f"One chord of {label} does not live in "
                                      f"{tonic} {_mode_word(self.mode)} — "
                                      f"click it."),
+                    ))
+                elif stage == "ear":
+                    # The same hunt with the notation veiled (ticket 19 / plan
+                    # G5c): the progression plays, the learner clicks the
+                    # position of the chromatic chord and then names the
+                    # degree it tonicised (the payload's follow-up question).
+                    specs.append(HarmonyExerciseSpec(
+                        exercise_id=(f"lab_applied_ear_{self.mode}_"
+                                     f"{_key_slug(tonic)}_"
+                                     f"{_ident('_'.join(roman))}"),
+                        title=f"Hear the intruder: {label} in {tonic} "
+                              f"{_mode_word(self.mode)}",
+                        drill="function", render="block", mode=self.mode,
+                        pattern=roman, keys=[tonic], answer_mode="spot",
+                        presentation="echo",
+                        description=(f"Listen — the notation is hidden. Click "
+                                     f"the bar where the chord leaves {tonic} "
+                                     f"{_mode_word(self.mode)}, then name the "
+                                     f"degree it tonicises."),
                     ))
                 else:  # resolve — the intruder and its promised target
                     specs.append(HarmonyExerciseSpec(

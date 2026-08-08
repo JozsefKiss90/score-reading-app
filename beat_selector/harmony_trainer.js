@@ -81,6 +81,16 @@
   var tritoneIds = [];          // note ids currently lit green
   var resolveMsg = "";          // "✓ Tritone resolved: F#→G, C→B"
 
+  // ---- the applied ear stage (ticket 19, plan G5c) -----------------------
+  // A veiled spot payload (PRESENTATION "echo" + ANSWER_MODE "spot") asks the
+  // hunt by ear: the answer surface is a strip of BAR POSITIONS (the card list
+  // names chords and stays withheld), and payload SPOT_FOLLOWUP adds the
+  // second question — which degree did that chord tonicise?  The drill is not
+  // finished (and the veil does not lift) until both are answered, so the
+  // notation can never reveal the follow-up's answer.
+  var spotFound = false;        // the position question is answered
+  var followupDone = false;     // the tonicisation question is answered
+
   // ---- pitch helpers -----------------------------------------------------
   var STEP_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
@@ -445,6 +455,17 @@
     return data ? Math.trunc(Number(data.SPOT_INDEX)) : -1;
   }
 
+  // The ear stage's second question (null when the payload asks only "where").
+  function spotFollowup() {
+    return (answerMode === "spot" && data && data.SPOT_FOLLOWUP)
+      ? data.SPOT_FOLLOWUP : null;
+  }
+
+  // Between the two questions: the position is found, the degree is not.
+  function followupPending() {
+    return !!(spotFollowup() && spotFound && !followupDone);
+  }
+
   // ---- echo veil (plan A1, ticket 07) ------------------------------------
   function isVeiled() { return presentation === "echo" && !finished; }
 
@@ -509,6 +530,8 @@
     resetAttempt();
     lastAnswer = null;               // feedback belongs to the left target
     finished = false;
+    spotFound = false;               // a fresh pass re-asks both ear questions
+    followupDone = false;
     clearAppliedHighlights();        // fresh pass: no stale intruder/tritone
     updateVeil();                    // a fresh echo pass re-hides the notation
     applySelection();
@@ -641,7 +664,11 @@
   // Returns the recorded log entry, or null when answering is not available.
   function submitAnswer(given) {
     var t = cur();
-    if (!t || finished || completed) return null;
+    if (!t) return null;
+    // The ear stage's follow-up (ticket 19): the position is already found —
+    // `completed` is set — so this branch runs before the usual guard.
+    if (followupPending()) return submitFollowup(given);
+    if (finished || completed) return null;
     var entry;
     if (answerMode === "mcq") {
       entry = { idx: idx, mode: "mcq", given: given,
@@ -664,9 +691,17 @@
       completed = true;
       answeredCorrect.add(entry.idx);
       if (answerMode === "spot") {
-        // Single question: the correct click finishes the exercise.  The
-        // full re-render reveals the hidden roman, marks the intruder card
-        // amber, and pulses its chromatic noteheads.
+        // The position question is answered.  Visually that is the whole
+        // drill; by ear (SPOT_FOLLOWUP) the degree question comes next and
+        // the veil must stay until it is answered — finishing here would
+        // reveal the notation the follow-up is asked about.
+        spotFound = true;
+        if (followupPending()) {
+          renderPanel();
+          return entry;
+        }
+        // The full re-render reveals the hidden roman, marks the intruder
+        // card amber, and pulses its chromatic noteheads.
         finished = true;
         spotPulse();
         renderPanel();
@@ -681,6 +716,29 @@
         // have navigated away during the feedback beat).
         if (idx === entry.idx && completed && !finished) advance();
       }, ANSWER_ADVANCE_MS);
+    } else {
+      renderProgress();
+      renderAnswerUI();
+    }
+    return entry;
+  }
+
+  // The ear stage's second question (ticket 19): `given` is one of
+  // SPOT_FOLLOWUP.options — the degree the intruder tonicised.  Answering it
+  // correctly is what finishes the drill and lifts the veil.
+  function submitFollowup(given) {
+    var f = spotFollowup();
+    var entry = { idx: idx, mode: "spot_followup", given: String(given),
+                  expected: f.answer };
+    entry.correct = entry.given === entry.expected;
+    answerLog.push(entry);
+    lastAnswer = entry;
+    if (entry.correct) {
+      followupDone = true;
+      finished = true;
+      spotPulse();
+      renderPanel();
+      emitTargetChange();
     } else {
       renderProgress();
       renderAnswerUI();
@@ -810,9 +868,24 @@
     // Echo listen phase: everything that names the chord IS the answer —
     // show only the key context, the position, and how to listen.
     if (isVeiled()) {
+      // The ear stage's second phase (ticket 19): the bar is found, so the
+      // panel stops asking for it and points at the degree question.
+      if (followupPending()) {
+        var found = targets()[spotIndex()];
+        el.innerHTML =
+          '<div class="row big">' + esc(t.key) + " — bar " +
+          esc(found ? found.measureNumber : "?") + " left the key</div>" +
+          '<div class="exp">Now name the degree that chord tonicised, in ' +
+          "the answer strip below. The notation stays hidden until you do — " +
+          "it would give the answer away.</div>";
+        return;
+      }
       // Echo + mcq (ticket 10): the learner IDENTIFIES what they hear from
       // the answer strip instead of playing it back.
-      var listenHow = answerMode === "mcq"
+      var listenHow = answerMode === "spot"
+        ? "hear the progression, then click the bar where the harmony left " +
+          "the key — one chord is borrowed from elsewhere"
+        : answerMode === "mcq"
         ? "hear the chord, then name it from the answer strip below."
         : dictation === "bass"
           ? "hear the progression, then play only its bass line — one " +
@@ -981,8 +1054,25 @@
     });
   }
 
-  // The answer strip: MCQ options for identification drills, or the
-  // click-a-card instruction.  Empty (and inert) in classic midi mode.
+  // One row of answer buttons (MCQ options, the ear stage's bar positions or
+  // its follow-up degrees) — same look, same disabled rule.
+  function optionButtons(options, onPick, disabled) {
+    var row = document.createElement("div");
+    row.className = "opts";
+    (options || []).forEach(function (opt) {
+      var b = document.createElement("button");
+      b.className = "htOpt";
+      b.textContent = opt;
+      if (disabled) b.disabled = true;
+      b.addEventListener("click", function () { onPick(opt); });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  // The answer strip: MCQ options for identification drills, the ear stage's
+  // bar-position strip and follow-up question, or the click-a-card
+  // instruction.  Empty (and inert) in classic midi mode.
   function renderAnswerUI() {
     var box = document.getElementById("htAnswer");
     if (!box) return;
@@ -991,40 +1081,59 @@
     var t = cur();
     if (!t) return;
 
+    var followup = followupPending() ? spotFollowup() : null;
     var prompt = document.createElement("div");
     prompt.className = "prompt";
-    prompt.textContent = answerMode === "mcq"
-      ? ((t.mcq && t.mcq.prompt) || "Identify the chord:")
-      : answerMode === "spot"
-        ? "One of these chords doesn't live in " + t.key + ". Click it."
-        : "Click the matching chord card below.";
+    prompt.textContent = followup
+      ? (followup.prompt || "Which degree did that chord tonicise?")
+      : answerMode === "mcq"
+        ? ((t.mcq && t.mcq.prompt) || "Identify the chord:")
+        : answerMode === "spot"
+          ? (isVeiled()
+              // Veiled: the cards are withheld, so the bar strip below IS the
+              // answer surface — the question is *where*, not *which card*.
+              ? "One bar leaves " + t.key + ". Which one did you hear?"
+              : "One of these chords doesn't live in " + t.key + ". Click it.")
+          : "Click the matching chord card below.";
     box.appendChild(prompt);
 
-    if (answerMode === "mcq") {
-      var opts = document.createElement("div");
-      opts.className = "opts";
-      (((t.mcq) && t.mcq.options) || []).forEach(function (opt) {
+    if (followup) {
+      box.appendChild(optionButtons(followup.options, submitFollowup));
+    } else if (answerMode === "mcq") {
+      box.appendChild(optionButtons(((t.mcq) && t.mcq.options) || [],
+                                    submitAnswer, completed));
+    } else if (answerMode === "spot" && isVeiled()) {
+      // The ear stage's position strip: bar numbers only — no roman, no chord
+      // symbol, nothing the veil is hiding.
+      var strip = document.createElement("div");
+      strip.className = "opts";
+      targets().forEach(function (tt, i) {
         var b = document.createElement("button");
-        b.className = "htOpt";
-        b.textContent = opt;
-        if (completed) b.disabled = true;
-        b.addEventListener("click", function () { submitAnswer(opt); });
-        opts.appendChild(b);
+        b.className = "htOpt htPos";
+        b.textContent = "bar " + tt.measureNumber;
+        b.dataset.index = String(i);
+        b.addEventListener("click", function () { submitAnswer(i); });
+        strip.appendChild(b);
       });
-      box.appendChild(opts);
+      box.appendChild(strip);
     }
 
     var msg = document.createElement("div");
     msg.id = "htAnsMsg";
     if (lastAnswer && lastAnswer.idx === idx) {
+      var named = lastAnswer.mode === "mcq"
+        || lastAnswer.mode === "spot_followup";
       msg.className = lastAnswer.correct ? "ok" : "bad";
       msg.textContent = lastAnswer.correct
-        ? "✓ Correct — " + (answerMode === "mcq" ? String(lastAnswer.given) : "that's the one") + "!"
-        : (answerMode === "mcq"
+        ? "✓ Correct — " + (named ? String(lastAnswer.given) : "that's the one") + "!"
+        : (named
             ? "✗ Not " + String(lastAnswer.given) + " — try again."
             : answerMode === "spot"
-              ? "✗ That chord lives in " + ((cur() || {}).key || "the key") +
-                " — try again."
+              ? (isVeiled()
+                  ? "✗ That bar stayed in " + ((cur() || {}).key || "the key") +
+                    " — listen again."
+                  : "✗ That chord lives in " +
+                    ((cur() || {}).key || "the key") + " — try again.")
               : "✗ Not that card — try again.");
       box.appendChild(msg);
     }
@@ -1038,7 +1147,9 @@
       // drill is veiled the header stays neutral; the finish reveal brings
       // the full title back alongside the notation.
       title.textContent = isVeiled()
-        ? (answerMode === "mcq"
+        ? (answerMode === "spot"
+            ? "🎧 Ear drill — listen, then spot the chromatic chord"
+            : answerMode === "mcq"
             ? "🎧 Ear drill — listen, then identify  —  " + renderWord
             : dictation === "bass"
               ? "🎧 Bass-line dictation — listen, then play the bass line"
@@ -1081,6 +1192,8 @@
     spotIds = [];
     tritoneIds = [];
     resolveMsg = "";
+    spotFound = false;
+    followupDone = false;
 
     ensureStyles();
     if (document.body) document.body.classList.add("ht-active");
@@ -1106,7 +1219,10 @@
                arpIndex: arpIndex, total: targets().length,
                answerMode: answerMode, answered: answerLog.length,
                presentation: presentation, veiled: isVeiled(),
-               dictation: dictation };
+               dictation: dictation,
+               // The ear stage's two-question flow (ticket 19): "where" is
+               // answered, "which degree" is still open.
+               followupPending: followupPending() };
     },
     // Non-MIDI answering (plan U2).  MCQ: answer("IV"); card: answer(3).
     answer: submitAnswer,

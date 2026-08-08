@@ -73,16 +73,19 @@ _VALID_QUALITY = {"major", "minor", "diminished", "augmented"} | _SEVENTH_QUALIT
 #: surface (click the matching card); ``spot`` (ticket 17 / plan G5a) is the
 #: single-question intruder hunt — a ``function`` drill whose pattern holds
 #: exactly one applied chord, answered by clicking the chord that does not
-#: live in the key.
+#: live in the key.  Veiled (``presentation="echo"``, ticket 19 / plan G5c)
+#: the same question is asked of the *ear*: the clickable surface is a strip
+#: of bar positions, and a follow-up asks which degree was tonicised.
 _VALID_ANSWER_MODES = {"midi", "mcq", "card", "spot"}
 
 #: How the exercise is presented (plan A1, ticket 07).  ``visual`` is the
 #: classic notation-first drill; ``echo`` is its aural twin — the target plays
 #: with the notation hidden.  With ``answer_mode="midi"`` the learner plays
 #: back what they hear; with ``answer_mode="mcq"`` they *identify* what they
-#: hear from the answer strip (the A1 ID drills, ticket 10).  ``card`` cannot
-#: be echoed: the card list is the answer surface and is withheld while the
-#: notation is veiled.
+#: hear from the answer strip (the A1 ID drills, ticket 10); with
+#: ``answer_mode="spot"`` they click *where* the chromatic chord sounded (the
+#: applied ear stage, ticket 19).  ``card`` cannot be echoed: the card list is
+#: the answer surface and is withheld while the notation is veiled.
 _VALID_PRESENTATIONS = {"visual", "echo"}
 
 #: What an ``mcq`` answer strip asks for (ticket 10).  ``roman`` is the
@@ -178,13 +181,13 @@ class HarmonyExerciseSpec:
             raise ValueError(
                 f"Unknown presentation {self.presentation!r}; expected "
                 f"{sorted(_VALID_PRESENTATIONS)}")
-        if self.presentation == "echo" and self.answer_mode in ("card", "spot"):
+        if self.presentation == "echo" and self.answer_mode == "card":
             raise ValueError(
-                f"presentation='echo' cannot use answer_mode="
-                f"{self.answer_mode!r}: the card list is the answer surface "
-                f"and is withheld while the notation is veiled. Echo drills "
-                f"answer by midi (play back what you hear) or mcq (identify "
-                f"what you hear).")
+                "presentation='echo' cannot use answer_mode='card': the card "
+                "list is the answer surface and is withheld while the "
+                "notation is veiled. Echo drills answer by midi (play back "
+                "what you hear), mcq (identify what you hear), or spot "
+                "(click WHERE the chromatic chord sounded).")
         if self.mcq_focus not in _VALID_MCQ_FOCUS:
             raise ValueError(
                 f"Unknown mcq_focus {self.mcq_focus!r}; expected "

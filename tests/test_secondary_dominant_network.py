@@ -29,7 +29,11 @@ from harmony.network_template import (
     get_template,
     list_templates,
 )
-from theory.diatonic_harmony import applied_tokens_for_mode, parse_applied_token
+from theory.diatonic_harmony import (
+    APPLIED_DOMINANT_HEADS,
+    applied_tokens_for_mode,
+    parse_applied_token,
+)
 
 
 def _applied_lab(stages=("spot",), progression=("I", "vi", "V7/V", "V", "I"),
@@ -126,14 +130,20 @@ class TestSecondaryDominantTemplate(unittest.TestCase):
         kinds = self.net.counts()["nodesByKind"]
         self.assertEqual(kinds["key_center"], 1)
         self.assertEqual(kinds["diatonic_triad"], 7)
-        # Every buildable applied token of the mode gets a node (V/x + V7/x for
-        # the five tonicisable degrees of a major key).
+        # Every buildable applied DOMINANT of the mode gets a node (V/x + V7/x
+        # for the five tonicisable degrees of a major key).  The applied
+        # leading-tone chords (vii°7/x, ticket 19) are deliberately not here:
+        # this template's chromatic node class is the applied dominant, and a
+        # node class it does not declare is never smuggled in under it.
         self.assertEqual(kinds["applied_dominant"],
-                         len(applied_tokens_for_mode("major")))
+                         len(applied_tokens_for_mode(
+                             "major", heads=APPLIED_DOMINANT_HEADS)))
 
     def test_applied_nodes_are_the_engine_vocabulary(self):
         romans = sorted(n.data["roman"] for n in self.net.nodes_of_kind("applied_dominant"))
-        self.assertEqual(romans, sorted(applied_tokens_for_mode("major")))
+        self.assertEqual(romans, sorted(applied_tokens_for_mode(
+            "major", heads=APPLIED_DOMINANT_HEADS)))
+        self.assertTrue(all(not r.startswith("vii°7/") for r in romans))
         # the tonic and the diminished degree can never be tonicised
         for roman in romans:
             self.assertNotIn(parse_applied_token(roman)[1], ("I", "vii°"))
@@ -180,7 +190,8 @@ class TestSecondaryDominantTemplate(unittest.TestCase):
         net = build_network(self.tpl,
                             context=NetworkBuildContext(key="A", mode="harmonic_minor"))
         romans = sorted(n.data["roman"] for n in net.nodes_of_kind("applied_dominant"))
-        self.assertEqual(romans, sorted(applied_tokens_for_mode("harmonic_minor")))
+        self.assertEqual(romans, sorted(applied_tokens_for_mode(
+            "harmonic_minor", heads=APPLIED_DOMINANT_HEADS)))
         self.assertIn("V7/iv", romans)
 
     def test_payload_round_trips(self):

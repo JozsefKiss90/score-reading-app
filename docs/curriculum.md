@@ -131,7 +131,10 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | harmonic minor (ticket 13 / G2a): A/B one-accidental pairs (v–i vs V–i, i–iv–v–i vs i–iv–V–i in A minor) + V–i (2 chunked) + vii°–i (2 chunked) + i–iv–V–i (4 chunked) across the 12 minor keys | 12 | Harmonic Minor |
 | III+ quality drill (ticket 14 / G2b): every augmented diatonic triad across the 12 harmonic-minor keys (un-reserves `group:triads_aug`) | 1 | Chords (Triads) › Triad qualities › Augmented triads (III+) |
 | melodic minor (ticket 14 / G2b): ascent / descent / turn motive cells (`mode="melodic_minor"`, motive-only) across the 12 minor keys | 3 | Melodic Minor |
-| **grand total** | **312 exercise leaves** | (~395 nodes total) |
+| cadence taxonomy (ticket 16 / G3): PAC/IAC + soprano dictations + Phrygian iv6–V + cadential 6/4 pairs + cadence orbits (and 2 new catalogue half cadences × block/SATB) | 39 | Cadences |
+| applied chords (ticket 17 / G5a): 4 spot-the-intruder + 4 block resolves + 4 arpeggio resolves, C major | 12 | Advanced Topics › Secondary dominants |
+| applied ramp (ticket 19 / G5c): 3 moved intruder positions + 3 `vii°7/x` spots + 3 `vii°7/x` resolves + 4 further-out keys + 4 dominant chains (native, wrapped) | 17 | Advanced Topics › Applied chords: the ramp |
+| **grand total** | **380 exercise leaves** | (498 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —
@@ -224,9 +227,14 @@ The reserved branches already name the seams; each needs only a new
   triads* group activates automatically.
 - **Modal & jazz harmony** — new modes + a `function`-style drill family for
   ii–V–I voicings and extensions.
-- **Secondary dominants** — live since ticket 17 (plan G5a): the widened
-  `is_supported_roman` gate accepts `V/x` / `V7/x`, and the *Advanced Topics ›
-  Secondary dominants* lesson owns the 12 spot/resolve applied-chord leaves.
+- **Secondary dominants** — live since ticket 17 (plan G5a), ramped by ticket
+  19 (G5c): the widened `is_supported_roman` gate accepts `V/x` / `V7/x` /
+  `vii°7/x`, the *Advanced Topics › Secondary dominants* lesson owns the 12
+  spot/resolve applied-chord leaves, and *Applied chords: the ramp* adds 17
+  more along plan §7's axes (moved intruder positions, `vii°7/x` targets, keys
+  one and two accidentals out, and dominant chains). The ramp's visual→ear
+  axis adds no leaves: every spot leaf owns a 🎧 ear twin recorded under the
+  same node id.
 - **Schenkerian reduction & real-score analysis** — the Atlas `ScoreAnalysis`
   contract (`HarmonySlice` / `CadenceSpan` / `PolyphonicTexture`) is already
   shaped; implementing the analysis algorithm lands each structural chord on an

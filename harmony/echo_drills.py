@@ -42,43 +42,65 @@ GROUP_ECHO = "Echo drills (play by ear)"
 _UNLOCKED_STATES = frozenset({"started", "completed", "mastered"})
 
 
+#: Answer modes a visual drill can be echoed in, mapped to how the twin asks
+#: its question once the notation is veiled.  ``midi`` is the original twin
+#: (play back what you hear).  ``spot`` (ticket 19 / plan G5c) is the applied
+#: ear stage: the same intruder hunt, answered by clicking *where* the
+#: chromatic chord sounded — the one non-midi surface that survives the veil,
+#: because bar positions name no chord.  ``mcq``/``card`` are excluded: an
+#: authored echo+mcq drill is not a *twin* of a visual one (ticket 10), and
+#: the card list is withheld while veiled.
+_ECHOABLE_ANSWER_MODES = {
+    "midi": ("Play back what you hear; grading is exactly the visual "
+             "drill's."),
+    "spot": ("Click the bar where the chord leaves the key, then name the "
+             "degree it tonicises."),
+}
+
+
 def echo_variant(spec: HarmonyExerciseSpec) -> HarmonyExerciseSpec:
     """The aural twin of a visual trainer spec.
 
     Same drill content (it compiles to the identical chord list), distinct
     identity (``*_echo`` id, "Echo: " title) so the two variants can coexist
-    in a launcher list.  Raises ``ValueError`` for specs that cannot be
-    echoed (non-``midi`` answer modes — a *twin* means playing back what you
-    hear; the aural ID drills of ticket 10 are authored as echo+mcq specs
-    directly, not derived from a visual twin).
+    in a launcher list.  Raises ``ValueError`` for specs whose answer surface
+    cannot survive the veil (see :data:`_ECHOABLE_ANSWER_MODES`).
     """
-    if spec.answer_mode != "midi":
+    how = _ECHOABLE_ANSWER_MODES.get(spec.answer_mode)
+    if how is None:
         raise ValueError(
             f"cannot derive an echo twin of an answer_mode="
-            f"{spec.answer_mode!r} spec: echo twins play back what you hear "
-            f"(midi grading only)")
+            f"{spec.answer_mode!r} spec: an echo twin's answer surface must "
+            f"survive the veil (midi playback, or the applied spot hunt)")
     twin = replace(
         spec,
         exercise_id=spec.exercise_id + "_echo",
         title="Echo: " + spec.title,
         presentation="echo",
-        description=("Listen first — the notation is hidden. Play back what "
-                     "you hear; grading is exactly the visual drill's. "
+        description=("Listen first — the notation is hidden. " + how + " "
                      + spec.description).strip(),
     )
-    twin.validate()   # rejects non-midi answer modes via the schema rule
+    twin.validate()   # rejects answer modes the schema refuses under the veil
     return twin
 
 
 def is_echo_eligible(lab_spec: Optional[LabExperimentSpec]) -> bool:
     """Does this curriculum leaf own an echo twin?
 
-    v0 covers the native trainer drills (``concept == "drill"``): the triad
-    families (full-key / degree / quality / arpeggio) and the cadence block
-    drills.  Lab concepts (inversions, voice-leading, motives, ...) keep
-    their notation-bound presentation for now.
+    Two families qualify.  The native trainer drills (``concept == "drill"``):
+    the triad families (full-key / degree / quality / arpeggio) and the
+    cadence block drills.  And the applied-chord *spot* leaves (ticket 19 /
+    plan G5c), whose twin is the ear stage — the same intruder hunt heard
+    rather than read, recorded under the same curriculum node id, which is
+    what makes the ramp's visual→ear axis one mastery record instead of two
+    leaves.  Other Lab concepts keep their notation-bound presentation.
     """
-    if lab_spec is None or lab_spec.concept != "drill":
+    if lab_spec is None:
+        return False
+    if lab_spec.concept == "applied_chord":
+        stages = tuple((lab_spec.parameters or {}).get("stages") or ())
+        return stages == ("spot",)
+    if lab_spec.concept != "drill":
         return False
     try:
         inner = HarmonyExerciseSpec.from_dict(

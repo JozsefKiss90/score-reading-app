@@ -261,10 +261,15 @@ The non-goals were given explicit seams:
 * **Seventh chords** — `LabMeasure.target_pitch_classes` already allows *N* pcs;
   `coversAll` handles *N* tones. Add `generate_diatonic_sevenths` upstream and the
   lab consumes it unchanged.
-* **Secondary dominants / tonicizations** — shipped by ticket 17 (plan G5a):
-  the gate widened to `is_supported_roman` (applied `V/x` / `V7/x` tokens), the
-  theory engine builds applied dominants (`build_applied_dominant`), and the
-  `applied_chord` concept stages the spot/resolve intruder drills.
+* **Secondary dominants / tonicizations** — shipped by ticket 17 (plan G5a)
+  and ramped by ticket 19 (G5c): the gate widened to `is_supported_roman`
+  (applied `V/x` / `V7/x` / `vii°7/x` tokens), the theory engine builds them
+  (`build_applied_chord`; `build_applied_dominant` is its dominants-only
+  face), and the `applied_chord` concept stages the drills — `spot` (click the
+  intruder), `resolve` (play it into its target) and `ear` (the same hunt
+  veiled, answered by bar position + a tonicised-degree follow-up). The
+  progressions themselves are derived by `harmony/applied_ramp.py`, which also
+  owns the key ramp and the dominant-chain patterns.
 * **Harmonic / melodic minor** — add a `_MODE_STEPS` entry in
   `theory.diatonic_harmony`; the lab inherits it with no lab-side change.
 ```

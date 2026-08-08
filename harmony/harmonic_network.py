@@ -35,7 +35,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from theory.diatonic_harmony import (
+    APPLIED_DOMINANT_HEADS,
     DiatonicTriad,
+    applied_token_slug,
     applied_tokens_for_mode,
     build_applied_dominant,
     generate_scale,
@@ -173,12 +175,12 @@ def dim_node_id(root: str) -> str:
 def applied_node_id(key: str, mode: str, token: str) -> str:
     """Stable id for an applied dominant, e.g. ``hn:applied:C:major:V7_of_V``.
 
-    The head is kept in full so ``V/V`` and ``V7/V`` stay distinct nodes, and the
-    ``/`` is spelled ``_of_`` because node ids travel through edge ids and DOM
-    data attributes.
+    The spelling rule (head kept in full so ``V/V`` and ``V7/V`` stay distinct
+    nodes; ``/`` -> ``_of_`` because node ids travel through edge ids and DOM
+    data attributes) is :func:`applied_token_slug`'s, shared with the overlay
+    proxy id and the curriculum's exercise ids.
     """
-    head, target = parse_applied_token(token)
-    return f"hn:applied:{key}:{mode}:{head}_of_{target}"
+    return f"hn:applied:{key}:{mode}:{applied_token_slug(token)}"
 
 
 def edge_id(source: str, target: str, relation: str) -> str:
@@ -1236,12 +1238,18 @@ class _NetworkBuilder:
         A node is emitted only when its ``V(7)/x -> x`` resolution drill actually compiles: that
         is the honesty gate behind un-reserving ``secondary_dominant_of`` (no relation without a
         launchable drill).  Both heads of one target share the target's spoke, nudged apart.
+
+        Narrowed to the applied *dominant* heads on purpose: this template's whole argument is
+        "the dominant of a degree, borrowed from that degree's key", and its one chromatic node
+        class says so.  The applied leading-tone chords (``vii°7/x``, ticket 19 / plan G5c) are
+        drilled and drawn per-exercise by the secondary-dominant *scene*; giving them nodes here
+        needs their own node class and relation, not a widened token list.
         """
         key, mode = self.ctx.key, self.ctx.mode
         lay = self.t.layout_for("applied_dominant")
         vc = self.t.node_class("applied_dominant").visual_class
         self.applied_links = []
-        for token in applied_tokens_for_mode(mode):
+        for token in applied_tokens_for_mode(mode, heads=APPLIED_DOMINANT_HEADS):
             head, target = parse_applied_token(token)
             try:
                 chord = build_applied_dominant(token, key, mode)

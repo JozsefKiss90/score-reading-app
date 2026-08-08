@@ -46,7 +46,12 @@ from harmony.harmonic_roles import (
     internal_family_to_broad,
     broad_family_label,
 )
-from theory.diatonic_harmony import note_pc, parse_applied_token
+from theory.diatonic_harmony import (
+    APPLIED_DOMINANT_HEADS,
+    APPLIED_HEADS,
+    note_pc,
+    parse_applied_token,
+)
 from harmony.graph_scene import (
     GraphScene,
     GraphSceneEdge,
@@ -141,6 +146,7 @@ RELATION_TO_LAYER: Dict[str, str] = {
     "leading_tone_to": "theory",
     "dominant_of": "theory",
     "secondary_dominant_of": "theory",
+    "applied_leading_tone_of": "theory",
     # voice-leading: individual-voice motion
     "voice_leads_to": "voice_leading",
 }
@@ -391,13 +397,16 @@ def _chord_entity_type(quality) -> str:
 
     ``seventh`` is the contract's (formerly reserved) dominant-seventh entity
     (``ENTITY_TYPES``, plan section 3) -- a V7 chord node must never be typed
-    as the triad that merely shares its root.
+    as the triad that merely shares its root.  A *fully diminished seventh*
+    (harmonic minor's vii°7, and ticket 19's applied vii°7/x) is a tetrad and
+    is typed ``seventh`` for the same reason: ``diminished`` names the
+    leading-tone diminished TRIAD, so the tetrad test comes first.
     """
     q = str(quality or "")
-    if q.startswith("dim"):
-        return "diminished"
     if q.endswith("seventh"):
         return "seventh"
+    if q.startswith("dim"):
+        return "diminished"
     return "triad"
 
 
@@ -817,6 +826,37 @@ _APPLIED_Y = -190.0
 _KEY_ANCHOR_Y = 210.0
 
 
+#: How the scene *names* each applied family, keyed by the engine's own root
+#: rule (:data:`APPLIED_HEADS`).  Both families tonicise, but they are
+#: different chords and the scene says which -- in prose (``V7/V`` *is the
+#: dominant of* V, ``vii°7/V`` *is the leading-tone seventh of* V) and in the
+#: edge ``relation``, which is learner-visible in the detail panel: calling a
+#: diminished seventh's arrow ``secondary_dominant_of`` would be the same
+#: mislabel that keeps these chords out of the secondary-dominant network.
+_APPLIED_FAMILY = {
+    "dominant": {
+        "noun": "applied dominant",
+        "phrase": "the dominant of",
+        "relation": "secondary_dominant_of",
+    },
+    "leading_tone": {
+        "noun": "applied leading-tone chord",
+        "phrase": "the leading-tone seventh of",
+        "relation": "applied_leading_tone_of",
+    },
+}
+
+
+def _applied_family(head: str) -> Dict[str, str]:
+    """The scene's words + relation for an applied head (ticket 19 / G5c).
+
+    Keyed off the engine's head table and indexed, not ``.get``-defaulted: a
+    head this scene has no words for must fail loudly rather than be described
+    as a dominant it is not.
+    """
+    return _APPLIED_FAMILY[APPLIED_HEADS[head][0]]
+
+
 def _applied_support_map(tonic: str, mode: str) -> Dict[str, str]:
     """``{applied token: target roman}`` the canonical secondary-dominant network supports.
 
@@ -913,9 +953,11 @@ def build_secondary_dominant_scene(
         if applied:
             head, target = applied
             chromatic = _chromatic_tones(t)
+            family = _applied_family(head)
+            role_noun, role_phrase = family["noun"], family["phrase"]
             role_fields = {
-                "specific_role": "applied dominant",
-                "specific_role_label": f"Applied dominant of {target}",
+                "specific_role": role_noun,
+                "specific_role_label": f"{role_noun.capitalize()} of {target}",
                 "broad_function_family": broad_function_family(t.function_label),
                 "broad_function_family_label": broad_family_label(
                     broad_function_family(t.function_label)),
@@ -923,7 +965,7 @@ def build_secondary_dominant_scene(
                 "family_membership_strength": "context_dependent",
                 "family_membership_explanation": (
                     f"{t.roman} borrows its function from {target}, not from {key_label}: it is "
-                    f"the dominant of a momentary tonic."),
+                    f"{role_phrase} a momentary tonic."),
             }
             nodes.append(GraphSceneNode(
                 id=mid, label=t.chord_symbol, entity_type=etype, sublabel=t.roman,
@@ -971,9 +1013,17 @@ def build_secondary_dominant_scene(
     for i, p in enumerate(per):
         if not p["applied"]:
             continue
-        token, target = p["triad"].roman, p["applied"][1]
-        p_key = p["triad"].key
-        if supported.get(p_key, {}).get(token) != target:
+        head, target = p["applied"]
+        token, p_key = p["triad"].roman, p["triad"].key
+        support = supported.get(p_key, {})
+        # The network draws applied DOMINANTS, so it names this very chord for
+        # a V/x head.  An applied leading-tone chord (ticket 19 / plan G5c) is
+        # honest on the same evidence one step removed: the network's own
+        # arrows say the degree is tonicisable at all, and the engine built
+        # this chord as the tonicisation of exactly that degree.
+        if not (support.get(token) == target
+                or (head not in APPLIED_DOMINANT_HEADS
+                    and target in set(support.values()))):
             warnings.append(
                 f"{token}: the secondary-dominant network does not support tonicising {target} "
                 f"in {p_key}, so no applied edge is drawn")
@@ -989,9 +1039,10 @@ def build_secondary_dominant_scene(
         applied_target_index[i] = j
         applied_target_symbol[i] = per[j]["triad"].chord_symbol
         edges.append(GraphSceneEdge(
-            id=eid, source=p["id"], target=per[j]["id"], relation="secondary_dominant_of",
+            id=eid, source=p["id"], target=per[j]["id"],
+            relation=_applied_family(head)["relation"],
             layer="theory", directed=True,
-            explanation=(f"{token} is the dominant of {target}: "
+            explanation=(f"{token} is {_applied_family(head)['phrase']} {target}: "
                          f"{p['triad'].chord_symbol} → {per[j]['triad'].chord_symbol}, "
                          f"tonicising {target} for a moment."),
             visual_class="applied",
@@ -1012,9 +1063,10 @@ def build_secondary_dominant_scene(
                 # tonicised target: a drill that delays the resolution (V7/V – I – V) still draws
                 # the arrow to the real target, but this step is then sequence-only.
                 if applied_target_index.get(i) == i + 1:
-                    rel = "secondary_dominant_of"
-                    expl = (f"{t.roman} → {b.roman}: the applied dominant resolves to the degree "
-                            f"it tonicises")
+                    fam = _applied_family(per[i]["applied"][0])
+                    rel = fam["relation"]
+                    expl = (f"{t.roman} → {b.roman}: the {fam['noun']} resolves to the "
+                            f"degree it tonicises")
                 else:
                     expl = (f"{t.roman} → {b.roman}: the tonicisation of "
                             f"{per[i]['applied'][1]} is not resolved yet")
@@ -1047,7 +1099,7 @@ def build_secondary_dominant_scene(
             "globalIndex": per[i]["global"], "applied": is_applied,
         }
         if is_applied:
-            target = per[i]["applied"][1]
+            a_head, target = per[i]["applied"]
             chromatic = _chromatic_tones(t)
             target_symbol = applied_target_symbol.get(i, "")
             detail.update({
@@ -1057,7 +1109,7 @@ def build_secondary_dominant_scene(
                 "broadFunction": "",
                 "whyBelongs": (
                     f"{', '.join(chromatic) or 'this chord'} does not belong to {t.key}: "
-                    f"{t.chord_symbol} is {t.roman}, the dominant of {target}"
+                    f"{t.chord_symbol} is {t.roman}, {_applied_family(a_head)['phrase']} {target}"
                     + (f" ({target_symbol})." if target_symbol else ".")),
             })
         else:

@@ -29,6 +29,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+from theory.diatonic_harmony import applied_token_slug
+
 
 # --------------------------------------------------------------------------------------------- #
 # Schema tags
@@ -188,9 +190,11 @@ def proxy_applied_id(tonic: str, mode: str, roman: str) -> str:
 
     Keyed by the applied *token* (``V7/V``), never by a scale degree: an applied chord has
     no degree of the home key, and reusing the triad proxy id would collide with the very
-    diatonic chord it must never be confused with (ticket 18 / plan G5b).
+    diatonic chord it must never be confused with (ticket 18 / plan G5b).  The token is
+    spelled by the canonical :func:`applied_token_slug`, so the proxy id matches the network
+    node id it stands in for.
     """
-    return f"overlay:applied:{tonic}:{mode}:{roman.replace('/', '_of_')}"
+    return f"overlay:applied:{tonic}:{mode}:{applied_token_slug(roman)}"
 
 
 def proxy_voicing_id(tonic: str, mode: str, degree_index: int, inversion: int) -> str:

@@ -297,18 +297,20 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
     "applied_chord": {
         "title": "Applied chords (secondary dominants)",
         "short_definition": (
-            "An applied dominant is the dominant OF another chord: V7/V is the "
-            "dominant seventh built on the fifth of the dominant, briefly "
+            "An applied chord is the dominant-function chord OF another chord: "
+            "V7/V is the dominant seventh built on the fifth of the dominant, "
+            "vii°7/V the diminished seventh on its leading tone - both briefly "
             "treating that chord as a tonic."),
         "core_idea": (
             "Any major or minor triad can be preceded by its own dominant - a "
-            "chord borrowed from the key it would be tonic of. The applied "
-            "chord imports a chromatic tone (the target's leading tone: F# in "
-            "C major's V7/V), which is exactly what makes it audible as an "
-            "intruder, and its tritone resolves into the target just as V7 "
-            "resolves into I. This is tonicisation - a momentary lean toward "
-            "another key - not yet modulation: the home key never actually "
-            "changes."),
+            "chord borrowed from the key it would be tonic of - either its "
+            "dominant (V/x, V7/x) or its leading-tone seventh (vii°7/x). The "
+            "applied chord imports a chromatic tone (the target's leading "
+            "tone: F# in C major's V7/V AND its vii°7/V), which is exactly "
+            "what makes it audible as an intruder, and its tritone resolves "
+            "into the target just as V7 resolves into I. This is tonicisation "
+            "- a momentary lean toward another key - not yet modulation: the "
+            "home key never actually changes."),
         "what_to_listen_for": [
             "The chromatic tone that does not belong to the home scale.",
             "The extra pull toward the tonicised chord (a dominant in miniature).",
@@ -319,6 +321,10 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "Resolve: play the applied chord, then its target, and feel the "
             "leading tone rise by a semitone.",
             "Arpeggiate the applied chord and stop on the chromatic tone.",
+            "Ear (🎧): with the notation hidden, click the bar the "
+            "chromatic chord sounded in, then name the degree it tonicised.",
+            "Chains: play a run of dominants (E7-A7-D7-G7-C) down the circle "
+            "of fifths, each one tonicising the next.",
         ],
         "theory_terms": [
             "applied dominant", "secondary dominant", "tonicisation",
@@ -327,8 +333,9 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
         "atlas_connections": [
             "The applied chord claims NO diatonic Atlas node: D7 in C major is "
             "not ii - the base_roman honesty rule keeps it off the graph.",
-            "The secondary-dominant network scene (plan G5b) will own the "
-            "V7/x -> x edge once its template ships.",
+            "The secondary-dominant network scene (plan G5b) owns the "
+            "V7/x -> x edge; the applied leading-tone chords borrow the same "
+            "arrow to a target that network already calls tonicisable.",
             "The resolve pair mirrors the circle of fifths: every applied "
             "dominant is one fifths-step of borrowed gravity.",
         ],
@@ -337,13 +344,18 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "it; it is V7/V, the dominant of the dominant.",
             "\"An applied chord changes the key\" - tonicisation is momentary; "
             "modulation (a real key change) is a later topic.",
-            "\"Any chromatic chord is an applied dominant\" - only chords built "
-            "as the dominant (V or V7) of a diatonic major/minor triad are.",
+            "\"Any chromatic chord is an applied chord\" - only chords built "
+            "as the dominant (V, V7) or the leading-tone seventh (vii°7) of a "
+            "diatonic major/minor triad are.",
+            "\"vii°7/V is just a diminished chord\" - it is a FULLY diminished "
+            "seventh on the target's leading tone, and it resolves to that "
+            "target as firmly as V7/V does.",
         ],
         "next_steps": [
-            "Random intruder positions, more targets, and the ear stage (G5c).",
-            "The secondary-dominant network graph (G5b).",
-            "Dominant chains (V/V/V...) around the circle of fifths.",
+            "Non-chord tones: the other reason a note can sit outside the "
+            "chord (G6).",
+            "Modulation: what happens when the tonicisation stops being "
+            "momentary (G7).",
         ],
     },
 }

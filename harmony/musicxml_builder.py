@@ -30,6 +30,7 @@ from harmony.exercise_spec import (
 )
 from theory.diatonic_harmony import (
     DiatonicTriad,
+    applied_target_options,
     key_signature_fifths,
     note_pc,
     parse_applied_token,
@@ -358,10 +359,34 @@ def _target_for(chord: CompiledChord) -> Dict:
         target["intruder"] = True
         target["chromaticPcs"] = [note_pc(p) for p in triad.pitches
                                   if note_pc(p) not in scale_pcs]
-        if triad.chord_quality == "dominant_seventh":
-            target["tritonePcs"] = [note_pc(triad.pitches[1]),
-                                    note_pc(triad.pitches[3])]
+        tritone = _applied_tritone(triad)
+        if tritone is not None:
+            target["tritonePcs"] = [note_pc(p) for p in tritone]
     return target
+
+
+#: The two tones of an applied chord that form the tritone resolving into the
+#: target, by chord quality (ticket 17 for V7/x; ticket 19 for vii°7/x, which
+#: has the same pull from a different pair): index into ``DiatonicTriad.pitches``.
+#: A ``V/x`` triad has no tritone at all, so it is absent -- the resolve stage
+#: simply shows no tritone highlight rather than inventing one.
+_APPLIED_TRITONE_TONES = {
+    "dominant_seventh": (1, 3),     # third + seventh (F#+C in D7)
+    "diminished_seventh": (0, 2),   # root + diminished fifth (F#+C in F#°7)
+}
+
+
+def _applied_tritone(triad: DiatonicTriad):
+    """``(lower, upper)`` chord tones of the applied chord's resolving tritone.
+
+    ``None`` when the chord has none.  Both members resolve by step into the
+    tonicised triad -- the leading tone up to its root, the other down to its
+    third -- which is what the resolve stage flags green.
+    """
+    idx = _APPLIED_TRITONE_TONES.get(triad.chord_quality)
+    if idx is None:
+        return None
+    return triad.pitches[idx[0]], triad.pitches[idx[1]]
 
 
 def _mcq_for(target: Dict, focus: str = "roman") -> Dict:
@@ -399,6 +424,21 @@ def _mcq_for(target: Dict, focus: str = "roman") -> Dict:
     }
 
 
+def _applied_target_mcq(intruder: Dict) -> Dict:
+    """The ear stage's follow-up: *which degree got tonicised?* (ticket 19).
+
+    The options are every degree the mode can tonicise (derived from the
+    engine's applied vocabulary, so the strip never offers a degree no applied
+    chord could point at), and the answer is the intruder's own target.
+    """
+    target = parse_applied_token(intruder["roman"])[1]
+    return {
+        "prompt": "Which degree did that chord tonicise?",
+        "options": applied_target_options(intruder["mode"]),
+        "answer": target,
+    }
+
+
 def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     """Per-measure metadata for the runtime trainer (JSON-serialisable).
 
@@ -413,29 +453,40 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
         for t in targets:
             t["mcq"] = _mcq_for(t, compiled.spec.mcq_focus)
 
-    # Tritone-resolution metadata (ticket 17): when an applied dominant is
-    # immediately followed by its target (same key group), the resolution
-    # target learns which noteheads to flag green as the tritone resolves.
+    # Tritone-resolution metadata (ticket 17 for V7/x, ticket 19 for vii°7/x):
+    # when an applied chord is immediately followed by its target (same key
+    # group), the resolution target learns which noteheads to flag green as
+    # the tritone resolves.  Both tones move by step into the target: the
+    # leading tone up to its root, the other down to its third.
     for prev, nxt in zip(targets, targets[1:]):
         applied = parse_applied_token(prev["roman"])
         if (applied is None or "tritonePcs" not in prev
                 or nxt["roman"] != applied[1]
                 or nxt["group"] != prev["group"]):
             continue
-        third, seventh = prev["chordTones"][1], prev["chordTones"][3]
+        name_by_pc = dict(zip(prev["pitchClasses"], prev["chordTones"]))
+        lower, upper = (name_by_pc[pc] for pc in prev["tritonePcs"])
         root, res_third = nxt["chordTones"][0], nxt["chordTones"][1]
         nxt["tritoneResolution"] = {
             "fromPcs": list(prev["tritonePcs"]),
             "fromMeasure": prev["absMeasure"],
             "toPcs": [nxt["pitchClasses"][0], nxt["pitchClasses"][1]],
-            "text": f"{third}→{root}, {seventh}→{res_third}",
+            "text": f"{lower}→{root}, {upper}→{res_third}",
         }
 
     spot_index = None
+    followup = None
     if answer_mode == "spot":
         spot_index = next(i for i, t in enumerate(targets)
                           if t.get("intruder"))
         targets[spot_index]["romanHidden"] = True
+        if compiled.spec.presentation == "echo":
+            # The ear stage (ticket 19 / plan G5c) asks the second half of the
+            # plan's question: having heard *where* the chromatic chord is,
+            # which degree did it tonicise?  Only the veiled variant carries
+            # it — with the notation in front of you the answer is readable
+            # off the score, so the visual spot drill stays one question.
+            followup = _applied_target_mcq(targets[spot_index])
 
     target_by_measure: Dict[str, Dict] = {str(t["absMeasure"]): t for t in targets}
 
@@ -466,6 +517,8 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     }
     if spot_index is not None:
         payload["SPOT_INDEX"] = spot_index
+    if followup is not None:
+        payload["SPOT_FOLLOWUP"] = followup
     return payload
 
 

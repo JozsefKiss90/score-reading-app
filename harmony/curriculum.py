@@ -48,6 +48,7 @@ from typing import Dict, List, Optional
 from theory.diatonic_harmony import (
     generate_diatonic_triads,
     transpose_degree_pattern,
+    applied_token_slug,
     parse_applied_token,
     parse_seventh_token,
     seventh_tokens_for_mode,
@@ -82,6 +83,12 @@ from harmony.exercise_spec import (
     GROUP_ARPEGGIO,
 )
 from harmony.lab_spec import LabExperimentSpec, split_figured_pattern
+from harmony.applied_ramp import (
+    applied_progression,
+    chain_label,
+    dominant_chain,
+    keys_by_fifths_distance,
+)
 from harmony.echo_drills import is_echo_eligible
 from harmony.lab import lab_demo_specs
 from harmony.atlas import (
@@ -335,6 +342,11 @@ def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
     or -- for the raised-leading-tone chords -- only the mode-less quality and
     layer classes.  The Atlas has no harmonic-minor scale/degree/triad nodes,
     and the natural-minor v / VII are different chords.
+
+    An APPLIED chord (ticket 19's dominant chains put them in native drills)
+    claims the key context and nothing else: the Atlas ontology is diatonic,
+    so A7 = V7/ii in C would otherwise land on the submediant degree node it
+    merely shares a root with -- the base_roman dishonesty again.
     """
     refs: List[str] = []
     compiled = compile_exercise(hs)
@@ -343,6 +355,8 @@ def _atlas_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
         t = c.triad
         key = t.key.split()[0]
         refs.append(scale_id(key, ctx_mode))
+        if parse_applied_token(t.roman) is not None:
+            continue
         if hs.mode == "harmonic_minor":
             nat = None if _is_tetrad(t) else _natural_minor_twin(t)
             if nat is not None:
@@ -419,6 +433,10 @@ def _circle_refs_for_native(hs: HarmonyExerciseSpec) -> List[str]:
         refs.append(_circle_ref_key(key, ctx_mode))
     compiled = compile_exercise(hs)
     for c in compiled.chords:
+        # An applied chord belongs to no degree of the home key (see
+        # _atlas_refs_for_native): the drill claims the key ring only.
+        if parse_applied_token(c.triad.roman) is not None:
+            continue
         if hs.mode == "harmonic_minor":
             nat = None if _is_tetrad(c.triad) else _natural_minor_twin(c.triad)
             if nat is not None:
@@ -1454,65 +1472,136 @@ def _inversion_curriculum_specs(mode: str, degree: str) -> List[LabExperimentSpe
 # ---------------------------------------------------------------------------
 # Tree assembly
 # ---------------------------------------------------------------------------
-# Applied chords (ticket 17 / plan G5a): "Spot the intruder"
+# Applied chords: "Spot the intruder" (ticket 17 / G5a) + the ramp (19 / G5c)
 # ---------------------------------------------------------------------------
 #
-# The first chromatic drills, in C major only (the fixed-position / one-key
-# first rung of plan §7's difficulty ramp; random positions, more keys and
-# the ear stage are ticket 19 / G5c).  Each tonicisable degree gets a short
-# diatonic progression with its applied dominant as the intruder, at varying
-# positions, plus block + arpeggio resolve pairs.
+# The chromatic drills.  Ticket 17 shipped the first rung -- one intruder per
+# tonicisable degree, in C major, answered by eye.  Ticket 19 walks plan §7's
+# four ramp axes from it: the intruder moves through the phrase (position),
+# the applied leading-tone chords join the dominants (target set), the keys
+# step outward on the circle (key distance), and every spot leaf owns an ear
+# twin (visual -> ear; see harmony.echo_drills.is_echo_eligible).  Each
+# progression is *derived* by harmony.applied_ramp rather than typed, so the
+# intruder always resolves and the position is a parameter, not a shape.
 
-_APPLIED_PROGRESSIONS = [
-    # (applied token, progression) — intruder positions deliberately vary
-    ("V7/V", ["I", "vi", "V7/V", "V", "I"]),     # the plan §7 flagship
-    ("V7/IV", ["I", "V7/IV", "IV", "V", "I"]),
-    ("V7/ii", ["I", "IV", "V7/ii", "ii", "V"]),
-    ("V7/vi", ["I", "V7/vi", "vi", "IV", "I"]),
+#: The first rung: (applied token, intruder position) per tonicisable degree.
+_APPLIED_TARGETS = [
+    ("V7/V", 2),        # the plan §7 flagship: I – vi – V7/V – V – I
+    ("V7/IV", 1),
+    ("V7/ii", 2),
+    ("V7/vi", 1),
 ]
+
+#: The target-set rung (ticket 19): the applied leading-tone chords.  The
+#: first two are the plan's own corpus-gap rows (vii°7/V = BWV 846 mm. 22, 27;
+#: vii°7/ii = m. 12); vii°7/IV completes the trio the ticket names.
+_APPLIED_LEADING_TONE_TARGETS = [("vii°7/V", 2), ("vii°7/ii", 1),
+                                 ("vii°7/IV", 2)]
+
+#: The position rung: the flagship intruder, moved through the phrase.
+_APPLIED_POSITIONS = (1, 3, 4)
+
+#: The dominant-chain rung: (chain depth, key) circle-of-fifths runs.
+_DOMINANT_CHAINS = [(3, "C"), (5, "C"), (3, "G"), (4, "F")]
 
 
 def _applied_slug(token: str) -> str:
-    """``"V7/V" -> "v7_of_v"`` — the full head keeps a future ``V/x`` spec's
-    id distinct from its ``V7/x`` sibling (same rule as the figured ids)."""
-    head, target = parse_applied_token(token)
-    return f"{head.lower()}_of_{target.lower()}"
+    """``"V7/V" -> "v7_of_v"`` — the canonical applied-token slug, lower-cased
+    for exercise ids (which are lower-case throughout this layer)."""
+    return applied_token_slug(token).lower()
+
+
+def _applied_spec(stage: str, token: str, position: int, key: str = "C",
+                  render: str = "block", id_suffix: str = "") -> LabExperimentSpec:
+    """One applied-chord leaf spec: ``stage`` of ``token`` in ``key``.
+
+    The progression comes from :func:`~harmony.applied_ramp.applied_progression`
+    (the intruder at ``position``, always resolving), so every rung of the ramp
+    is the same experiment with different coordinates.  ``id_suffix`` separates
+    two rungs that share token + key + stage -- the position rung drills the
+    same ``V7/V`` in C as the flagship leaf and must not collide with it.
+    """
+    progression = applied_progression(token, position)
+    target = parse_applied_token(token)[1]
+    label = "–".join(progression)
+    key_name = f"{key} major"
+    # Lower-cased key slug: the ticket-17 ids (``..._c``) are the stored
+    # progress keys of every learner who has already played them.
+    ident = (f"applied_{stage}_{_applied_slug(token)}_"
+             f"{_key_slug(key).lower()}{id_suffix}")
+    if stage == "resolve":
+        ident += f"_{render}"
+        title = f"Resolve the intruder: {token}→{target} in {key_name}"
+        description = (f"Play {token}, then {target}: the chromatic leading "
+                       f"tone rises a semitone as the tritone resolves.")
+    elif stage == "spot":
+        title = f"Spot the intruder: {token} in {key_name}"
+        description = (f"One chord of {label} does not live in {key_name}: "
+                       f"{token}, tonicising {target}. Click it.")
+    else:
+        # The ear rung is the spot leaf's 🎧 twin, not a leaf of its own (one
+        # mastery record per hunt), so no leaf authors the "ear" stage here.
+        raise ValueError(
+            f"no curriculum leaf text for applied stage {stage!r}; the ear "
+            f"stage is reached as a spot leaf's echo twin "
+            f"(harmony.echo_drills.is_echo_eligible)")
+    return LabExperimentSpec(
+        experiment_id=ident, title=title,
+        concept="applied_chord", mode="major", key=key_name, render=render,
+        parameters={"progression": list(progression), "stages": [stage]},
+        description=description,
+    )
 
 
 def _applied_spot_specs() -> List[LabExperimentSpec]:
     """The four spot-the-intruder experiments (one per tonicisable target)."""
-    out = []
-    for token, progression in _APPLIED_PROGRESSIONS:
-        target = parse_applied_token(token)[1]
-        out.append(LabExperimentSpec(
-            experiment_id=f"applied_spot_{_applied_slug(token)}_c",
-            title=f"Spot the intruder: {token} in C major",
-            concept="applied_chord", mode="major", key="C major",
-            render="block",
-            parameters={"progression": list(progression),
-                        "stages": ["spot"]},
-            description=(f"One chord of {'–'.join(progression)} does not live "
-                         f"in C major: {token}, the dominant of {target}. "
-                         f"Click it."),
-        ))
-    return out
+    return [_applied_spec("spot", token, pos)
+            for token, pos in _APPLIED_TARGETS]
 
 
 def _applied_resolve_specs(render: str) -> List[LabExperimentSpec]:
     """The resolve-the-intruder experiments (block, or arpeggio second pass)."""
+    return [_applied_spec("resolve", token, pos, render=render)
+            for token, pos in _APPLIED_TARGETS]
+
+
+def _applied_position_specs() -> List[LabExperimentSpec]:
+    """The position rung: the same intruder, anywhere in the phrase."""
+    return [_applied_spec("spot", "V7/V", pos, id_suffix=f"_p{pos}")
+            for pos in _APPLIED_POSITIONS]
+
+
+def _applied_leading_tone_specs(stage: str) -> List[LabExperimentSpec]:
+    """The target-set rung: ``vii°7/x`` spotted, then resolved."""
+    return [_applied_spec(stage, token, pos)
+            for token, pos in _APPLIED_LEADING_TONE_TARGETS]
+
+
+def _applied_key_specs() -> List[LabExperimentSpec]:
+    """The key rung: the flagship hunt, one and two accidentals from home."""
+    home, *outward = keys_by_fifths_distance("major", 2)   # home = C, already drilled
+    return [_applied_spec("spot", "V7/V", 2, key=key) for key in outward]
+
+
+def _dominant_chain_specs() -> List[HarmonyExerciseSpec]:
+    """The circle-of-fifths performance drill: play a chain of dominants.
+
+    A native function drill (not an ``applied_chord`` experiment): the chain
+    holds *several* applied chords, each resolving into the next dominant
+    rather than into its own diatonic target, so it is a performance run, not
+    an intruder hunt.
+    """
     out = []
-    for token, progression in _APPLIED_PROGRESSIONS:
-        target = parse_applied_token(token)[1]
-        out.append(LabExperimentSpec(
-            experiment_id=(f"applied_resolve_{_applied_slug(token)}_c_"
-                           f"{render}"),
-            title=f"Resolve the intruder: {token}→{target} in C major",
-            concept="applied_chord", mode="major", key="C major",
-            render=render,
-            parameters={"progression": list(progression),
-                        "stages": ["resolve"]},
-            description=(f"Play {token}, then {target}: the chromatic leading "
-                         f"tone rises a semitone as the tritone resolves."),
+    for depth, key in _DOMINANT_CHAINS:
+        chain = dominant_chain(depth)
+        symbols = chain_label(chain, key)
+        out.append(HarmonyExerciseSpec(
+            exercise_id=f"chain_dominants_{depth}_{_key_slug(key)}",
+            title=f"Dominant chain ×{depth}: {symbols}",
+            drill="function", mode="major", render="block",
+            pattern=list(chain), keys=[key],
+            description=(f"{symbols} — each dominant resolves down a fifth "
+                         f"into the next, all the way home to {key}."),
         ))
     return out
 
@@ -2537,6 +2626,49 @@ def build_curriculum() -> CurriculumNode:
                             "Arpeggio resolves (second pass)",
                             "The same resolutions, tone by tone.", 4)
     fill_lab(grp_resolve_arp, _applied_resolve_specs("arpeggio"), 4)
+
+    # -- The ramp (ticket 19 / plan G5c): the same hunt, harder along all
+    #    four of plan §7's axes.  The visual→ear axis needs no leaves of its
+    #    own — every spot leaf above and below owns a 🎧 twin that records
+    #    under the same node id (harmony.echo_drills.is_echo_eligible).
+    l_ramp = lesson(
+        advanced, "adv_applied_ramp", "Applied chords: the ramp",
+        "Anywhere in the phrase, any tonicisable degree, any nearby key — "
+        "and by ear.",
+        "Find and resolve applied chords wherever they hide, in any key, "
+        "reading or listening.", 5, minutes=30,
+        theory="Tonicisation is a technique, not a chord: once you can hear "
+               "one borrowed dominant you can hear all of them. Three things "
+               "get harder here. The intruder moves — it can be the second "
+               "chord or the fifth, so the ear cannot rely on position. The "
+               "borrowed chord may be a leading-tone seventh instead of a "
+               "dominant: vii°7/V is F#–A–C–Eb in C major, the same F# "
+               "leading tone as V7/V but stacked as a fully diminished "
+               "seventh, and it resolves to V just as firmly. And the home "
+               "key moves outward on the circle of fifths, so the chromatic "
+               "tone is no longer always F#. Every leaf here also plays as "
+               "an ear drill (🎧): the progression sounds with the notation "
+               "hidden, you click the bar that left the key, then name the "
+               "degree it tonicised.",
+        related=["lesson:adv_secondary"],
+        keywords=["secondary dominant", "applied", "vii°7/V", "leading-tone "
+                  "seventh", "tonicisation", "ear", "🎧", "circle of fifths"])
+    grp_pos = group(l_ramp, "applied_positions", "Anywhere in the phrase",
+                    "The same intruder, moved through the progression.", 5)
+    fill_lab(grp_pos, _applied_position_specs(), 5)
+    grp_lt = group(l_ramp, "applied_leading_tone", "Leading-tone sevenths",
+                   "vii°7/x — the other way to borrow a dominant.", 5)
+    fill_lab(grp_lt, _applied_leading_tone_specs("spot"), 5)
+    grp_lt_res = group(l_ramp, "applied_leading_tone_resolve",
+                       "Resolve the leading-tone seventh",
+                       "Play vii°7/x, then the degree it tonicises.", 5)
+    fill_lab(grp_lt_res, _applied_leading_tone_specs("resolve"), 5)
+    grp_keys = group(l_ramp, "applied_keys", "Further from home",
+                     "The flagship hunt, one and two accidentals out.", 5)
+    fill_lab(grp_keys, _applied_key_specs(), 5)
+    grp_chain = group(l_ramp, "applied_chains", "Dominant chains",
+                      "Play a run of dominants around the circle of fifths.", 5)
+    fill_native(grp_chain, _dominant_chain_specs(), 5)
 
     # ===================================================================
     # 14. RESERVED — Real-score analysis & reduction

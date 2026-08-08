@@ -243,8 +243,8 @@ Both queue their events in `NoteInput`; `ScoreViewBeats` polls
 sound-only, never re-entering the page.
 
 **Answering without playing.** The spec gains `answer_mode`
-(`midi` default | `mcq` | `card`), carried to the controller as the payload's
-`ANSWER_MODE`:
+(`midi` default | `mcq` | `card` | `spot`), carried to the controller as the
+payload's `ANSWER_MODE`:
 
 * **`mcq`** — identification drills. Each target carries an `mcq` block
   (`prompt`, the mode's seven Roman-numeral `options`, `answer`); the panel
@@ -255,8 +255,26 @@ sound-only, never re-entering the page.
 * **`card`** — the chord cards become the answer surface: the prompt shows
   the current chord's tones/function and clicking the matching card answers
   (`HarmonyTrainer.answer(index)`). A per-target `answerIndex` override is the
-  seam for "spot the intruder" (plan G5a). In classic `midi` mode card clicks
+  seam for a per-target answer override. In classic `midi` mode card clicks
   keep navigating exactly as before.
+* **`spot`** — "spot the intruder" (plan G5a, ticket 17): a *single-question*
+  drill over one rendered progression holding exactly one applied chord. The
+  payload carries `SPOT_INDEX` (the intruder's target index) and marks that
+  target `romanHidden` (its Roman numeral is suppressed in the MusicXML too —
+  the chord symbol stays); a correct click finishes the whole exercise, pulses
+  the intruder's chromatic noteheads (`ht-intruder`) and reveals its name.
+  Wrong clicks are logged and re-askable.
+* **`spot` + `presentation: "echo"`** — the **ear stage** (plan G5c, ticket
+  19): the same hunt with the notation veiled, so the answer surface becomes a
+  strip of **bar positions** (the chord-card list names chords and stays
+  withheld). The payload adds `SPOT_FOLLOWUP` (`prompt`, the mode's
+  tonicisable `options`, `answer`) — a second question, *which degree did that
+  chord tonicise?* — and the drill is finished (and the veil lifted) only when
+  **both** are answered, so the revealed notation can never answer the
+  follow-up. `state().followupPending` exposes the phase; follow-up attempts
+  log as `mode: "spot_followup"`. The cross-language contract for the whole
+  flow is `tests/ear_spot_contract_check.js`, driven from
+  `tests/test_applied_ramps.py`.
 
 Every attempt lands in an answer log (`HarmonyTrainer.answerState()`,
 `state().answered`), the seam for progress tracking. Launchable no-MIDI drills
@@ -279,7 +297,8 @@ back by ear, and the very same pitch-class validator grades the attempt.
   twin (`*_echo` id, "Echo: " title, same compiled chords — the payload differs
   *only* in identity + `PRESENTATION`); `is_echo_eligible(lab_spec)` marks the
   curriculum leaves that own one (native `drill`-concept leaves: the triad
-  families and the cadence block drills — 115 of the 231 leaves);
+  families and the cadence block drills — plus, since ticket 19, the
+  applied-chord **spot** leaves, whose twin is the ear stage above);
   `echo_unlocked(state)` gates the twin on the visual leaf being at least
   *started*.
 * **Listen phase** (`harmony_trainer.js`): while an echo drill is unfinished

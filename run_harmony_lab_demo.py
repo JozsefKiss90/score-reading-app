@@ -84,13 +84,16 @@ def _is_aural_drill(spec: LabExperimentSpec) -> bool:
     """Is this curriculum leaf natively ear-first?
 
     Ticket 10's quality-ID drills are authored aural (echo + mcq) rather than
-    derived echo twins, and ticket 11's bass-line dictations are aural lab
-    cadences (``dictation: "bass"``), so the scene pane must withhold the
-    routed graph for them exactly as it does on the echo-button path — the
-    graph would name the very chords the learner is asked to hear.
+    derived echo twins, ticket 11's bass-line dictations are aural lab
+    cadences (``dictation: "bass"``), and ticket 19's applied *ear* stage is
+    an authored veiled hunt, so the scene pane must withhold the routed graph
+    for them exactly as it does on the echo-button path — the graph would name
+    the very chords the learner is asked to hear.
     """
     if (spec.parameters or {}).get("dictation"):
         return True
+    if spec.concept == "applied_chord":
+        return "ear" in tuple((spec.parameters or {}).get("stages") or ())
     if spec.concept != "drill":
         return False
     try:
@@ -636,7 +639,7 @@ class HarmonyLabWindow(QWidget):
         if spec.concept == "drill":
             self._launch_drill(node_id, spec, echo=echo)
         elif spec.concept == "applied_chord":
-            self._launch_applied(node_id, spec)
+            self._launch_applied(node_id, spec, echo=echo)
         else:
             self._launch_experiment(node_id, spec)
         if echo or _is_aural_drill(spec):
@@ -679,11 +682,15 @@ class HarmonyLabWindow(QWidget):
             inner = echo_variant(inner)   # same chords, ear-first presentation
         self._load_inner_drill(inner)
 
-    def _launch_applied(self, node_id: str, spec: LabExperimentSpec):
+    def _launch_applied(self, node_id: str, spec: LabExperimentSpec,
+                        echo: bool = False):
         """An applied-chord experiment (ticket 17) -> its native trainer drill.
 
         Each stage compiles to one trainer exercise; curriculum leaves are
         single-stage, so this launches the first (and normally only) one.
+        With ``echo`` (the 🎧 twin of a spot leaf) the drill becomes the ear
+        stage: the same hunt with the notation veiled, answered by clicking
+        the bar and naming the tonicised degree (ticket 19 / plan G5c).
         """
         try:
             inners = spec.to_exercise_specs()
@@ -697,7 +704,10 @@ class HarmonyLabWindow(QWidget):
         if len(inners) > 1:
             print("[LAB] applied_chord launches its first stage "
                   f"({inners[0].exercise_id}); author one stage per leaf")
-        self._load_inner_drill(inners[0])
+        inner = inners[0]
+        if echo:
+            inner = echo_variant(inner)   # same progression, heard not read
+        self._load_inner_drill(inner)
 
     def _launch_experiment(self, node_id: str, spec: LabExperimentSpec):
         """A synthetic lab concept -> compile + render through the lab pipeline."""

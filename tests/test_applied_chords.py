@@ -30,8 +30,9 @@ class TestParseAppliedToken(unittest.TestCase):
         self.assertEqual(parse_applied_token("V7/ii"), ("V7", "ii"))
 
     def test_non_applied_tokens_return_none(self):
+        # (vii°7/x joined the vocabulary with ticket 19 — tests/test_applied_ramps.py)
         for tok in ("V7", "V", "ii", "viiø7", "V7/", "/V", "V7/V/V",
-                    "vii°7/V", "ii7/V", "V9/V", "V7/bII", "V7/2", ""):
+                    "ii7/V", "V9/V", "V7/bII", "V7/2", ""):
             self.assertIsNone(parse_applied_token(tok), tok)
 
 
@@ -107,9 +108,11 @@ class TestBuildAppliedDominant(unittest.TestCase):
 
 class TestAppliedTokensForMode(unittest.TestCase):
     def test_major_vocabulary_is_derived_from_the_builder(self):
-        # Five tonicisable degrees (ii iii IV V vi), two heads each; I is
-        # the home dominant and vii° cannot be a momentary tonic.
-        toks = applied_tokens_for_mode("major")
+        # Five tonicisable degrees (ii iii IV V vi), two dominant heads each;
+        # I is the home dominant and vii° cannot be a momentary tonic.  (The
+        # applied leading-tone head arrived with ticket 19.)
+        from theory.diatonic_harmony import APPLIED_DOMINANT_HEADS
+        toks = applied_tokens_for_mode("major", heads=APPLIED_DOMINANT_HEADS)
         self.assertEqual(len(toks), 10)
         self.assertIn("V7/V", toks)
         self.assertIn("V/ii", toks)
@@ -132,7 +135,7 @@ class TestTrainerPatternGate(unittest.TestCase):
         self.assertEqual(normalise_pattern(pattern), pattern)
 
     def test_normalise_still_rejects_unsupported_slash_tokens(self):
-        for bad in ("V9/V", "V65/V", "vii°7/V", "ii7/V", "V7/bII", "V7/V/V"):
+        for bad in ("V9/V", "V65/V", "viiø7/V", "ii7/V", "V7/bII", "V7/V/V"):
             with self.assertRaises(ValueError, msg=bad):
                 normalise_pattern([bad])
 
@@ -172,7 +175,7 @@ class TestLabRomanGate(unittest.TestCase):
 
     def test_supported_roman_still_rejects_chromatic_tokens(self):
         from harmony.lab_spec import is_supported_roman
-        for bad in ("bII", "#iv", "N6", "Ger65", "V9/V", "vii°7/V",
+        for bad in ("bII", "#iv", "N6", "Ger65", "V9/V", "viiø7/V",
                     "V7/bII", "V9", "ii65"):
             self.assertFalse(is_supported_roman(bad), bad)
 
@@ -221,10 +224,10 @@ class TestAppliedChordConcept(unittest.TestCase):
     def test_ticket_spec_shape_validates(self):
         _applied_spec(["spot", "resolve"]).validate()
 
-    def test_ear_stage_is_reserved_for_g5c(self):
-        with self.assertRaises(ValueError) as ctx:
-            _applied_spec(["spot", "resolve", "ear"]).validate()
-        self.assertIn("G5c", str(ctx.exception))
+    def test_all_three_stages_validate(self):
+        # The ear stage was reserved by this ticket and landed with 19 / G5c
+        # (its own coverage lives in tests/test_applied_ramps.py).
+        _applied_spec(["spot", "resolve", "ear"]).validate()
 
     def test_unknown_stage_refused(self):
         with self.assertRaises(ValueError):
@@ -301,9 +304,11 @@ class TestSpotAnswerModeSpec(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._spot(keys=["C", "G"]).validate()
 
-    def test_spot_cannot_be_echoed(self):
-        with self.assertRaises(ValueError):
-            self._spot(presentation="echo").validate()
+    def test_spot_can_be_echoed_as_the_ear_stage(self):
+        # Ticket 17 refused it (no veiled answer surface existed); ticket 19
+        # gave the hunt a bar-position strip, so the veil is now legal —
+        # unlike the card list, which still is not.
+        self._spot(presentation="echo").validate()
 
 
 class TestSpotPayload(unittest.TestCase):
@@ -478,9 +483,10 @@ class TestAppliedCurriculum(unittest.TestCase):
         self.assertTrue(page["commonMistakes"])
 
     def test_leaf_count_fingerprint(self):
-        # 351 (ticket 16) + 12 applied leaves (this ticket) = 363; the JS
-        # mirror is pinned in tests/curriculum_node_test.js.
-        self.assertEqual(self.root.exercise_count, 363)
+        # 351 (ticket 16) + 12 applied leaves (this ticket) = 363, + 17 ramp
+        # leaves (ticket 19, pinned in tests/test_applied_ramps.py) = 380; the
+        # JS mirror is pinned in tests/curriculum_node_test.js.
+        self.assertEqual(self.root.exercise_count, 380)
 
 
 if __name__ == "__main__":
