@@ -115,9 +115,14 @@ class LabNote:
     step: str                       # "C".."B"
     alter: int                      # signed accidental count
     octave: int
-    note_type: str                  # "whole" | "half" | "quarter" | "eighth"
+    note_type: str                  # "whole" | "half" | "quarter" | "eighth" | "16th"
     is_chord_tone: bool = False     # 2nd+ note of a stacked chord (<chord/>)
     is_rest: bool = False
+    # Per-note notation marks (ticket 02) -- presentation only, "" for none;
+    # the serializer emits a <notations> wrapper only when one is set.
+    fingering: str = ""             # "1".."5"
+    slur: str = ""                  # "start" | "stop"
+    articulation: str = ""          # "staccato" | "accent"
 
     @property
     def midi(self) -> int:
@@ -714,13 +719,21 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
 
     measures: List[LabMeasure] = []
     for k, degrees in enumerate(tp.phrase):
+        # validate() pins each mark tuple to the measure's degree count.
+        fingers = tp.fingering[k] if tp.fingering else ()
+        slurs = tp.slurs[k] if tp.slurs else ()
+        arts = tp.articulations[k] if tp.articulations else ()
         notes: List[LabNote] = []
         pcs: List[int] = []
         spelled: List[str] = []
-        for d in degrees:
+        for j, d in enumerate(degrees):
             step, alter, octave = _scale_note(scale, d)
             octave += octave_shift
-            notes.append(LabNote(step, alter, octave, dtype))
+            notes.append(LabNote(
+                step, alter, octave, dtype,
+                fingering=fingers[j] if fingers else "",
+                slur=slurs[j] if slurs else "",
+                articulation=arts[j] if arts else ""))
             pcs.append(_midi(step, alter, octave) % 12)
             spelled.append(f"{step}{_alter_str(alter)}{octave}")
         rest_octave = BASS_OCTAVE if left else TREBLE_OCTAVE

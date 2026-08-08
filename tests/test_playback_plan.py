@@ -183,6 +183,58 @@ class TestEighthNoteMotives(unittest.TestCase):
         self.assertTrue(all(e.dur_beats == 1.0 for e in plan.events))
 
 
+class TestSixteenthTechnique(unittest.TestCase):
+    """Technique measures of 16ths (ticket 02) occupy 16 slots keyed 1..16;
+    the plan must keep every slot at a quarter-beat -- double eighth speed --
+    instead of clamping to the 8-slot eighth assumption."""
+
+    def _plan_for(self, degrees, note_value="16th"):
+        spec = LabExperimentSpec(
+            "tech", "Technique", concept="technique", key="C major",
+            render="melody",
+            parameters={"phrase": [degrees], "note_value": note_value})
+        payload = build_lab_payload(compile_lab(spec))
+        return payload, build_playback_plan(payload)
+
+    def test_sixteen_slot_measure_plays_double_eighth_speed(self):
+        payload, plan = self._plan_for(list(range(1, 17)))
+        t0 = payload["TARGET_CHORDS"][0]
+        self.assertEqual(len(plan.events), 16)
+        self.assertEqual([e.start_beat for e in plan.events],
+                         [i * 0.25 for i in range(16)])
+        self.assertTrue(all(e.dur_beats == 0.25 for e in plan.events))
+        played_pcs = [e.midis[0] % 12 for e in plan.events]
+        self.assertEqual(played_pcs, list(t0["pitchClasses"]))
+
+    def test_nine_tone_sixteenth_measure_keeps_sixteenth_slots(self):
+        # 9 sounding 16ths + 7 padding rests: max slot key 9 lands in the
+        # 16-slot bucket, so nothing stretches to eighths.
+        _payload, plan = self._plan_for(list(range(1, 10)))
+        self.assertEqual(len(plan.events), 9)
+        self.assertEqual([e.start_beat for e in plan.events],
+                         [i * 0.25 for i in range(9)])
+        self.assertTrue(all(e.dur_beats == 0.25 for e in plan.events))
+
+    def test_short_sixteenth_measure_stays_at_notated_speed(self):
+        # 3 sounding 16ths + 13 padding rests: the occupied slots alone
+        # would infer a 4-quarter bar, so the payload must state the notated
+        # slot count and playback must honour it -- notation, not grading.
+        payload, plan = self._plan_for([1, 2, 3])
+        self.assertEqual(payload["TARGET_CHORDS"][0]["slotsPerMeasure"], 16)
+        self.assertEqual([e.start_beat for e in plan.events],
+                         [0.0, 0.25, 0.5])
+        self.assertTrue(all(e.dur_beats == 0.25 for e in plan.events))
+
+    def test_short_eighth_measure_stays_at_notated_speed(self):
+        # The same fidelity for eighths: the tracer warm-up's closing [[1]]
+        # measure notates one eighth + 7 eighth rests, not a quarter.
+        payload, plan = self._plan_for([1, 2, 3], note_value="eighth")
+        self.assertEqual(payload["TARGET_CHORDS"][0]["slotsPerMeasure"], 8)
+        self.assertEqual([e.start_beat for e in plan.events],
+                         [0.0, 0.5, 1.0])
+        self.assertTrue(all(e.dur_beats == 0.5 for e in plan.events))
+
+
 class TestLabPayloadBassMidi(unittest.TestCase):
     def test_inversion_bass_midi_tracks_the_changing_bass(self):
         spec = LabExperimentSpec(

@@ -332,8 +332,8 @@ class AppliedChordParams:
 
 
 #: Slots per 4/4 measure for each technique note value (piano-technique
-#: ticket 01; ticket 02 adds ``"16th"`` -> 16 with the fingering renderer).
-TECHNIQUE_SLOTS = {"quarter": 4, "eighth": 8}
+#: tickets 01+02; ``_TICKS`` divides a 16-division quarter exactly for all).
+TECHNIQUE_SLOTS = {"quarter": 4, "eighth": 8, "16th": 16}
 
 #: Highest 1-based scale degree a technique phrase may reach: four octaves
 #: (``_scale_note`` wraps degrees > 7 into higher octaves with no clamp).
@@ -345,11 +345,14 @@ class TechniqueParams:
     #: One inner tuple per MEASURE; entries are 1-based scale degrees
     #: (1..TECHNIQUE_MAX_DEGREE — the four-octave span of a scale run).
     phrase: tuple = ()
-    note_value: str = "quarter"       # "quarter" | "eighth" (16ths: ticket 02)
+    note_value: str = "quarter"       # "quarter" | "eighth" | "16th"
     hand: str = "rh"                  # "rh" (treble staff) | "lh" (bass staff)
-    #: Optional finger labels, parallel to ``phrase`` ("1".."5" or "").
-    #: Stored now, RENDERED by ticket 02; until then guide text only.
-    fingering: tuple = ()
+    #: Optional per-note marks, each mirroring ``phrase``'s shape (one inner
+    #: tuple per measure, one label per note, "" for none).  Presentation
+    #: only: Verovio renders them, the mod-12 note-on grader cannot see them.
+    fingering: tuple = ()             # "1".."5"
+    slurs: tuple = ()                 # "start" | "stop"
+    articulations: tuple = ()         # "staccato" | "accent"
     #: The not-graded gesture instruction (wrist, accents, tempo intent).
     #: Shown in the leaf description / guide panel, never assessed.
     coach: str = ""
@@ -411,6 +414,9 @@ def technique_params(p: Dict) -> TechniqueParams:
         hand=str(p.get("hand", "rh")),
         fingering=tuple(tuple(str(f) for f in m)
                         for m in p.get("fingering", ())),
+        slurs=tuple(tuple(str(s) for s in m) for m in p.get("slurs", ())),
+        articulations=tuple(tuple(str(a) for a in m)
+                            for m in p.get("articulations", ())),
         coach=str(p.get("coach", "")),
     )
 
@@ -715,8 +721,7 @@ class LabExperimentSpec:
             if tp.note_value not in TECHNIQUE_SLOTS:
                 raise ValueError(
                     f"unknown note_value {tp.note_value!r}; the technique "
-                    f"phrase engine understands {sorted(TECHNIQUE_SLOTS)} "
-                    f"(16ths arrive with the fingering renderer)")
+                    f"phrase engine understands {sorted(TECHNIQUE_SLOTS)}")
             slots = TECHNIQUE_SLOTS[tp.note_value]
             for i, m in enumerate(tp.phrase):
                 if not m:
@@ -738,19 +743,26 @@ class LabExperimentSpec:
                 raise ValueError(
                     f"unknown hand {tp.hand!r}; 'rh' plays the line on the "
                     f"treble staff, 'lh' on the bass staff")
-            if tp.fingering:
-                if (len(tp.fingering) != len(tp.phrase)
+            for pname, marks, vocab in (
+                    ("fingering", tp.fingering, ("1", "2", "3", "4", "5")),
+                    ("slurs", tp.slurs, ("start", "stop")),
+                    ("articulations", tp.articulations,
+                     ("staccato", "accent"))):
+                if not marks:
+                    continue
+                if (len(marks) != len(tp.phrase)
                         or any(len(f) != len(m)
-                               for f, m in zip(tp.fingering, tp.phrase))):
+                               for f, m in zip(marks, tp.phrase))):
                     raise ValueError(
-                        "fingering must mirror the phrase shape: one tuple "
-                        "per measure, one label per note")
-                for m in tp.fingering:
-                    for f in m:
-                        if f not in ("", "1", "2", "3", "4", "5"):
+                        f"{pname} must mirror the phrase shape: one tuple "
+                        f"per measure, one label per note")
+                for measure_labels in marks:
+                    for label in measure_labels:
+                        if label and label not in vocab:
                             raise ValueError(
-                                f"fingering labels are '1'..'5' (or '' for "
-                                f"none); got {f!r}")
+                                f"{pname} labels are "
+                                f"{'/'.join(repr(v) for v in vocab)} (or '' "
+                                f"for none); got {label!r}")
             self._check_len(len(tp.phrase))
 
         elif self.concept == "drill":

@@ -11,8 +11,9 @@ notates:
   together for the whole measure (whole notes);
 * **arpeggio / melody** -- the bass (when notated) holds the whole measure
   while the tones sound one slot each, driven by the payload's
-  ``EXPECTED_MIDI_BY_MEASURE_OR_BEAT`` map when present (4 quarter slots, or
-  8 eighth slots when the map extends past beat 4, as long motives do).
+  ``EXPECTED_MIDI_BY_MEASURE_OR_BEAT`` map when present (4 quarter slots, 8
+  eighth slots when the map extends past beat 4 as long motives do, or 16
+  16th slots for the technique drills' 16th-note bars).
 
 Playback follows the *notation*, not the grading: lab strict-bass measures
 grade as ordered walks (``render == "arpeggio"``) but are notated as block
@@ -84,8 +85,9 @@ def _beat_map(expected: object) -> Optional[Dict[int, List[int]]]:
     """The payload's per-slot pc map (1-based slot -> pcs), or None for block.
 
     Slots follow the notation: 4 quarters normally, 8 eighths for the long
-    motives (``harmony.lab._gen_motive`` keys 1..8 when a motive has more than
-    four degrees).
+    motives (``harmony.lab._gen_motive`` keys 1..8 when a motive has more
+    than four degrees), 16 16ths for the technique drills' 16th-note bars
+    (``harmony.lab._gen_technique`` keys 1..16).
     """
     if not isinstance(expected, dict):
         return None
@@ -95,9 +97,27 @@ def _beat_map(expected: object) -> Optional[Dict[int, List[int]]]:
             b = int(beat)
         except (TypeError, ValueError):
             continue
-        if 1 <= b <= 2 * BEATS_PER_MEASURE:
+        if 1 <= b <= 4 * BEATS_PER_MEASURE:
             out[b] = [int(p) for p in (pcs or [])]
     return out or None
+
+
+def _slot_count(target: Dict, beat_map: Dict[int, List[int]]) -> int:
+    """The measure's slot count: 4 quarters, 8 eighths, or 16 16ths.
+
+    Lab melody targets state it (``slotsPerMeasure``), which keeps
+    rest-padded bars at their notated speed -- ``beat_map`` keys only the
+    sounding notes, so a 3-note 16th bar would otherwise stretch to
+    quarters.  Without the field (trainer payloads, older lab payloads) the
+    count is inferred as the smallest halving of the beat that holds the
+    highest occupied slot.
+    """
+    declared = target.get("slotsPerMeasure")
+    slots = declared if isinstance(declared, int) and declared > 0 \
+        else BEATS_PER_MEASURE
+    while slots < max(beat_map):
+        slots *= 2
+    return slots
 
 
 def _sequential_events(target: Dict, expected: object, start: float,
@@ -112,11 +132,7 @@ def _sequential_events(target: Dict, expected: object, start: float,
 
     beat_map = _beat_map(expected)
     if beat_map is not None:
-        # A map reaching past beat 4 is the eighth-note notation: 8 slots of
-        # half a beat each (quarters otherwise).
-        slots = (BEATS_PER_MEASURE if max(beat_map) <= BEATS_PER_MEASURE
-                 else 2 * BEATS_PER_MEASURE)
-        slot_dur = BEATS_PER_MEASURE / float(slots)
+        slot_dur = BEATS_PER_MEASURE / float(_slot_count(target, beat_map))
         for beat in sorted(beat_map):
             tones = _dedup([_midi_for_pc(pc, midis) for pc in beat_map[beat]])
             if tones:

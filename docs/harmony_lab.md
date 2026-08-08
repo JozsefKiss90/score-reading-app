@@ -38,9 +38,12 @@ The theory and rendering layers (`lab_spec`, `lab`, `lab_musicxml`) are **pure**
 Atlas node-id helpers, no Qt / Verovio / MIDI — so they are unit-tested
 headlessly. The UI is a separate web layer; MIDI validation is the **unchanged**
 `harmony_trainer.js`. The shared viewer (`app.js`, `view.py`, `harmony_trainer.js`,
-`musicxml_builder.py`, `atlas.py`'s ontology) is never modified: `atlas.py`
-gained only *additive* Phase-6 dataclasses, and `run_harmony_trainer_demo.py`
-gained only the additive `load_external_lab()` host method.
+`musicxml_builder.py`, `atlas.py`'s ontology) is never modified except
+*additively*: `atlas.py` gained only additive Phase-6 dataclasses,
+`run_harmony_trainer_demo.py` gained only the additive `load_external_lab()`
+host method, and `musicxml_builder.py`'s `_note_xml` gained only opt-in
+notation-mark kwargs (piano-technique ticket 02) whose defaults leave every
+existing caller's output byte-identical.
 
 ### Single source of truth
 

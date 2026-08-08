@@ -6,13 +6,13 @@ marks (staccato dot, accent). All additive, all presentational — grading is un
 
 **Blocked by:** 01 — technique concept (the fields ride on `LabNote` / `TechniqueParams`).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] A technique phrase with `note_value="16th"` renders 16 notes in a 4/4 bar, plays back
+- [x] A technique phrase with `note_value="16th"` renders 16 notes in a 4/4 bar, plays back
       correctly, and grades note-by-note.
-- [ ] Fingering numerals render above/below the correct noteheads (Verovio `<technical><fingering>`).
-- [ ] A slurred note pair renders a slur arc; staccato/accent marks render on flagged notes.
-- [ ] Existing exercises' MusicXML is byte-identical (all new emission is opt-in).
+- [x] Fingering numerals render above/below the correct noteheads (Verovio `<technical><fingering>`).
+- [x] A slurred note pair renders a slur arc; staccato/accent marks render on flagged notes.
+- [x] Existing exercises' MusicXML is byte-identical (all new emission is opt-in).
 
 ## Design
 
@@ -55,3 +55,24 @@ new params produces identical MusicXML before/after.
 Nothing here is graded: fingering compliance, articulation length, and slur gesture are
 unobservable to the mod-12 note-on grader (releases are ignored in ordered mode,
 `harmony_trainer.js:622`). These marks are the *lesson*; the grade stays "right notes in order".
+
+## Comments
+
+**2026-08-08 (agent, implementation notes).** Done as designed, with three recorded deviations:
+
+1. **`<notations>` placement.** The design sketch says "emits after `<type>`"; the MusicXML DTD
+   puts `notations` after `<staff>`, so it is emitted as the note's last child (Verovio accepts
+   either; `test_notations_sit_after_staff_dtd_order` pins the choice).
+2. **Playback fidelity for rest-padded bars.** Deriving slot duration from the occupied-slot
+   maximum alone would stretch a 3-note 16th bar to quarters (`expected_by_beat` keys only
+   sounding notes). Lab melody targets now state the notated count additively
+   (`slotsPerMeasure` in `_lab_target_for`); `playback_plan._slot_count` prefers it and falls
+   back to inference for trainer payloads. This also fixes the same pre-existing gap for short
+   eighth measures (e.g. the tracer warm-up's closing `[[1]]` bar now plays as an eighth).
+3. **Beams** (the optional low-priority item) were skipped, as the ticket allows.
+
+The shipped tracer leaf's XML intentionally gains its fingering numerals (verified: the diff is
+exactly nine `<notations><technical><fingering>` insertions). All other snapshots — technique
+without marks, motive eighths, trainer block — verified byte-identical; `docs/harmony_lab.md`'s
+shared-file rule was amended to record `_note_xml`'s additive, opt-in extension. Suite: 1410
+passing.

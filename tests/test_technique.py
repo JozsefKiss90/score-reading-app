@@ -12,11 +12,18 @@ pin, in order:
   * the render/payload path (MusicXML + ordered ``arpeggio`` targets);
   * echo ineligibility (no 🎧 twin for technique leaves);
   * the ``cat:technique`` tracer leaf wired through the curriculum.
+
+Ticket 02 layers the notation vocabulary on top: 16th-note slots, per-note
+fingering numerals, two-note slurs and staccato/accent marks.  All of it is
+opt-in presentation (grading is untouched); ``TestNotationMarks`` pins the
+emitted MusicXML, including that a spec without the new params produces no
+``<notations>`` at all.
 """
 
 import os
 import sys
 import unittest
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -87,9 +94,19 @@ class TestValidation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "measure"):
             _spec(parameters={"phrase": [[1, 2], []]}).validate()
 
-    def test_sixteenths_refused_until_ticket_02(self):
+    def test_sixteenths_accepted(self):
+        # ticket 02: a 4/4 bar holds sixteen 16ths.
+        _spec(parameters={"note_value": "16th",
+                          "phrase": [list(range(1, 17))]}).validate()
+
+    def test_seventeen_sixteenths_refused(self):
+        with self.assertRaises(ValueError):
+            _spec(parameters={"note_value": "16th",
+                              "phrase": [list(range(1, 18))]}).validate()
+
+    def test_unknown_note_value_refused(self):
         with self.assertRaisesRegex(ValueError, "note_value"):
-            _spec(parameters={"note_value": "16th"}).validate()
+            _spec(parameters={"note_value": "32nd"}).validate()
 
     def test_measure_overflowing_its_slots_refused(self):
         # 5 quarters cannot fit a 4/4 bar; 9 eighths cannot either.
@@ -121,6 +138,36 @@ class TestValidation(unittest.TestCase):
     def test_matching_fingering_accepted(self):
         _spec(parameters={
             "fingering": [["1", "2", "3", "4", "5", "4", "3", "2"], ["1"]],
+        }).validate()
+
+    def test_slurs_shape_mismatch_refused(self):
+        # slurs mirror the phrase shape exactly as fingering does.
+        with self.assertRaisesRegex(ValueError, "slurs"):
+            _spec(parameters={"slurs": [["start", "stop"]]}).validate()
+
+    def test_slur_vocab_restricted(self):
+        with self.assertRaisesRegex(ValueError, "slur"):
+            _spec(parameters={
+                "slurs": [["legato", "", "", "", "", "", "", ""], [""]],
+            }).validate()
+
+    def test_articulations_shape_mismatch_refused(self):
+        with self.assertRaisesRegex(ValueError, "articulations"):
+            _spec(parameters={"articulations": [["staccato"]]}).validate()
+
+    def test_articulation_vocab_restricted(self):
+        with self.assertRaisesRegex(ValueError, "articulation"):
+            _spec(parameters={
+                "articulations": [["tenuto", "", "", "", "", "", "", ""],
+                                  [""]],
+            }).validate()
+
+    def test_matching_slurs_and_articulations_accepted(self):
+        _spec(parameters={
+            "slurs": [["start", "stop", "start", "stop", "", "", "", ""],
+                      [""]],
+            "articulations": [["accent", "", "", "", "", "", "", "staccato"],
+                              [""]],
         }).validate()
 
     def test_block_render_refused(self):
@@ -186,6 +233,24 @@ class TestCompile(unittest.TestCase):
         self.assertEqual(len(m0.staff1), 4)          # 3 quarters + 1 rest
         self.assertTrue(all(n.note_type == "quarter" for n in m0.staff1))
 
+    def test_sixteenth_note_value_uses_sixteen_slots(self):
+        exp = compile_lab(_spec(parameters={"phrase": [list(range(1, 17))],
+                                            "note_value": "16th"}))
+        m0 = exp.measures[0]
+        self.assertEqual(len(m0.staff1), 16)
+        self.assertTrue(all(n.note_type == "16th" for n in m0.staff1))
+        # note-by-note grading: one ordered pc per slot, keys 1..16
+        self.assertEqual(sorted(m0.expected_by_beat), list(range(1, 17)))
+        for pcs in m0.expected_by_beat.values():
+            self.assertEqual(len(pcs), 1)
+
+    def test_sixteenth_short_measure_rest_padded(self):
+        m0 = compile_lab(_spec(parameters={"phrase": [[1, 2, 3]],
+                                           "note_value": "16th"})).measures[0]
+        self.assertEqual(len(m0.staff1), 16)         # 3 notes + 13 rests
+        self.assertEqual(len([n for n in m0.staff1 if n.is_rest]), 13)
+        self.assertTrue(all(n.note_type == "16th" for n in m0.staff1))
+
     def test_degrees_wrap_into_higher_octaves(self):
         exp = compile_lab(_spec(parameters={"phrase": [[1, 8, 15, 29]],
                                             "note_value": "quarter"}))
@@ -232,6 +297,97 @@ class TestCompile(unittest.TestCase):
         self.assertEqual([n.pitch_class for n in notes], [4, 5, 8, 9])
 
 
+def _measure_notes(xml: str, staff: str = "1"):
+    """All ``<note>`` elements of measure 1 on ``staff``, in document order."""
+    measure = ET.fromstring(xml).find(".//measure")
+    return [n for n in measure.findall("note") if n.findtext("staff") == staff]
+
+
+def _sounding(notes):
+    return [n for n in notes if n.find("rest") is None]
+
+
+class TestNotationMarks(unittest.TestCase):
+    """Ticket 02 -- 16th durations + fingering/slur/articulation MusicXML.
+
+    Everything here is opt-in presentation: the last test pins that a spec
+    without the new params emits no ``<notations>`` (the byte-identity
+    guarantee for every existing exercise through the shared ``_note_xml``).
+    """
+
+    def test_sixteenth_measure_sums_to_sixty_four_ticks(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "phrase": [list(range(1, 17))], "note_value": "16th"})))
+        notes = _measure_notes(xml)
+        durs = [int(n.findtext("duration")) for n in notes]
+        self.assertEqual(len(durs), 16)
+        self.assertEqual(set(durs), {4})             # DIVISIONS=16 -> 16th = 4
+        self.assertEqual(sum(durs), 64)              # exactly one 4/4 measure
+        self.assertEqual({n.findtext("type") for n in notes}, {"16th"})
+
+    def test_fingering_renders_on_correct_noteheads(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "fingering": [["1", "2", "3", "4", "5", "4", "3", "2"], ["1"]]})))
+        line = _sounding(_measure_notes(xml))
+        got = [n.findtext("notations/technical/fingering") for n in line]
+        self.assertEqual(got, ["1", "2", "3", "4", "5", "4", "3", "2"])
+
+    def test_slur_pair_renders_endpoints(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "slurs": [["start", "stop", "", "", "", "", "", ""], [""]]})))
+        line = _sounding(_measure_notes(xml))
+        self.assertEqual(line[0].find("notations/slur").get("type"), "start")
+        self.assertEqual(line[0].find("notations/slur").get("number"), "1")
+        self.assertEqual(line[1].find("notations/slur").get("type"), "stop")
+        self.assertIsNone(line[2].find("notations"))
+
+    def test_articulation_marks_render(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "articulations": [["accent", "staccato", "", "", "", "", "", ""],
+                              [""]]})))
+        line = _sounding(_measure_notes(xml))
+        self.assertIsNotNone(line[0].find("notations/articulations/accent"))
+        self.assertIsNotNone(line[1].find("notations/articulations/staccato"))
+        self.assertIsNone(line[2].find("notations"))
+
+    def test_one_notations_wrapper_holds_all_three(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "fingering": [["1", "2", "3", "4", "5", "4", "3", "2"], ["1"]],
+            "slurs": [["start", "stop", "", "", "", "", "", ""], [""]],
+            "articulations": [["staccato", "", "", "", "", "", "", ""],
+                              [""]]})))
+        n0 = _sounding(_measure_notes(xml))[0]
+        self.assertEqual(len(n0.findall("notations")), 1)
+        marks = n0.find("notations")
+        self.assertIsNotNone(marks.find("slur"))
+        self.assertIsNotNone(marks.find("articulations/staccato"))
+        self.assertEqual(marks.findtext("technical/fingering"), "1")
+
+    def test_notations_sit_after_staff_dtd_order(self):
+        # MusicXML note child order puts <notations> after <staff>; Verovio
+        # accepts either, the DTD only the latter.
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "fingering": [["1", "2", "3", "4", "5", "4", "3", "2"], ["1"]]})))
+        tags = [c.tag for c in _sounding(_measure_notes(xml))[0]]
+        self.assertLess(tags.index("type"), tags.index("staff"))
+        self.assertEqual(tags[-1], "notations")
+
+    def test_rest_padding_and_idle_staff_carry_no_marks(self):
+        xml = build_lab_musicxml(compile_lab(_spec(parameters={
+            "phrase": [[1, 2, 3]], "note_value": "quarter",
+            "fingering": [["1", "2", "3"]],
+            "articulations": [["staccato", "staccato", "staccato"]]})))
+        root = ET.fromstring(xml)
+        marked = [n for n in root.iter("note") if n.find("notations") is not None]
+        self.assertEqual(len(marked), 3)
+        self.assertTrue(all(n.find("rest") is None for n in marked))
+
+    def test_spec_without_marks_emits_no_notations(self):
+        xml = build_lab_musicxml(compile_lab(_spec()))
+        for fragment in ("<notations>", "<fingering", "<slur", "<articulations"):
+            self.assertNotIn(fragment, xml)
+
+
 class TestEchoIneligibility(unittest.TestCase):
     def test_technique_is_not_echo_eligible(self):
         self.assertFalse(is_echo_eligible(_spec()))
@@ -269,6 +425,13 @@ class TestCurriculumTracer(unittest.TestCase):
         leaf = self.root.find(TRACER_LEAF)
         self.assertFalse(is_echo_eligible(leaf.lab_spec))
         self.assertFalse(leaf.to_payload()["echoEligible"])
+
+    def test_tracer_leaf_renders_its_fingering(self):
+        # the shipped warm-up carries fingering params; ticket 02 makes the
+        # numerals real notation instead of guide text only.
+        leaf = self.root.find(TRACER_LEAF)
+        xml = build_lab_musicxml(compile_lab(leaf.lab_spec))
+        self.assertIn("<technical><fingering>1</fingering></technical>", xml)
 
     def test_tracer_coach_line_shown_in_description(self):
         leaf = self.root.find(TRACER_LEAF)

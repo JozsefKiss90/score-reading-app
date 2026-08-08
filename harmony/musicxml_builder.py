@@ -118,7 +118,9 @@ def _midi_of(step: str, alter: int, octave: int) -> int:
 
 def _note_xml(step: str, alter: int, octave: int, ticks: int, note_type: str,
               staff: int, voice: int, fifths: int,
-              is_chord_tone: bool = False) -> str:
+              is_chord_tone: bool = False,
+              fingering: str = "", slur: str = "",
+              articulation: str = "") -> str:
     ks_alter = _ks_alter_for_step(step, fifths)
     eff_alter = alter
 
@@ -134,8 +136,22 @@ def _note_xml(step: str, alter: int, octave: int, ticks: int, note_type: str,
             accidental_xml = f"<accidental>{name}</accidental>"
 
     chord_xml = "<chord/>" if is_chord_tone else ""
+
+    # Per-note marks (piano-technique ticket 02): one <notations> wrapper,
+    # only when a mark is set -- every existing caller's output is unchanged.
+    # Values are spec-validated vocab: slur "start"/"stop", articulation
+    # "staccato"/"accent", fingering "1".."5".
+    notations_xml = ""
+    if slur or articulation or fingering:
+        slur_xml = f'<slur type="{slur}" number="1"/>' if slur else ""
+        art_xml = (f"<articulations><{articulation}/></articulations>"
+                   if articulation else "")
+        fing_xml = (f"<technical><fingering>{fingering}</fingering>"
+                    f"</technical>" if fingering else "")
+        notations_xml = f"<notations>{slur_xml}{art_xml}{fing_xml}</notations>"
+
     # MusicXML note child order: chord?, pitch, duration, voice, type,
-    # accidental, staff (DTD-conformant).
+    # accidental, staff, notations (DTD-conformant).
     return (
         f"<note>{chord_xml}"
         f"<pitch><step>{step}</step>{alter_xml}<octave>{octave}</octave></pitch>"
@@ -143,7 +159,7 @@ def _note_xml(step: str, alter: int, octave: int, ticks: int, note_type: str,
         f"<voice>{voice}</voice>"
         f"<type>{note_type}</type>"
         f"{accidental_xml}"
-        f"<staff>{staff}</staff></note>"
+        f"<staff>{staff}</staff>{notations_xml}</note>"
     )
 
 

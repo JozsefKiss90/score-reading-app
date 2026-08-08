@@ -11,8 +11,10 @@ It reuses the low-level helpers of :mod:`harmony.musicxml_builder` verbatim
 and the timing constants) so the lab's notation matches the trainer's byte-for-byte
 where the layouts coincide; only the multi-voice / changed-bass / melodic layouts
 the trainer cannot express are assembled here.  The document wrapper is a small
-constant template copied from :func:`harmony.musicxml_builder.build_musicxml` so
-that module stays unmodified (the project's shared-file discipline).
+constant template copied from :func:`harmony.musicxml_builder.build_musicxml`,
+keeping the shared-file discipline: that module is only ever extended
+additively (its ``_note_xml`` gained opt-in notation-mark kwargs in
+piano-technique ticket 02; defaults leave every existing caller byte-identical).
 
 The renderer is **pure** (strings + dicts; no Qt / Verovio / MIDI).
 
@@ -52,9 +54,11 @@ from harmony.musicxml_builder import (
 )
 
 
-#: note_type -> duration in divisions (DIVISIONS=16 -> quarter=16).
+#: note_type -> duration in divisions (DIVISIONS=16 -> quarter=16; the 16th's
+#: 4 ticks stay exact, so a 16-slot technique bar sums to MEASURE_TICKS).
 _TICKS = {"whole": MEASURE_TICKS, "half": MEASURE_TICKS // 2,
-          "quarter": DIVISIONS, "eighth": DIVISIONS // 2}
+          "quarter": DIVISIONS, "eighth": DIVISIONS // 2,
+          "16th": DIVISIONS // 4}
 
 
 # ----------------------------------------------------------------------------
@@ -67,7 +71,9 @@ def _note_to_xml(note: LabNote, staff: int, voice: int, fifths: int) -> str:
         return _rest_xml(ticks, note.note_type, staff=staff, voice=voice)
     return _note_xml(note.step, note.alter, note.octave, ticks, note.note_type,
                      staff=staff, voice=voice, fifths=fifths,
-                     is_chord_tone=note.is_chord_tone)
+                     is_chord_tone=note.is_chord_tone,
+                     fingering=note.fingering, slur=note.slur,
+                     articulation=note.articulation)
 
 
 def _staff_xml(notes, staff: int, voice: int, fifths: int) -> str:
@@ -167,6 +173,26 @@ def _payload_render(measure: LabMeasure) -> str:
     return "arpeggio" if measure.expected_by_beat is not None else "block"
 
 
+def _melody_slot_count(measure: LabMeasure) -> Optional[int]:
+    """How many equal slots the notated line divides the 4/4 bar into.
+
+    Melody measures notate one tone (or padding rest) per slot, so the count
+    follows the line's note value: 4 quarters, 8 eighths, 16 16ths.  The
+    playback plan needs it stated because ``expected_by_beat`` keys only the
+    sounding notes -- a rest-padded 3-note 16th bar must still play at 16th
+    speed, not stretch to quarters.  None for every other render (and for
+    mixed-duration lines), where the slot notion does not apply.
+    """
+    if measure.render != "melody":
+        return None
+    types = {n.note_type for n in (*measure.staff1, *measure.staff2)
+             if not n.is_rest}
+    if len(types) != 1:
+        return None
+    ticks = _TICKS[next(iter(types))]
+    return MEASURE_TICKS // ticks if MEASURE_TICKS % ticks == 0 else None
+
+
 def _lab_target_for(measure: LabMeasure) -> Dict:
     """A trainer target dict: the full ``_target_for`` key set + lab extras."""
     a = measure.annotation
@@ -197,6 +223,7 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
         "explanation": a.explanation or a.lab_note,
         # --- additive lab fields (harmony_trainer.js ignores unknown fields) ---
         "concept": measure.render,
+        "slotsPerMeasure": _melody_slot_count(measure),
         "labNote": a.lab_note,
         "inversion": a.inversion,
         "figuredBass": a.figured_bass,
