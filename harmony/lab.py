@@ -172,6 +172,20 @@ class LabAnnotation:
 
 
 @dataclass(frozen=True)
+class LabStepTarget:
+    """One ordered simultaneity step of a measure (piano-technique ticket 03).
+
+    ``pcs`` are the pitch classes that must be HELD CONCURRENTLY to satisfy
+    the step; ``min_distinct`` is the minimum number of distinct MIDI keys
+    sounding among them (octave doubling: one pc, two keys).  The JS grader
+    walks these in order exactly like the scalar arpeggio walk.
+    """
+
+    pcs: Tuple[int, ...]
+    min_distinct: int
+
+
+@dataclass(frozen=True)
 class LabMeasure:
     """One measure of a compiled experiment, fully specified for render+MIDI+guide."""
 
@@ -191,6 +205,9 @@ class LabMeasure:
     bass_pitch_class: Optional[int] = None
     expected_by_beat: Optional[Dict[int, List[int]]] = None  # arpeggio/melody/strict
     strict_bass: bool = False               # demand bass_pitch_class as the LOWEST note
+    #: Ordered simultaneity steps (ticket 03) -- set only when a step needs
+    #: more than one concurrent key; scalar walks stay None (payload unchanged).
+    step_targets: Optional[Tuple[LabStepTarget, ...]] = None
 
     def sounding_midis(self) -> List[int]:
         out = [n.midi for n in (self.staff1 + self.staff2) if not n.is_rest]
@@ -688,6 +705,24 @@ def _gen_motive(spec: LabExperimentSpec) -> List[LabMeasure]:
     return measures
 
 
+def _step_labels(mark: object, n: int) -> Tuple[str, ...]:
+    """Per-note labels for one step's ``n`` noteheads.
+
+    A tuple mark maps note for note (validate() pinned the length against the
+    dyad); a scalar label marks the step's first notehead only.
+    """
+    if isinstance(mark, tuple):
+        return tuple(mark)
+    return (str(mark),) + ("",) * (n - 1)
+
+
+def _mark_text(mark: object) -> str:
+    """One guide-text token per step: ``1`` / ``1+3`` / ``·`` for none."""
+    if isinstance(mark, tuple):
+        return "+".join(x or "·" for x in mark)
+    return mark or "·"
+
+
 def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     """A multi-measure, single-key melodic phrase (piano-technique ticket 01).
 
@@ -695,10 +730,18 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     the daily technique exercises: every measure stays in ``spec.key``, degrees
     may span four octaves (``_scale_note`` wraps degrees > 7, no clamp), and
     the ``lh`` variant puts the moving line on the bass staff (octaves 2-3)
-    with the treble staff whole-rested.  ``expected_by_beat`` carries ONE
-    pitch class per slot — exactly ``_gen_motive``'s ordered-walk contract, so
-    the JS ordered walk and the playback plan work unchanged.  The ``coach``
-    line is instruction, never assessment: it travels in the guide text only.
+    with the treble staff whole-rested.  ``expected_by_beat`` carries the pcs
+    of ONE step per slot — ``_gen_motive``'s ordered-walk contract, which the
+    playback plan already sounds as chords.  The ``coach`` line is
+    instruction, never assessment: it travels in the guide text only.
+
+    Simultaneity (ticket 03): a phrase entry that is a tuple of degrees is a
+    dyad sounded together (chord-stacked noteheads), and ``octaves=True``
+    writes every step as the degree plus its octave.  Such measures carry
+    ordered ``step_targets`` — the concurrent pitch classes plus the minimum
+    number of distinct keys — and the payload grows the additive ``steps``
+    field; purely scalar measures stay ``None`` so old payloads are
+    byte-identical.
     """
     tp = technique_params(spec.parameters)
     mode = spec.mode
@@ -718,39 +761,63 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     atlas_mode = "natural_minor" if mode == "harmonic_minor" else mode
 
     measures: List[LabMeasure] = []
-    for k, degrees in enumerate(tp.phrase):
-        # validate() pins each mark tuple to the measure's degree count.
+    for k, entries in enumerate(tp.phrase):
+        # validate() pins each mark tuple to the measure's step count.
         fingers = tp.fingering[k] if tp.fingering else ()
-        slurs = tp.slurs[k] if tp.slurs else ()
+        slur_marks = tp.slurs[k] if tp.slurs else ()
         arts = tp.articulations[k] if tp.articulations else ()
         notes: List[LabNote] = []
-        pcs: List[int] = []
-        spelled: List[str] = []
-        for j, d in enumerate(degrees):
-            step, alter, octave = _scale_note(scale, d)
-            octave += octave_shift
-            notes.append(LabNote(
-                step, alter, octave, dtype,
-                fingering=fingers[j] if fingers else "",
-                slur=slurs[j] if slurs else "",
-                articulation=arts[j] if arts else ""))
-            pcs.append(_midi(step, alter, octave) % 12)
-            spelled.append(f"{step}{_alter_str(alter)}{octave}")
+        pcs: List[int] = []              # flat ordered union over the steps
+        spelled: List[str] = []          # one token per step: "C4" / "C4+E4"
+        step_targets: List[LabStepTarget] = []
+        for j, entry in enumerate(entries):
+            degrees = entry if isinstance(entry, tuple) else (entry,)
+            if tp.octaves:
+                degrees = (degrees[0], degrees[0] + 7)   # the written pair
+            n = len(degrees)
+            f_labels = _step_labels(fingers[j], n) if fingers else ("",) * n
+            s_labels = _step_labels(slur_marks[j], n) if slur_marks else ("",) * n
+            a_labels = _step_labels(arts[j], n) if arts else ("",) * n
+            step_pcs: List[int] = []
+            names: List[str] = []
+            for x, d in enumerate(degrees):
+                step, alter, octave = _scale_note(scale, d)
+                octave += octave_shift
+                notes.append(LabNote(
+                    step, alter, octave, dtype,
+                    is_chord_tone=x > 0,
+                    fingering=f_labels[x], slur=s_labels[x],
+                    articulation=a_labels[x]))
+                pc = _midi(step, alter, octave) % 12
+                if pc not in step_pcs:   # octave pair: one pc, two keys
+                    step_pcs.append(pc)
+                names.append(f"{step}{_alter_str(alter)}{octave}")
+            pcs.extend(step_pcs)
+            spelled.append("+".join(names))
+            step_targets.append(LabStepTarget(pcs=tuple(step_pcs),
+                                              min_distinct=n))
         rest_octave = BASS_OCTAVE if left else TREBLE_OCTAVE
-        for _ in range(slots - len(degrees)):
+        for _ in range(slots - len(entries)):
             notes.append(LabNote("C", 0, rest_octave, dtype, is_rest=True))
 
-        expected = {i + 1: [pc] for i, pc in enumerate(pcs)}
+        expected = {i + 1: list(s.pcs) for i, s in enumerate(step_targets)}
+        # Simultaneity is opt-in per measure: scalar walks keep the old
+        # payload shape (no steps), so pre-ticket-03 grading is untouched.
+        simultaneous = tp.octaves or any(
+            isinstance(e, tuple) and len(e) >= 2 for e in entries)
         lab_note = (f"{scale.key} technique phrase, measure {k + 1}/"
                     f"{n_measures} ({hand_word}): {'–'.join(spelled)}.")
         if tp.fingering:
             lab_note += (" Fingering: "
-                         + " ".join(f or "·" for f in tp.fingering[k]) + ".")
+                         + " ".join(_mark_text(f) for f in tp.fingering[k])
+                         + ".")
         if coach:
             lab_note += f" Coach: {coach}"
+        first = entries[0]
         ann = LabAnnotation(
             key=scale.key, mode=mode, chord_tones=(),
-            scale_degree_name="technique", degree_number=degrees[0],
+            scale_degree_name="technique",
+            degree_number=first[0] if isinstance(first, tuple) else first,
             explanation=lab_note, lab_note=lab_note,
             atlas_scale_id=scale_id(tonic, atlas_mode),
         )
@@ -766,6 +833,7 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
             annotation=ann, underlying=None,
             target_pitch_classes=tuple(pcs), bass_pitch_class=None,
             expected_by_beat=expected,
+            step_targets=tuple(step_targets) if simultaneous else None,
         ))
     return measures
 

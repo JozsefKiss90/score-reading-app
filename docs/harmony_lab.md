@@ -36,14 +36,17 @@ run_harmony_lab_demo.py    Wires the Lab beside the (reused) Harmony Trainer.
 The theory and rendering layers (`lab_spec`, `lab`, `lab_musicxml`) are **pure**
 — standard library + `theory.diatonic_harmony` + `HarmonyExerciseSpec` + the
 Atlas node-id helpers, no Qt / Verovio / MIDI — so they are unit-tested
-headlessly. The UI is a separate web layer; MIDI validation is the **unchanged**
+headlessly. The UI is a separate web layer; MIDI validation is
 `harmony_trainer.js`. The shared viewer (`app.js`, `view.py`, `harmony_trainer.js`,
 `musicxml_builder.py`, `atlas.py`'s ontology) is never modified except
 *additively*: `atlas.py` gained only additive Phase-6 dataclasses,
 `run_harmony_trainer_demo.py` gained only the additive `load_external_lab()`
-host method, and `musicxml_builder.py`'s `_note_xml` gained only opt-in
+host method, `musicxml_builder.py`'s `_note_xml` gained only opt-in
 notation-mark kwargs (piano-technique ticket 02) whose defaults leave every
-existing caller's output byte-identical.
+existing caller's output byte-identical, and `harmony_trainer.js` gained only
+the `steps` simultaneity walk (piano-technique ticket 03), gated on the new
+payload field — payloads without `steps` take the pre-existing code paths
+verbatim.
 
 ### Single source of truth
 

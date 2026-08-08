@@ -36,6 +36,18 @@
   var bassMiss = false;     // full set played but with the wrong lowest note
   var bassMissText = "";    // feedback naming the expected bass
 
+  // ---- simultaneity steps (piano-technique ticket 03) --------------------
+  // activeNotes mirrors the physically held keys as RAW midi numbers (add on
+  // note-on, remove on note-off / velocity-0).  Navigation never clears it —
+  // it is physical reality, and ticket 04's hold enforcement reuses it.
+  // freshNotes is the grading half: the held keys struck since the previous
+  // step completed (or since the attempt started).  Demanding one fresh
+  // constituent per step is the re-attack rule — "play the same sixth four
+  // times" stays gradable, while finger-legato overlap between DIFFERENT
+  // consecutive steps still passes.
+  var activeNotes = new Set();
+  var freshNotes = new Set();
+
   // ---- answer modes (plan U2, ticket 06; "spot" ticket 17) ---------------
   // "midi" is the classic play-the-chord flow.  "mcq" renders an answer
   // strip for identification drills; "card" turns the chord-card list into
@@ -116,6 +128,15 @@
     return !!(t && t.render === "arpeggio");
   }
 
+  // Ordered simultaneity steps (ticket 03): an arpeggio-walk target may
+  // demand more than one concurrent key per step — steps like
+  // {pcs: [0, 4], minDistinct: 2} (a dyad) or {pcs: [0], minDistinct: 2}
+  // (octave doubling).  Null for scalar targets (the classic walk).
+  function stepsFor(t) {
+    return (t && t.render === "arpeggio" && t.steps && t.steps.length)
+      ? t.steps : null;
+  }
+
   // Strict-bass grading (plan G4/F4): a block target with `strictBass: true`
   // demands `bassPitchClass` as the LOWEST sounding chord tone.  Returns the
   // demanded pitch class, or null when the target grades octave-agnostically.
@@ -179,6 +200,9 @@
     completed = false;
     bassMiss = false;
     bassMissText = "";
+    // A fresh attempt demands fresh attacks; keys already held stay in
+    // activeNotes (physical reality) but no longer count as struck.
+    freshNotes = new Set();
   }
 
   // Map: keyOf(midi) -> Set(noteId) for a given measure, from boot.PITCH_MAP.
@@ -234,6 +258,19 @@
     var t = cur();
     if (!t) return [];
     if (isArpeggio()) {
+      var steps = stepsFor(t);
+      if (steps) {
+        // Completed steps stay green, the current step's pcs light up next.
+        var out = [];
+        var last = Math.min(arpIndex, steps.length - 1);
+        for (var i = 0; i <= last; i++) {
+          ((steps[i] && steps[i].pcs) || []).forEach(function (pc) {
+            pc = mod12(pc);
+            if (out.indexOf(pc) === -1) out.push(pc);
+          });
+        }
+        return out;
+      }
       return t.pitchClasses.slice(0, Math.min(arpIndex + 1, t.pitchClasses.length));
     }
     return t.pitchClasses.slice();
@@ -556,15 +593,69 @@
   }
 
   // ---- MIDI event hooks (run after the base app handlers) ----------------
+  // A simultaneity step is satisfied at a note-on when (a) every demanded
+  // pitch class is held, (b) at least minDistinct DISTINCT keys land in
+  // those classes (octave doubling: two C keys), and (c) one of those keys
+  // was struck after the previous step completed — the re-attack rule.
+  // This grades CONCURRENCY at note-on time, not attack synchrony: notes
+  // struck apart but overlapping still pass (true togetherness would need
+  // the discarded timestamps; the concept explanation says so).
+  function stepSatisfied(step) {
+    var pcs = ((step && step.pcs) || []).map(mod12);
+    if (!pcs.length) return false;
+    var held = [];                    // distinct held keys landing in pcs
+    var fresh = false;
+    activeNotes.forEach(function (m) {
+      if (pcs.indexOf(mod12(m)) === -1) return;
+      held.push(m);
+      if (freshNotes.has(m)) fresh = true;
+    });
+    if (!fresh) return false;                                    // (c)
+    var need = Math.trunc(Number(step.minDistinct)) || pcs.length;
+    if (held.length < need) return false;                        // (b)
+    for (var i = 0; i < pcs.length; i++) {                       // (a)
+      var ok = false;
+      for (var j = 0; j < held.length; j++) {
+        if (mod12(held[j]) === pcs[i]) { ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    return true;
+  }
+
   function afterNoteOn(pitch, velocity) {
+    var midi = Math.trunc(Number(pitch));
+    if (Number(velocity) <= 0) {             // velocity-0 is a note-off
+      activeNotes.delete(midi);
+      freshNotes.delete(midi);
+      return;
+    }
+    activeNotes.add(midi);
+    freshNotes.add(midi);
     if (answerMode !== "midi") return;       // ID drills grade via answer()
-    if (Number(velocity) <= 0) return;       // velocity-0 is a note-off
     var t = cur();
     if (!t || finished) return;
-    var pc = mod12(Math.trunc(Number(pitch)));
+    var pc = mod12(midi);
 
     if (isArpeggio()) {
-      if (pc === mod12(t.pitchClasses[arpIndex])) {
+      var steps = stepsFor(t);
+      if (steps) {
+        // Wrong notes stay ignored, and an incomplete dyad is simply not
+        // yet satisfied — releasing between its halves carries no error
+        // state (near-miss forgiveness).
+        if (arpIndex < steps.length && stepSatisfied(steps[arpIndex])) {
+          freshNotes.clear();        // the next step demands its own attack
+          arpIndex += 1;
+          if (arpIndex >= steps.length) {
+            completed = true;
+            tritoneFlash(t);         // resolve stage: light the landing tones
+            advance();
+          } else {
+            applySelection();      // keep played tones green, light next step
+            renderProgress();
+          }
+        }
+      } else if (pc === mod12(t.pitchClasses[arpIndex])) {
         arpIndex += 1;
         if (arpIndex >= t.pitchClasses.length) {
           completed = true;
@@ -616,7 +707,9 @@
     }
   }
 
-  function afterNoteOff() {
+  function afterNoteOff(pitch) {
+    activeNotes.delete(Math.trunc(Number(pitch)));
+    freshNotes.delete(Math.trunc(Number(pitch)));
     if (answerMode !== "midi") return;       // ID drills grade via answer()
     if (finished) return;
     if (isArpeggio()) return;                // arpeggio advances on note-on
@@ -1216,7 +1309,8 @@
     reset: function () { goTo(0); },
     state: function () {
       return { idx: idx, completed: completed, finished: finished,
-               arpIndex: arpIndex, total: targets().length,
+               arpIndex: arpIndex, heldNotes: activeNotes.size,
+               total: targets().length,
                answerMode: answerMode, answered: answerLog.length,
                presentation: presentation, veiled: isVeiled(),
                dictation: dictation,

@@ -214,6 +214,21 @@ spec-named fields `TRAINER_MODE`, `TARGET_BY_MEASURE`, and
 arpeggio) for inspection and the Python-side tests; the current controller does
 not read them.
 
+An arpeggio-walk target may additionally carry `steps` (piano-technique
+ticket 03) — an ordered list of simultaneity steps,
+`{"pcs": [0, 4], "minDistinct": 2}`: the pitch classes that must be **held
+concurrently**, and the minimum number of distinct MIDI keys sounding among
+them (octave doubling is one pc, two keys). The walk then advances per step:
+at each note-on the current step is satisfied iff every pc is held, enough
+distinct keys land in those pcs, and at least one of them was struck after the
+previous step completed (the re-attack rule — a held chord never plays the
+next step for free, while finger-legato overlap between *different*
+consecutive steps still passes). Wrong notes stay ignored and releases carry
+no error state. `pitchClasses` keeps the flat ordered union, so payloads
+without `steps` — and controllers that ignore unknown fields — behave exactly
+as before. This grades **concurrency at note-on time**, not attack synchrony:
+striking exactly together would need the timestamps the grader discards.
+
 The guide panel also has **Prev / Next / Reset** controls and a clickable chord
 list, so you can jump to any chord for free practice.
 

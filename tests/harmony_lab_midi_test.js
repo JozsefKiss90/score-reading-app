@@ -220,4 +220,109 @@ function assert(cond, msg) {
   console.log("Test E (technique phrase): PASS");
 })();
 
+// === Test F: dyad steps demand concurrent keys (ticket 03) ===================
+// steps: [{pcs, minDistinct}] — the ordered simultaneity walk.  Out-of-order
+// arrival within a step is fine (E before C), releasing between the halves
+// just leaves the step unsatisfied (no error state), and finger-legato
+// overlap into the NEXT dyad passes.
+(function testDyadSteps() {
+  const payload = {
+    title: "thirds", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [0, 4, 2, 5], midiPitches: [60, 64, 62, 65],
+      steps: [{ pcs: [0, 4], minDistinct: 2 },
+              { pcs: [2, 5], minDistinct: 2 }],
+    })],
+  };
+
+  // Near-miss forgiveness: C alone, released, then E alone never satisfies.
+  let h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  h.noteOn(60); h.noteOff(60); h.noteOn(64);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "dyad: sequential C-then-E with a release between never satisfies");
+  h.noteOff(64);
+
+  // Out-of-order arrival: E struck first, C joining second, still passes.
+  h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  h.noteOn(64);  // E4 first (both halves are lit as the current step)
+  assert(h.keyStatus.get(64) === "ok", "dyad: either half is green");
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "dyad: half a dyad does not advance");
+  h.noteOn(60);  // C4 joins — both down
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "dyad: C+E concurrently held satisfies the step in any order");
+
+  // Finger legato: keep C+E held while striking D, then F.
+  h.noteOn(62);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "dyad: half of the next dyad does not advance");
+  h.noteOn(65);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "dyad: D+F over the held first dyad finishes the walk");
+  console.log("Test F (dyad steps): PASS");
+})();
+
+// === Test G: the re-attack rule makes repeated dyads gradable ================
+// Holding the sixth C+E through the second identical step must NOT satisfy
+// it for free — at least one constituent must be struck anew.  A wrong note
+// while holding gives no free ride either.
+(function testRepeatedDyadReattack() {
+  const payload = {
+    title: "same sixth twice", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [0, 4, 0, 4], midiPitches: [60, 64, 60, 64],
+      steps: [{ pcs: [0, 4], minDistinct: 2 },
+              { pcs: [0, 4], minDistinct: 2 }],
+    })],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  h.noteOn(60); h.noteOn(64);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "re-attack: the first sixth satisfies step 1");
+  // Still holding both: a stray G must not hand step 2 to the held chord.
+  h.noteOn(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "re-attack: holding through the barline of the step is not playing it");
+  h.noteOff(67);
+  // Re-striking ONE constituent (E) while C stays down completes step 2.
+  h.noteOff(64); h.noteOn(64);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "re-attack: one freshly struck constituent over a held C suffices");
+  console.log("Test G (repeated dyad re-attack): PASS");
+})();
+
+// === Test H: octave doubling needs two DISTINCT keys on one pitch class =====
+(function testOctaveDoubling() {
+  const payload = {
+    title: "octaves", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [0], midiPitches: [60, 72],
+      steps: [{ pcs: [0], minDistinct: 2 }],
+    })],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  h.noteOn(60);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "octaves: one C key is not a doubling");
+  h.noteOn(60);  // the same key again is still one key
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "octaves: the same key twice is still one key");
+  h.noteOn(64);  // a wrong pitch class does not count toward the doubling
+  assert(h.keyStatus.get(64) === "bad", "octaves: E is red");
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "octaves: a second key on the WRONG pc does not count");
+  h.noteOff(64);
+  h.noteOn(72);  // C5 joins C4: two distinct keys, one pitch class
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "octaves: C4+C5 held together completes the step");
+  console.log("Test H (octave doubling): PASS");
+})();
+
 console.log("\nAll harmony_lab MIDI-acceptance checks passed (" + passed + " assertions).");

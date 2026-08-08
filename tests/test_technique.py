@@ -18,6 +18,14 @@ fingering numerals, two-note slurs and staccato/accent marks.  All of it is
 opt-in presentation (grading is untouched); ``TestNotationMarks`` pins the
 emitted MusicXML, including that a spec without the new params produces no
 ``<notations>`` at all.
+
+Ticket 03 teaches the grader simultaneity: a phrase entry may be a tuple of
+degrees (a dyad sounded together) and ``octaves: True`` doubles every step at
+the written octave.  Each such measure carries ordered ``step_targets``
+(pitch classes held concurrently + the minimum count of distinct keys), the
+payload gains the additive ``steps`` field, and the notation stacks the
+partners with ``<chord/>``.  ``TestSimultaneity*`` pins all three layers,
+including that scalar phrases stay byte-identical (no ``steps`` key at all).
 """
 
 import os
@@ -386,6 +394,222 @@ class TestNotationMarks(unittest.TestCase):
         xml = build_lab_musicxml(compile_lab(_spec()))
         for fragment in ("<notations>", "<fingering", "<slur", "<articulations"):
             self.assertNotIn(fragment, xml)
+
+
+class TestSimultaneityValidation(unittest.TestCase):
+    """Ticket 03 -- dyad steps + octave doubling at the spec surface."""
+
+    def test_dyad_phrase_validates(self):
+        _spec(parameters={"phrase": [[[1, 3], [2, 4], 5]],
+                          "note_value": "quarter"}).validate()
+
+    def test_dyad_degrees_range_checked(self):
+        with self.assertRaisesRegex(ValueError, "1..29"):
+            _spec(parameters={"phrase": [[[1, 30]]],
+                              "note_value": "quarter"}).validate()
+
+    def test_duplicate_degrees_in_step_refused(self):
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            _spec(parameters={"phrase": [[[3, 3]]],
+                              "note_value": "quarter"}).validate()
+
+    def test_octave_pair_written_as_degrees_seven_apart_validates(self):
+        _spec(parameters={"phrase": [[[1, 8]]],
+                          "note_value": "quarter"}).validate()
+
+    def test_octaves_param_validates(self):
+        _spec(parameters={"phrase": [[1, 2, 3, 4]], "octaves": True,
+                          "note_value": "quarter"}).validate()
+
+    def test_octaves_with_dyad_entry_refused(self):
+        with self.assertRaisesRegex(ValueError, "octaves"):
+            _spec(parameters={"phrase": [[[1, 3], 2]], "octaves": True,
+                              "note_value": "quarter"}).validate()
+
+    def test_octaves_degree_cap_respects_written_pair(self):
+        # the written pair is (d, d+7): degree 22 tops out at 29, 23 spills
+        _spec(parameters={"phrase": [[22]], "octaves": True,
+                          "note_value": "quarter"}).validate()
+        with self.assertRaisesRegex(ValueError, "octave"):
+            _spec(parameters={"phrase": [[23]], "octaves": True,
+                              "note_value": "quarter"}).validate()
+
+    def test_dyads_occupy_one_slot_each(self):
+        eight = [[i, i + 2] for i in range(1, 9)]
+        _spec(parameters={"phrase": [eight]}).validate()
+        with self.assertRaises(ValueError):
+            _spec(parameters={"phrase": [eight + [[1, 3]]]}).validate()
+
+    def test_dyad_fingering_tuple_accepted(self):
+        _spec(parameters={"phrase": [[[1, 3], 2]], "note_value": "quarter",
+                          "fingering": [[["1", "3"], "2"]]}).validate()
+
+    def test_dyad_fingering_wrong_size_refused(self):
+        with self.assertRaisesRegex(ValueError, "fingering"):
+            _spec(parameters={"phrase": [[[1, 3], 2]], "note_value": "quarter",
+                              "fingering": [[["1", "3", "5"], "2"]]}).validate()
+
+    def test_tuple_mark_on_scalar_step_refused(self):
+        with self.assertRaisesRegex(ValueError, "fingering"):
+            _spec(parameters={"phrase": [[1, 2]], "note_value": "quarter",
+                              "fingering": [[["1", "3"], "2"]]}).validate()
+
+    def test_scalar_mark_on_dyad_step_accepted(self):
+        # one label marks the whole step (attached to its first notehead)
+        _spec(parameters={"phrase": [[[1, 3], [2, 4]]], "note_value": "quarter",
+                          "slurs": [["start", "stop"]]}).validate()
+
+    def test_dyad_mark_vocab_checked(self):
+        with self.assertRaisesRegex(ValueError, "fingering"):
+            _spec(parameters={"phrase": [[[1, 3]]], "note_value": "quarter",
+                              "fingering": [[["1", "6"]]]}).validate()
+
+    def test_dyads_round_trip_through_dict(self):
+        spec = _spec(parameters={"phrase": [[[1, 3], 2]],
+                                 "note_value": "quarter"})
+        spec.validate()
+        again = LabExperimentSpec.from_dict(spec.to_dict())
+        again.validate()
+        self.assertEqual(again.parameters["phrase"], spec.parameters["phrase"])
+
+
+class TestSimultaneityCompile(unittest.TestCase):
+    """Ticket 03 -- step targets, chord stacking, per-beat pc lists."""
+
+    def _dyads(self, **params):
+        base = {"phrase": [[[1, 3], [2, 4]]], "note_value": "quarter"}
+        base.update(params)
+        return compile_lab(_spec(parameters=base))
+
+    def test_dyad_measure_carries_step_targets(self):
+        m0 = self._dyads().measures[0]
+        self.assertEqual(
+            [(list(s.pcs), s.min_distinct) for s in m0.step_targets],
+            [([0, 4], 2), ([2, 5], 2)])
+
+    def test_dyad_flat_union_and_expected_by_beat(self):
+        m0 = self._dyads().measures[0]
+        self.assertEqual(list(m0.target_pitch_classes), [0, 4, 2, 5])
+        self.assertEqual(m0.expected_by_beat, {1: [0, 4], 2: [2, 5]})
+
+    def test_scalar_measures_have_no_step_targets(self):
+        for m in compile_lab(_spec()).measures:
+            self.assertIsNone(m.step_targets)
+
+    def test_dyad_renders_chord_stacked(self):
+        m0 = self._dyads().measures[0]
+        notes = [n for n in m0.staff1 if not n.is_rest]
+        self.assertEqual([n.is_chord_tone for n in notes],
+                         [False, True, False, True])
+        self.assertEqual([(n.step, n.octave) for n in notes],
+                         [("C", 4), ("E", 4), ("D", 4), ("F", 4)])
+        # two steps in a 4-slot quarter bar -> two padding rests
+        self.assertEqual(len([n for n in m0.staff1 if n.is_rest]), 2)
+
+    def test_octaves_double_every_step(self):
+        exp = compile_lab(_spec(parameters={
+            "phrase": [[1, 2]], "octaves": True, "note_value": "quarter"}))
+        m0 = exp.measures[0]
+        self.assertEqual(
+            [(list(s.pcs), s.min_distinct) for s in m0.step_targets],
+            [([0], 2), ([2], 2)])
+        notes = [n for n in m0.staff1 if not n.is_rest]
+        self.assertEqual([(n.step, n.octave, n.is_chord_tone) for n in notes],
+                         [("C", 4, False), ("C", 5, True),
+                          ("D", 4, False), ("D", 5, True)])
+        self.assertEqual(m0.expected_by_beat, {1: [0], 2: [2]})
+        self.assertEqual(list(m0.target_pitch_classes), [0, 2])
+
+    def test_explicit_octave_dyad_demands_two_keys(self):
+        exp = compile_lab(_spec(parameters={"phrase": [[[1, 8]]],
+                                            "note_value": "quarter"}))
+        s = exp.measures[0].step_targets[0]
+        self.assertEqual((list(s.pcs), s.min_distinct), ([0], 2))
+
+    def test_mixed_scalar_and_dyad_measure(self):
+        exp = compile_lab(_spec(parameters={"phrase": [[1, [1, 3], 5]],
+                                            "note_value": "quarter"}))
+        self.assertEqual(
+            [(list(s.pcs), s.min_distinct)
+             for s in exp.measures[0].step_targets],
+            [([0], 1), ([0, 4], 2), ([7], 1)])
+
+    def test_lh_dyads_shift_both_notes(self):
+        exp = compile_lab(_spec(parameters={"phrase": [[[1, 3]]],
+                                            "note_value": "quarter",
+                                            "hand": "lh"}))
+        notes = [n for n in exp.measures[0].staff2 if not n.is_rest]
+        self.assertEqual([(n.step, n.octave) for n in notes],
+                         [("C", 2), ("E", 2)])
+
+    def test_dyad_guide_text_names_both_notes(self):
+        m0 = self._dyads().measures[0]
+        self.assertIn("C4+E4", m0.annotation.lab_note)
+
+    def test_dyad_fingering_renders_per_note(self):
+        exp = compile_lab(_spec(parameters={
+            "phrase": [[[1, 3], 2]], "note_value": "quarter",
+            "fingering": [[["1", "3"], "2"]]}))
+        notes = [n for n in exp.measures[0].staff1 if not n.is_rest]
+        self.assertEqual([n.fingering for n in notes], ["1", "3", "2"])
+
+    def test_scalar_mark_lands_on_first_notehead(self):
+        exp = compile_lab(_spec(parameters={
+            "phrase": [[[1, 3], [2, 4]]], "note_value": "quarter",
+            "slurs": [["start", "stop"]]}))
+        notes = [n for n in exp.measures[0].staff1 if not n.is_rest]
+        self.assertEqual([n.slur for n in notes], ["start", "", "stop", ""])
+
+
+class TestSimultaneityPayload(unittest.TestCase):
+    """Ticket 03 -- the additive ``steps`` payload field + playback/render."""
+
+    def _experiment(self, **params):
+        base = {"phrase": [[[1, 3], [2, 4]]], "note_value": "quarter"}
+        base.update(params)
+        return compile_lab(_spec(parameters=base))
+
+    def _payload(self, **params):
+        return build_lab_payload(self._experiment(**params))
+
+    def test_steps_emitted_with_flat_pitch_classes(self):
+        t = self._payload()["TARGET_CHORDS"][0]
+        self.assertEqual(t["steps"], [{"pcs": [0, 4], "minDistinct": 2},
+                                      {"pcs": [2, 5], "minDistinct": 2}])
+        self.assertEqual(t["pitchClasses"], [0, 4, 2, 5])
+        self.assertEqual(t["render"], "arpeggio")
+
+    def test_scalar_targets_carry_no_steps_key(self):
+        # backward/forward safety: old payloads unchanged, JS ignores unknowns
+        payload = build_lab_payload(compile_lab(_spec()))
+        for t in payload["TARGET_CHORDS"]:
+            self.assertNotIn("steps", t)
+
+    def test_octave_steps_min_distinct_two(self):
+        t = self._payload(phrase=[[1, 2]], octaves=True)["TARGET_CHORDS"][0]
+        self.assertEqual(t["steps"], [{"pcs": [0], "minDistinct": 2},
+                                      {"pcs": [2], "minDistinct": 2}])
+        self.assertEqual(t["pitchClasses"], [0, 2])
+
+    def test_expected_map_carries_both_pcs_per_beat(self):
+        payload = self._payload()
+        self.assertEqual(payload["EXPECTED_MIDI_BY_MEASURE_OR_BEAT"]["0"],
+                         {"1": [0, 4], "2": [2, 5]})
+
+    def test_playback_plan_sounds_dyads_together(self):
+        from harmony.playback_plan import build_playback_plan
+        plan = build_playback_plan(self._payload())
+        dyads = [sorted(e.midis) for e in plan.events if len(e.midis) == 2]
+        self.assertEqual(dyads, [[60, 64], [62, 65]])   # C4+E4, D4+F4
+
+    def test_musicxml_stacks_dyads_with_chord_element(self):
+        xml = build_lab_musicxml(self._experiment())
+        self.assertEqual(xml.count("<chord/>"), 2)
+        # the principal (non-chord) noteheads still fill the bar exactly
+        principals = [n for n in _measure_notes(xml)
+                      if n.find("chord") is None]
+        self.assertEqual(sum(int(n.findtext("duration")) for n in principals),
+                         64)
 
 
 class TestEchoIneligibility(unittest.TestCase):

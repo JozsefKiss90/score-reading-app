@@ -344,12 +344,21 @@ TECHNIQUE_MAX_DEGREE = 29
 class TechniqueParams:
     #: One inner tuple per MEASURE; entries are 1-based scale degrees
     #: (1..TECHNIQUE_MAX_DEGREE — the four-octave span of a scale run).
+    #: An entry may itself be a tuple of distinct degrees (ticket 03): a
+    #: dyad/step sounded TOGETHER, notated chord-stacked and graded as one
+    #: simultaneity step.
     phrase: tuple = ()
     note_value: str = "quarter"       # "quarter" | "eighth" | "16th"
     hand: str = "rh"                  # "rh" (treble staff) | "lh" (bass staff)
+    #: Octave doubling (ticket 03): every step is written as the degree plus
+    #: its octave (d, d+7) and graded as two distinct keys on one pitch
+    #: class.  Scalar phrase entries only — a doubled dyad is refused.
+    octaves: bool = False
     #: Optional per-note marks, each mirroring ``phrase``'s shape (one inner
-    #: tuple per measure, one label per note, "" for none).  Presentation
-    #: only: Verovio renders them, the mod-12 note-on grader cannot see them.
+    #: tuple per measure, one label per step, "" for none).  A dyad step may
+    #: take a tuple of per-note labels; a scalar label marks the step's
+    #: first notehead.  Presentation only: Verovio renders them, the mod-12
+    #: note-on grader cannot see them.
     fingering: tuple = ()             # "1".."5"
     slurs: tuple = ()                 # "start" | "stop"
     articulations: tuple = ()         # "staccato" | "accent"
@@ -407,15 +416,32 @@ def applied_chord_params(p: Dict) -> AppliedChordParams:
     )
 
 
+def _phrase_entry(d: object) -> object:
+    """One phrase step: a 1-based degree, or a tuple of degrees sounded together."""
+    if isinstance(d, (list, tuple)):
+        return tuple(int(x) for x in d)
+    return int(d)
+
+
+def _mark_entry(x: object) -> object:
+    """One per-step mark: a label, or per-note labels mirroring a dyad step."""
+    if isinstance(x, (list, tuple)):
+        return tuple(str(f) for f in x)
+    return str(x)
+
+
 def technique_params(p: Dict) -> TechniqueParams:
     return TechniqueParams(
-        phrase=tuple(tuple(int(d) for d in m) for m in p.get("phrase", ())),
+        phrase=tuple(tuple(_phrase_entry(d) for d in m)
+                     for m in p.get("phrase", ())),
         note_value=str(p.get("note_value", "quarter")),
         hand=str(p.get("hand", "rh")),
-        fingering=tuple(tuple(str(f) for f in m)
+        octaves=bool(p.get("octaves", False)),
+        fingering=tuple(tuple(_mark_entry(f) for f in m)
                         for m in p.get("fingering", ())),
-        slurs=tuple(tuple(str(s) for s in m) for m in p.get("slurs", ())),
-        articulations=tuple(tuple(str(a) for a in m)
+        slurs=tuple(tuple(_mark_entry(s) for s in m)
+                    for m in p.get("slurs", ())),
+        articulations=tuple(tuple(_mark_entry(a) for a in m)
                             for m in p.get("articulations", ())),
         coach=str(p.get("coach", "")),
     )
@@ -733,12 +759,33 @@ class LabExperimentSpec:
                         f"technique measure {i + 1} has {len(m)} notes but a "
                         f"4/4 bar of {tp.note_value}s holds {slots}; split "
                         f"the measure (short measures are rest-padded)")
-                for d in m:
-                    if not (1 <= d <= TECHNIQUE_MAX_DEGREE):
-                        raise ValueError(
-                            f"technique degrees must be in "
-                            f"1..{TECHNIQUE_MAX_DEGREE} (four octaves above "
-                            f"the tonic); got {d}")
+                for entry in m:
+                    degrees = entry if isinstance(entry, tuple) else (entry,)
+                    if isinstance(entry, tuple):
+                        if tp.octaves:
+                            raise ValueError(
+                                f"octaves=True already doubles every step; "
+                                f"technique measure {i + 1} may not also "
+                                f"carry dyad tuples (got {entry!r})")
+                        if len(set(degrees)) != len(degrees):
+                            raise ValueError(
+                                f"technique measure {i + 1} step {entry!r} "
+                                f"repeats a degree; concurrent notes need "
+                                f"distinct keys (an octave pair is the same "
+                                f"degree 7 apart, or octaves=True)")
+                    for d in degrees:
+                        if not (1 <= d <= TECHNIQUE_MAX_DEGREE):
+                            raise ValueError(
+                                f"technique degrees must be in "
+                                f"1..{TECHNIQUE_MAX_DEGREE} (four octaves "
+                                f"above the tonic); got {d}")
+                        if tp.octaves and d + 7 > TECHNIQUE_MAX_DEGREE:
+                            raise ValueError(
+                                f"octaves=True writes degree {d} with its "
+                                f"octave {d + 7}, past the "
+                                f"1..{TECHNIQUE_MAX_DEGREE} span; keep "
+                                f"octave-doubled degrees <= "
+                                f"{TECHNIQUE_MAX_DEGREE - 7}")
             if tp.hand not in ("rh", "lh"):
                 raise ValueError(
                     f"unknown hand {tp.hand!r}; 'rh' plays the line on the "
@@ -755,14 +802,24 @@ class LabExperimentSpec:
                                for f, m in zip(marks, tp.phrase))):
                     raise ValueError(
                         f"{pname} must mirror the phrase shape: one tuple "
-                        f"per measure, one label per note")
-                for measure_labels in marks:
-                    for label in measure_labels:
-                        if label and label not in vocab:
+                        f"per measure, one label per step")
+                for measure_labels, measure_steps in zip(marks, tp.phrase):
+                    for label, entry in zip(measure_labels, measure_steps):
+                        if isinstance(label, tuple) and (
+                                not isinstance(entry, tuple)
+                                or len(label) != len(entry)):
                             raise ValueError(
-                                f"{pname} labels are "
-                                f"{'/'.join(repr(v) for v in vocab)} (or '' "
-                                f"for none); got {label!r}")
+                                f"{pname} tuple labels must mirror a dyad "
+                                f"step note for note; got {label!r} against "
+                                f"step {entry!r}")
+                        labels = (label if isinstance(label, tuple)
+                                  else (label,))
+                        for lab in labels:
+                            if lab and lab not in vocab:
+                                raise ValueError(
+                                    f"{pname} labels are "
+                                    f"{'/'.join(repr(v) for v in vocab)} "
+                                    f"(or '' for none); got {lab!r}")
             self._check_len(len(tp.phrase))
 
         elif self.concept == "drill":

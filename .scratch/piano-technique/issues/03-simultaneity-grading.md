@@ -8,7 +8,7 @@ ricochet sixths (09), octave scales (10), and hands-together scale forms (05 v2)
 
 **Blocked by:** 01 — technique concept (the payload rides on technique targets).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 ## Design
 
@@ -59,3 +59,26 @@ out-of-order arrival (E before C) still satisfies a C+E step once both are down.
 The step rule grades *concurrency at note-on time*, not attack synchrony: two notes struck 200 ms
 apart but overlapping still pass. True attack-together grading needs the (currently discarded)
 timestamps — out of scope, noted in the concept explanation.
+
+## Implementation notes (close-out)
+
+* `harmony/lab_spec.py` — phrase entries may be tuples of **distinct** degrees (duplicate degrees
+  refused; an explicit octave pair is the degree twice 7 apart, e.g. `(1, 8)`); new
+  `octaves: bool` (scalar entries only, degrees capped at 22 so the written pair stays ≤ 29).
+  Marks mirror the phrase per step — a scalar label lands on the step's first notehead, a tuple
+  label maps note-for-note onto a dyad.
+* `harmony/lab.py` — `LabStepTarget(pcs, min_distinct)`; `LabMeasure.step_targets` is set only
+  for measures containing a real simultaneity, so scalar payloads stay byte-identical. Step pcs
+  are deduped in order (octave pair → one pc, `min_distinct` = key count); partners render as
+  `LabNote(is_chord_tone=True)` → `<chord/>`.
+* `harmony/lab_musicxml.py` — additive `steps` field; `harmony/playback_plan.py` untouched
+  (dyads sound via the per-beat pc lists; an octave pair still *plays* as one note — pc-based
+  playback contract, accepted and documented).
+* `beat_selector/harmony_trainer.js` — `activeNotes` (raw-MIDI physical mirror, never cleared by
+  navigation; ticket 04's hold seam, exported as `state().heldNotes`) + `freshNotes` (cleared on
+  step satisfy and attempt reset) implement (a)/(b)/(c) exactly as specced; scalar branch
+  untouched.
+* Tests: `tests/test_technique.py` `TestSimultaneity{Validation,Compile,Payload}`;
+  `tests/harmony_lab_midi_test.js` Tests F (out-of-order arrival, near-miss forgiveness, legato
+  overlap), G (re-attack on a repeated sixth), H (octave doubling, same-key-twice ≠ two keys).
+  Honesty noted in the `technique` concept explanation and `docs/harmony_trainer.md` §5.

@@ -244,6 +244,11 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
         "atlasDegreeId": a.atlas_degree_id,
         "atlasTriadId": a.atlas_triad_id,
     }
+    if measure.step_targets:
+        # Ticket 03 (additive, absent for scalar walks): the ordered
+        # simultaneity steps the JS grader demands concurrently.
+        target["steps"] = [{"pcs": list(s.pcs), "minDistinct": s.min_distinct}
+                           for s in measure.step_targets]
     return target
 
 

@@ -370,14 +370,22 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "so be clear about what each side owns. The phrase engine "
             "compiles a single-key line (a five-finger cell, a scale run, an "
             "arpeggio walk) and grades it as an ordered pitch-class walk: "
-            "play the expected notes in order and the walk advances. What it "
-            "cannot hear is just as important: wrong notes never count "
-            "against you (no penalty, no reset — at most a red flash), "
-            "octaves are indistinguishable "
-            "(a pitch class matches in any register), and releases are "
-            "invisible — legato, tone, dynamics and steadiness of tempo are "
-            "not assessed. Those live in the coach line, which is "
-            "instruction, never assessment."),
+            "play the expected steps in order and the walk advances. A step "
+            "may demand more than one concurrent key — a dyad, or an octave "
+            "doubling (two distinct keys on one pitch class) — checked at "
+            "the moment a key goes down, plus one rule on top: at least one "
+            "of the step's keys must be struck after the previous step "
+            "completed (the re-attack rule), so a held chord never plays "
+            "the next step for free. What it cannot hear is just as "
+            "important: wrong notes never count against you (no penalty, no "
+            "reset — at most a red flash), registers are indistinguishable "
+            "(a pitch class matches in any octave), releases never fail you "
+            "(letting go just means a two-note step is not yet complete), "
+            "and striking exactly together is not measured — two notes "
+            "struck well apart but overlapping still pass, because the "
+            "grader discards attack timestamps. Legato, tone, dynamics and "
+            "steadiness of tempo are not assessed. Those live in the coach "
+            "line, which is instruction, never assessment."),
         "what_to_listen_for": [
             "Evenness: every note the same length and weight as its neighbours.",
             "The turnaround (top of the pattern) staying as relaxed as the start.",
@@ -407,16 +415,24 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "expected next note advances the walk.",
             "\"I must play the written octave\" — grading is octave-blind; "
             "the notation shows the intended register, the grader hears "
-            "pitch classes.",
+            "pitch classes (an octave-doubling step counts distinct keys, "
+            "not registers — any two octaves of the class pass).",
+            "\"The trainer heard my two notes as together\" — it checked "
+            "that they overlapped when the later one went down, not that "
+            "they were struck at the same instant; true attack-together "
+            "grading needs note-on timestamps the grader currently "
+            "discards.",
             "\"Passing the drill means the technique is right\" — the grader "
-            "checks note order only; tone, legato and relaxation are the "
-            "coach line's job (wider grading arrives with tickets 03/04).",
+            "checks order and concurrency only; tone, legato and relaxation "
+            "are the coach line's job (holding notes for their written "
+            "length arrives with ticket 04).",
         ],
         "next_steps": [
             "16th-note values and rendered fingering numbers (ticket 02).",
-            "Stricter grading — the widened contract of tickets 03/04.",
-            "The remaining daily exercises: scale runs, trill cells, "
-            "arpeggio runs.",
+            "Hold enforcement — notes kept down for their written length "
+            "(ticket 04).",
+            "The dyad exercises this unlocks: thirds, ricochet sixths, "
+            "octave scales, hands together (tickets 05/08/09/10).",
         ],
     },
 }
