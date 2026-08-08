@@ -61,7 +61,8 @@ class TestStructure(unittest.TestCase):
         for needed in ("Scales", "Chords (Triads)", "Degrees & Transposition",
                        "Functions", "Cadences", "Intervals & Interval Layers",
                        "Inversions", "Motives",
-                       "Polyphonic Harmony", "Interactive Harmony Atlas",
+                       "Polyphonic Harmony", "Piano Technique",
+                       "Interactive Harmony Atlas",
                        "Circle of Fifths"):
             self.assertIn(needed, titles, needed)
         # F7: the old Voice Leading category duplicated the cadence catalogue;

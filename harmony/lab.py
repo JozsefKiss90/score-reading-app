@@ -20,7 +20,7 @@ from :func:`theory.diatonic_harmony.generate_diatonic_triads` /
 :func:`~theory.diatonic_harmony.generate_scale` /
 :func:`~theory.diatonic_harmony.transpose_degree_pattern`.
 
-The five implemented concepts (Phases 2-5):
+The implemented concepts (Phases 2-5 + piano-technique ticket 01):
 
 * ``inversion``          -- one chord, invariant upper tones, a changing bass.
 * ``cadence`` / ``voice_leading`` -- a progression as block triads or an
@@ -28,6 +28,8 @@ The five implemented concepts (Phases 2-5):
 * ``motive``             -- a scale-degree melodic cell transposed across keys.
 * ``polyphonic_harmony`` -- two independent voices whose vertical slices imply a
   triad per measure.
+* ``technique``          -- a multi-measure, single-key melodic phrase (the
+  piano-technique phrase engine; graded as an ordered pitch-class walk).
 
 ``reduction`` is reserved (``compile_lab`` raises ``NotImplementedError``); its
 spec validates and -- given an explicit skeleton -- down-compiles to a drill, so
@@ -59,12 +61,14 @@ from harmony.exercise_spec import MAX_CHORDS_PER_SPEC, normalise_pattern
 from harmony.lab_spec import (
     LabExperimentSpec,
     SCHEMA_VERSION,
+    TECHNIQUE_SLOTS,
     tonic_of,
     default_keys,
     inversion_params,
     cadence_params,
     motive_params,
     polyphonic_params,
+    technique_params,
     split_figured_pattern,
 )
 
@@ -679,6 +683,80 @@ def _gen_motive(spec: LabExperimentSpec) -> List[LabMeasure]:
     return measures
 
 
+def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
+    """A multi-measure, single-key melodic phrase (piano-technique ticket 01).
+
+    The missing shape between ``motive`` (one measure per key, ≤ 8 notes) and
+    the daily technique exercises: every measure stays in ``spec.key``, degrees
+    may span four octaves (``_scale_note`` wraps degrees > 7, no clamp), and
+    the ``lh`` variant puts the moving line on the bass staff (octaves 2-3)
+    with the treble staff whole-rested.  ``expected_by_beat`` carries ONE
+    pitch class per slot — exactly ``_gen_motive``'s ordered-walk contract, so
+    the JS ordered walk and the playback plan work unchanged.  The ``coach``
+    line is instruction, never assessment: it travels in the guide text only.
+    """
+    tp = technique_params(spec.parameters)
+    mode = spec.mode
+    tonic = tonic_of(spec.key)
+    scale = generate_scale(tonic, mode)
+    dtype = tp.note_value
+    slots = TECHNIQUE_SLOTS[dtype]
+    n_measures = len(tp.phrase)
+    left = tp.hand == "lh"
+    octave_shift = -2 if left else 0          # LH: same degrees, octaves 2-3
+    hand_word = "left hand" if left else "right hand"
+    group = f"{spec.title} — {scale.key}, {hand_word}"
+    coach = tp.coach.strip()
+    # The Atlas has no harmonic-minor scale node: the key context is claimed
+    # on the natural-minor node (the Score Soul precedent — raised degrees
+    # are per-note accidentals, never a new key).
+    atlas_mode = "natural_minor" if mode == "harmonic_minor" else mode
+
+    measures: List[LabMeasure] = []
+    for k, degrees in enumerate(tp.phrase):
+        notes: List[LabNote] = []
+        pcs: List[int] = []
+        spelled: List[str] = []
+        for d in degrees:
+            step, alter, octave = _scale_note(scale, d)
+            octave += octave_shift
+            notes.append(LabNote(step, alter, octave, dtype))
+            pcs.append(_midi(step, alter, octave) % 12)
+            spelled.append(f"{step}{_alter_str(alter)}{octave}")
+        rest_octave = BASS_OCTAVE if left else TREBLE_OCTAVE
+        for _ in range(slots - len(degrees)):
+            notes.append(LabNote("C", 0, rest_octave, dtype, is_rest=True))
+
+        expected = {i + 1: [pc] for i, pc in enumerate(pcs)}
+        lab_note = (f"{scale.key} technique phrase, measure {k + 1}/"
+                    f"{n_measures} ({hand_word}): {'–'.join(spelled)}.")
+        if tp.fingering:
+            lab_note += (" Fingering: "
+                         + " ".join(f or "·" for f in tp.fingering[k]) + ".")
+        if coach:
+            lab_note += f" Coach: {coach}"
+        ann = LabAnnotation(
+            key=scale.key, mode=mode, chord_tones=(),
+            scale_degree_name="technique", degree_number=degrees[0],
+            explanation=lab_note, lab_note=lab_note,
+            atlas_scale_id=scale_id(tonic, atlas_mode),
+        )
+        line = tuple(notes)
+        idle = (LabNote("C", 0, TREBLE_OCTAVE if left else BASS_OCTAVE,
+                        "whole", is_rest=True),)
+        measures.append(LabMeasure(
+            index=k, render="melody", group=group,
+            key_display=scale.key, tonic=tonic, mode=mode, fifths=scale.fifths,
+            scale_pitches=tuple(scale.scale_pitches),
+            staff1=idle if left else line,
+            staff2=line if left else idle,
+            annotation=ann, underlying=None,
+            target_pitch_classes=tuple(pcs), bass_pitch_class=None,
+            expected_by_beat=expected,
+        ))
+    return measures
+
+
 def _alter_str(alter: int) -> str:
     from theory.diatonic_harmony import alter_to_str
     return alter_to_str(alter)
@@ -761,6 +839,7 @@ _GENERATORS = {
     "voice_leading": _gen_voice_leading,
     "motive": _gen_motive,
     "polyphonic_harmony": _gen_polyphonic,
+    "technique": _gen_technique,
 }
 
 

@@ -186,4 +186,38 @@ function assert(cond, msg) {
   console.log("Test D (motive melody): PASS");
 })();
 
+// === Test E: technique phrase walks a multi-measure line in order ============
+// Piano-technique ticket 01: the tracer's five-finger measure (revisiting
+// pitch classes on the way down) + the rest-padded closing measure, exactly
+// the shape harmony.lab_musicxml.build_lab_payload emits for the concept.
+(function testTechniquePhrase() {
+  const up = [60, 62, 64, 65, 67, 65, 64, 62];      // C D E F G F E D (eighths)
+  const payload = {
+    title: "technique", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [
+      labTarget({
+        absMeasure: 0, render: "arpeggio", concept: "melody",
+        pitchClasses: [0, 2, 4, 5, 7, 5, 4, 2], midiPitches: up,
+      }),
+      labTarget({
+        absMeasure: 1, render: "arpeggio", concept: "melody",
+        pitchClasses: [0], midiPitches: [60],
+      }),
+    ],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  // A wrong note is red and does NOT advance the walk (grading honesty).
+  h.noteOn(61); assert(h.keyStatus.get(61) === "bad", "technique: C# is red");
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0, "technique: wrong note does not advance");
+  h.noteOff(61);
+  up.forEach((m) => { h.noteOn(m); h.noteOff(m); });
+  assert(h.app.lastMeasure === 1, "technique: cursor moved to the final measure");
+  // Octave-agnostic close: the final tonic accepted an octave up (C5).
+  h.noteOn(72); h.noteOff(72);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "technique: finishes the two-measure phrase in order");
+  console.log("Test E (technique phrase): PASS");
+})();
+
 console.log("\nAll harmony_lab MIDI-acceptance checks passed (" + passed + " assertions).");

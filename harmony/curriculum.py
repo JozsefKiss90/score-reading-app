@@ -242,6 +242,7 @@ _CONCEPT_PROFILE = {
     "motive":             {"difficulty": 2, "minutes": 4},
     "polyphonic_harmony": {"difficulty": 4, "minutes": 6},
     "drill":              {"difficulty": 2, "minutes": 3},
+    "technique":          {"difficulty": 1, "minutes": 3},
 }
 
 
@@ -643,6 +644,11 @@ def _lab_objective(spec: LabExperimentSpec) -> str:
     if spec.concept == "polyphonic_harmony":
         return (f"Hear two independent voices imply the "
                 f"{'-'.join(p.get('progression', []))} progression.")
+    if spec.concept == "technique":
+        hand = "left hand" if p.get("hand") == "lh" else "right hand"
+        n = len(p.get("phrase", ()))
+        return (f"Play the {n}-measure {spec.key} technique phrase with the "
+                f"{hand} — every note in order, evenly.")
     return spec.description or spec.title
 
 
@@ -664,6 +670,11 @@ def _lab_keywords(spec: LabExperimentSpec) -> List[str]:
         kws.extend(["dictation", line, "ear", "🎧"])
     if p.get("cadence_type"):
         kws.append(str(p["cadence_type"]).replace("_", " "))
+    if spec.concept == "technique":
+        kws.extend(["piano technique", "warm-up",
+                    "left hand" if p.get("hand") == "lh" else "right hand"])
+        if p.get("fingering"):
+            kws.append("fingering")
     return kws
 
 
@@ -1281,6 +1292,32 @@ def _melodic_minor_motive_specs() -> List[LabExperimentSpec]:
         spec.validate()
         specs.append(spec)
     return specs
+
+
+def _technique_warmup_specs() -> List[LabExperimentSpec]:
+    """The ``cat:technique`` tracer (piano-technique ticket 01).
+
+    One five-finger warm-up phrase proving the whole path: curriculum click
+    -> lab compile -> melody render -> ordered MIDI grading -> progress
+    record.  The ten daily exercises (tickets 02+) extend this category.
+    """
+    coach = "Even, relaxed tone; let the wrist float."
+    spec = LabExperimentSpec(
+        experiment_id="tech_warmup_five_finger_c_rh",
+        title="Five-finger warm-up in C (right hand)",
+        concept="technique", mode="major", key="C major", render="melody",
+        parameters={
+            "phrase": [[1, 2, 3, 4, 5, 4, 3, 2], [1]],
+            "note_value": "eighth",
+            "hand": "rh",
+            "fingering": [["1", "2", "3", "4", "5", "4", "3", "2"], ["1"]],
+            "coach": coach,
+        },
+        description=("The C major five-finger position, up and back in even "
+                     f"eighths, closing on the tonic. Coach: {coach}"),
+    )
+    spec.validate()
+    return [spec]
 
 
 def _augmented_quality_specs() -> List[HarmonyExerciseSpec]:
@@ -2533,6 +2570,45 @@ def build_curriculum() -> CurriculumNode:
     fill_lab(group(l_poly, "polyphonic_examples", "Polyphonic examples",
                    "I–V–I, ii–V–I and a minor i–VII–i.", 4),
              lab_poly, 4)
+
+    # ===================================================================
+    # 10b. PIANO TECHNIQUE  (piano-technique ticket 01 — the tracer leaf;
+    #      the ten daily exercises land in tickets 02+)
+    # ===================================================================
+    technique = cat("technique", "Piano Technique",
+                    "Daily finger work: phrases graded note by note, "
+                    "gestures coached.",
+                    "Build even finger patterns; the grader hears pitch "
+                    "order only, the coach line owns the gesture.", 1,
+                    keywords=["technique", "piano", "warm-up", "fingering",
+                              "five-finger", "exercise"],
+                    theory="A technique drill is a melodic phrase in one "
+                           "key, played exactly in order. The grading is an "
+                           "honest, narrow contract: the trainer follows an "
+                           "ordered pitch-class walk, so wrong notes are "
+                           "silently ignored, octaves are interchangeable "
+                           "and releases are invisible. Everything musical "
+                           "beyond note order — wrist, tone, evenness, "
+                           "tempo intent — travels in the coach line, which "
+                           "is instruction, never assessment.")
+    l_tech = lesson(technique, "tech_warmup", "Five-finger warm-up",
+                    "The C major five-finger position, up and back.",
+                    "Play the warm-up evenly, every note in order, with the "
+                    "printed fingering.", 1,
+                    theory="The five-finger position (degrees 1..5) is the "
+                           "hand's home shape: one finger per degree, thumb "
+                           "on the tonic. Walking it up and back in even "
+                           "eighths trains the evenness every later run is "
+                           "built from — the coached gesture (a floating "
+                           "wrist, a relaxed turnaround) is what the drill "
+                           "is FOR, even though only the note order is "
+                           "graded.",
+                    related=["lesson:motive_transposition"],
+                    keywords=["five-finger", "warm-up", "C major",
+                              "fingering", "evenness"])
+    fill_lab(group(l_tech, "tech_warmup_drills", "Warm-up drills",
+                   "The tracer phrase: up and back, graded in order.", 1),
+             _technique_warmup_specs(), 1)
 
     # ===================================================================
     # 11. ATLAS  (bridge — opens the Interactive Harmony Atlas)

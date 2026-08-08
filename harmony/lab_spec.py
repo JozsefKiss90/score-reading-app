@@ -96,10 +96,15 @@ SCHEMA_VERSION = "harmony-lab/v1"
 #: *resolve* (play the intruder and its resolution).  The *ear* stage is
 #: reserved for G5c (ticket 19).  Each stage compiles to one native trainer
 #: drill, so the launch path is the trainer, not the lab renderer.
+#: ``technique`` (piano-technique ticket 01) is the phrase engine: a
+#: multi-measure, single-key melodic phrase — the missing shape between
+#: ``motive`` (one measure per key, ≤ 8 notes) and the daily technique
+#: exercises (scale runs, trill cells, arpeggio runs).  It renders through
+#: the lab's melody pipeline and grades as an ordered pitch-class walk.
 CONCEPTS = {
     "inversion", "voice_leading", "cadence",
     "polyphonic_harmony", "motive", "reduction",
-    "drill", "applied_chord",
+    "drill", "applied_chord", "technique",
 }
 
 #: Render styles.  ``block`` / ``arpeggio`` reuse the trainer's renderers;
@@ -121,6 +126,7 @@ _CONCEPT_RENDERS = {
     "reduction":          {"block", "voice_leading"},   # reserved
     "drill":              {"block", "arpeggio"},         # mirrors the trainer's renders
     "applied_chord":      {"block", "arpeggio"},         # arpeggio: resolve stage only
+    "technique":          {"melody"},                    # a single moving line
 }
 
 #: Concepts whose ``parameters`` may carry ``strict_bass`` (require render="block";
@@ -325,6 +331,30 @@ class AppliedChordParams:
     stages: tuple = ("spot",)         # subset of APPLIED_STAGES, in order
 
 
+#: Slots per 4/4 measure for each technique note value (piano-technique
+#: ticket 01; ticket 02 adds ``"16th"`` -> 16 with the fingering renderer).
+TECHNIQUE_SLOTS = {"quarter": 4, "eighth": 8}
+
+#: Highest 1-based scale degree a technique phrase may reach: four octaves
+#: (``_scale_note`` wraps degrees > 7 into higher octaves with no clamp).
+TECHNIQUE_MAX_DEGREE = 29
+
+
+@dataclass(frozen=True)
+class TechniqueParams:
+    #: One inner tuple per MEASURE; entries are 1-based scale degrees
+    #: (1..TECHNIQUE_MAX_DEGREE — the four-octave span of a scale run).
+    phrase: tuple = ()
+    note_value: str = "quarter"       # "quarter" | "eighth" (16ths: ticket 02)
+    hand: str = "rh"                  # "rh" (treble staff) | "lh" (bass staff)
+    #: Optional finger labels, parallel to ``phrase`` ("1".."5" or "").
+    #: Stored now, RENDERED by ticket 02; until then guide text only.
+    fingering: tuple = ()
+    #: The not-graded gesture instruction (wrist, accents, tempo intent).
+    #: Shown in the leaf description / guide panel, never assessed.
+    coach: str = ""
+
+
 def inversion_params(p: Dict) -> InversionParams:
     return InversionParams(
         degree=str(p.get("degree", "I")),
@@ -371,6 +401,17 @@ def applied_chord_params(p: Dict) -> AppliedChordParams:
         progression=tuple(str(t) for t in p.get(
             "progression", ("I", "vi", "V7/V", "V", "I"))),
         stages=tuple(str(s) for s in p.get("stages", ("spot",))),
+    )
+
+
+def technique_params(p: Dict) -> TechniqueParams:
+    return TechniqueParams(
+        phrase=tuple(tuple(int(d) for d in m) for m in p.get("phrase", ())),
+        note_value=str(p.get("note_value", "quarter")),
+        hand=str(p.get("hand", "rh")),
+        fingering=tuple(tuple(str(f) for f in m)
+                        for m in p.get("fingering", ())),
+        coach=str(p.get("coach", "")),
     )
 
 
@@ -665,6 +706,53 @@ class LabExperimentSpec:
                     f"resolution)")
             self._check_len(len(roman))
 
+        elif self.concept == "technique":
+            tp = technique_params(p)
+            if not tp.phrase:
+                raise ValueError(
+                    "technique requires a non-empty 'phrase' (one tuple of "
+                    "1-based scale degrees per measure)")
+            if tp.note_value not in TECHNIQUE_SLOTS:
+                raise ValueError(
+                    f"unknown note_value {tp.note_value!r}; the technique "
+                    f"phrase engine understands {sorted(TECHNIQUE_SLOTS)} "
+                    f"(16ths arrive with the fingering renderer)")
+            slots = TECHNIQUE_SLOTS[tp.note_value]
+            for i, m in enumerate(tp.phrase):
+                if not m:
+                    raise ValueError(
+                        f"technique measure {i + 1} is empty; give it at "
+                        f"least one degree")
+                if len(m) > slots:
+                    raise ValueError(
+                        f"technique measure {i + 1} has {len(m)} notes but a "
+                        f"4/4 bar of {tp.note_value}s holds {slots}; split "
+                        f"the measure (short measures are rest-padded)")
+                for d in m:
+                    if not (1 <= d <= TECHNIQUE_MAX_DEGREE):
+                        raise ValueError(
+                            f"technique degrees must be in "
+                            f"1..{TECHNIQUE_MAX_DEGREE} (four octaves above "
+                            f"the tonic); got {d}")
+            if tp.hand not in ("rh", "lh"):
+                raise ValueError(
+                    f"unknown hand {tp.hand!r}; 'rh' plays the line on the "
+                    f"treble staff, 'lh' on the bass staff")
+            if tp.fingering:
+                if (len(tp.fingering) != len(tp.phrase)
+                        or any(len(f) != len(m)
+                               for f, m in zip(tp.fingering, tp.phrase))):
+                    raise ValueError(
+                        "fingering must mirror the phrase shape: one tuple "
+                        "per measure, one label per note")
+                for m in tp.fingering:
+                    for f in m:
+                        if f not in ("", "1", "2", "3", "4", "5"):
+                            raise ValueError(
+                                f"fingering labels are '1'..'5' (or '' for "
+                                f"none); got {f!r}")
+            self._check_len(len(tp.phrase))
+
         elif self.concept == "drill":
             raw = p.get("exercise")
             if not isinstance(raw, dict):
@@ -840,7 +928,7 @@ class LabExperimentSpec:
             # the trainer receives exactly the original exercise.
             specs.append(HarmonyExerciseSpec.from_dict(self.parameters["exercise"]))
 
-        else:  # motive -> monophonic melody, no chord-drill representation
+        else:  # motive / technique -> monophonic melody, no chord drill
             return []
 
         # Cap guard: never hand the trainer an oversized drill (mirrors

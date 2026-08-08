@@ -202,6 +202,13 @@ _CONCEPT_PRACTICE = {
         "Name the tonicised chord, then hear the applied chord as ITS dominant.",
         "Play the resolution and feel the chromatic leading tone rise a semitone.",
     ],
+    "technique": [
+        "Play the phrase slowly and exactly in order — the grader follows "
+        "order, not speed.",
+        "Use the printed fingering; the pattern IS the fingering.",
+        "Follow the coach line (wrist, tone, evenness) — it is instruction "
+        "the grader cannot hear.",
+    ],
 }
 
 _CONCEPT_MISTAKES = {
@@ -240,6 +247,15 @@ _CONCEPT_MISTAKES = {
     "applied_chord": [
         "Labelling D7 in C major as 'ii' — the chromatic F# disqualifies it.",
         "Thinking the applied chord changes the key (tonicisation ≠ modulation).",
+    ],
+    "technique": [
+        "Assuming the trainer penalised a wrong note — a stray key may "
+        "flash red, but grading ignores it; only the expected next note "
+        "advances the walk.",
+        "Chasing the written octave — grading is octave-blind (pitch classes "
+        "only); the notation shows the intended register.",
+        "Reading a pass as good technique — tone, legato and relaxation are "
+        "the coach line's job, not the grader's.",
     ],
 }
 

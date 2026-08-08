@@ -68,6 +68,18 @@ class TestExercisePage(unittest.TestCase):
         self.assertTrue(page["trainerPreview"]["degrees"])
         self.assertEqual(page["harmonicAnalysis"], [])   # no chord drill
 
+    def test_technique_page_covered(self):
+        # piano-technique ticket 01: the tracer leaf's page assembles with
+        # theory + advice (a melodic phrase owns no chord analysis).
+        node = _find(self.root, lambda n: n.kind == "exercise"
+                     and n.lab_spec.concept == "technique")
+        page = exercise_page(node)
+        self.assertTrue(page["musicTheory"].strip())
+        self.assertTrue(page["practiceAdvice"])
+        self.assertTrue(page["commonMistakes"])
+        self.assertEqual(page["harmonicAnalysis"], [])   # no chord drill
+        self.assertIn("Coach:", page["definition"])      # the honesty line
+
     def test_facts_are_derived_not_hardcoded(self):
         # two full-key drills in different keys -> different analysis
         fullkeys = [n for n in self.root.walk() if n.kind == "exercise"

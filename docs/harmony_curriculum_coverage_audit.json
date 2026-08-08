@@ -1,8 +1,8 @@
 {
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
-    "totalLeaves": 351,
-    "categories": 14,
+    "totalLeaves": 381,
+    "categories": 15,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
     "missingRequiredCount": 0,
@@ -304,6 +304,28 @@
       ]
     },
     {
+      "key": "technique",
+      "title": "Piano Technique",
+      "categoryIds": [
+        "cat:technique"
+      ],
+      "expected": "The piano-technique ticket-01 tracer: one five-finger warm-up phrase proving curriculum -> lab compile -> melody render -> ordered MIDI grading (the ten daily exercises follow in tickets 02+).",
+      "actualLeaves": 1,
+      "reserved": false,
+      "duplicateExerciseIds": [],
+      "duplicateExperimentIds": [],
+      "invalidLabSpec": [],
+      "invalidBridge": [],
+      "emptyExplanations": [],
+      "missingAtlasMapping": [],
+      "unresolvedAtlasMapping": [],
+      "missingCircleMapping": [],
+      "unresolvedCircleMapping": [],
+      "tests": [
+        "tests/test_technique.py"
+      ]
+    },
+    {
       "key": "integration",
       "title": "Atlas / Circle integration",
       "categoryIds": [
@@ -336,8 +358,8 @@
         "cat:reserved"
       ],
       "expected": "Modal, jazz, secondary dominants, real-score analysis, reduction (all reserved; seventh chords went live with G1a, harmonic minor with G2a, melodic minor & III+ with G2b).",
-      "actualLeaves": 0,
-      "reserved": true,
+      "actualLeaves": 29,
+      "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
       "invalidLabSpec": [],

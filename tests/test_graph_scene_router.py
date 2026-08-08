@@ -75,6 +75,16 @@ class TestRoutingTable(unittest.TestCase):
         self.assertEqual(d.status, "unsupported")
         self.assertEqual(d.scene_type, "unsupported")
 
+    def test_lab_technique_is_unsupported(self):
+        # Piano-technique ticket 01: the Harmonic Scene pane shows the honest
+        # refusal for technique leaves (a melodic phrase claims no chord graph).
+        lab = LabExperimentSpec(experiment_id="t", title="t", concept="technique",
+                                render="melody")
+        d = _decide(lab_spec=lab)
+        self.assertEqual(d.status, "unsupported")
+        self.assertEqual(d.scene_type, "unsupported")
+        self.assertIn("no harmonic-graph scene", d.reason)
+
     def test_explore_routes_to_legacy_key_relation(self):
         self.assertEqual(_decide().scene_type, "legacy_key_relation")
         self.assertEqual(_decide(source_metadata={"explore": True}).scene_type,

@@ -100,6 +100,11 @@ _CATEGORIES = [
     ("polyphony", "Polyphonic Harmony", ["cat:polyphony"],
      ["tests/test_harmony_lab.py"],
      "Two-voice implied-harmony examples."),
+    ("technique", "Piano Technique", ["cat:technique"],
+     ["tests/test_technique.py"],
+     "The piano-technique ticket-01 tracer: one five-finger warm-up phrase "
+     "proving curriculum -> lab compile -> melody render -> ordered MIDI "
+     "grading (the ten daily exercises follow in tickets 02+)."),
     ("integration", "Atlas / Circle integration", ["cat:atlas", "cat:circle"],
      ["tests/atlas_node_test.js", "tests/circle_node_test.js",
       "tests/test_circle_payload.py"],

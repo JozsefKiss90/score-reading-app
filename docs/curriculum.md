@@ -134,7 +134,8 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | cadence taxonomy (ticket 16 / G3): PAC/IAC + soprano dictations + Phrygian iv6–V + cadential 6/4 pairs + cadence orbits (and 2 new catalogue half cadences × block/SATB) | 39 | Cadences |
 | applied chords (ticket 17 / G5a): 4 spot-the-intruder + 4 block resolves + 4 arpeggio resolves, C major | 12 | Advanced Topics › Secondary dominants |
 | applied ramp (ticket 19 / G5c): 3 moved intruder positions + 3 `vii°7/x` spots + 3 `vii°7/x` resolves + 4 further-out keys + 4 dominant chains (native, wrapped) | 17 | Advanced Topics › Applied chords: the ramp |
-| **grand total** | **380 exercise leaves** | (498 nodes total) |
+| piano technique (piano-technique ticket 01): the five-finger warm-up tracer (`concept="technique"` phrase engine; the ten daily exercises follow) | 1 | Piano Technique › Five-finger warm-up |
+| **grand total** | **381 exercise leaves** | (502 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

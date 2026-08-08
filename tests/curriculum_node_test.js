@@ -108,7 +108,7 @@ const PAYLOAD = loadPayload();
   const h = makeHarness(PAYLOAD);
   const r = h.ui.init(PAYLOAD);
   assert(r.ok, "init ok");
-  // 380 leaves = 102 native drills + 15 block cadences + 107 inversions
+  // 381 leaves = 102 native drills + 15 block cadences + 107 inversions
   // (96-key grid + 1 arpeggio worked example + 1 ii6 cadence bridge + 9
   // bass-line dictations, ticket 11) + 15 SATB voice-leading cadences
   // + 2 motives + 3 polyphonic examples + 56 seventh-chord drills
@@ -126,8 +126,9 @@ const PAYLOAD = loadPayload();
   // (ticket 19: 3 moved positions + 3 vii°7/x spots + 3 vii°7/x resolves
   // + 4 further-out keys + 4 dominant chains, the last four counted in the
   // native drills above; the ear stage adds no leaves — every spot leaf
-  // owns a 🎧 twin recorded under the same node id).
-  assert(r.exercises === 380, "reports 380 exercise leaves, got " + r.exercises);
+  // owns a 🎧 twin recorded under the same node id) + 1 technique tracer
+  // (piano-technique ticket 01: the five-finger warm-up phrase).
+  assert(r.exercises === 381, "reports 381 exercise leaves, got " + r.exercises);
   // first category auto-expanded -> its lesson rows are visible
   const rows = h.ui._visibleRows();
   assert(rows.length > PAYLOAD.tree.children.length, "first category expanded");

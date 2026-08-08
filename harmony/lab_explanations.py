@@ -26,7 +26,8 @@ It is pure (standard library + :mod:`theory.diatonic_harmony` display helpers +
 the lab/Atlas dataclasses), so it is unit-testable headlessly and serialises to
 JSON for the web UI.  No Qt / Verovio / MIDI.
 
-The five concepts mirror :data:`harmony.lab_spec.CONCEPTS`; ``reduction`` /
+The concept pages mirror :data:`harmony.lab_spec.CONCEPTS` (``technique``
+joined with the piano-technique ticket 01); ``reduction`` /
 ``real_score_analysis`` is the reserved placeholder (its theory explanation
 describes the future Schenkerian-reduction phase and is explicit that it is not
 implemented yet).
@@ -45,7 +46,7 @@ from theory.diatonic_harmony import _mode_word
 
 #: Canonical concept keys for the theory layer.
 CONCEPT_KEYS = ["inversion", "voice_leading", "motive", "polyphonic_harmony",
-                "reduction", "applied_chord"]
+                "reduction", "applied_chord", "technique"]
 
 #: Map every name a caller might pass (spec.concept values, the run-demo concept
 #: catalogue selector ids) onto a canonical concept key.
@@ -61,6 +62,7 @@ _CONCEPT_ALIASES = {
     "real_score_analysis": "reduction",
     "applied_chord": "applied_chord",
     "secondary_dominant": "applied_chord",
+    "technique": "technique",
 }
 
 
@@ -356,6 +358,65 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "chord (G6).",
             "Modulation: what happens when the tonicisation stops being "
             "momentary (G7).",
+        ],
+    },
+    "technique": {
+        "title": "Piano technique",
+        "short_definition": (
+            "A technique drill is a multi-measure melodic phrase in one key "
+            "— a finger pattern graded note by note, in order."),
+        "core_idea": (
+            "Technique lives in the fingers, but the grader lives in MIDI — "
+            "so be clear about what each side owns. The phrase engine "
+            "compiles a single-key line (a five-finger cell, a scale run, an "
+            "arpeggio walk) and grades it as an ordered pitch-class walk: "
+            "play the expected notes in order and the walk advances. What it "
+            "cannot hear is just as important: wrong notes never count "
+            "against you (no penalty, no reset — at most a red flash), "
+            "octaves are indistinguishable "
+            "(a pitch class matches in any register), and releases are "
+            "invisible — legato, tone, dynamics and steadiness of tempo are "
+            "not assessed. Those live in the coach line, which is "
+            "instruction, never assessment."),
+        "what_to_listen_for": [
+            "Evenness: every note the same length and weight as its neighbours.",
+            "The turnaround (top of the pattern) staying as relaxed as the start.",
+            "Whether the coached gesture (wrist, accent, tempo intent) survives "
+            "the whole phrase.",
+        ],
+        "what_to_play": [
+            "Play the phrase slowly, exactly in order — the grader follows "
+            "the order, not the speed.",
+            "Use the printed fingering; the pattern is the fingering.",
+            "Repeat hands separately before joining them (later exercises "
+            "add the left hand).",
+        ],
+        "theory_terms": [
+            "five-finger position", "scale run", "fingering",
+            "scale degree", "phrase", "even articulation",
+        ],
+        "atlas_connections": [
+            "Each phrase claims its key's scale node only — a melodic line "
+            "lands on no chord node.",
+            "The degrees of the phrase are the same 1..7 (and octave copies) "
+            "every scale drill walks.",
+        ],
+        "common_misconceptions": [
+            "\"The trainer punished my wrong note\" — it did not: a stray "
+            "key may flash red, but grading ignores it completely; only the "
+            "expected next note advances the walk.",
+            "\"I must play the written octave\" — grading is octave-blind; "
+            "the notation shows the intended register, the grader hears "
+            "pitch classes.",
+            "\"Passing the drill means the technique is right\" — the grader "
+            "checks note order only; tone, legato and relaxation are the "
+            "coach line's job (wider grading arrives with tickets 03/04).",
+        ],
+        "next_steps": [
+            "16th-note values and rendered fingering numbers (ticket 02).",
+            "Stricter grading — the widened contract of tickets 03/04.",
+            "The remaining daily exercises: scale runs, trill cells, "
+            "arpeggio runs.",
         ],
     },
 }
