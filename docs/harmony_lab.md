@@ -44,8 +44,9 @@ headlessly. The UI is a separate web layer; MIDI validation is
 host method, `musicxml_builder.py`'s `_note_xml` gained only opt-in
 notation-mark kwargs (piano-technique ticket 02) whose defaults leave every
 existing caller's output byte-identical, and `harmony_trainer.js` gained only
-the `steps` simultaneity walk (piano-technique ticket 03), gated on the new
-payload field — payloads without `steps` take the pre-existing code paths
+the `steps` simultaneity walk (piano-technique ticket 03) and the `hold`
+enforcement gate (piano-technique ticket 04), each gated on its new payload
+field — payloads without `steps`/`hold` take the pre-existing code paths
 verbatim.
 
 ### Single source of truth

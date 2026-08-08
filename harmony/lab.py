@@ -208,9 +208,25 @@ class LabMeasure:
     #: Ordered simultaneity steps (ticket 03) -- set only when a step needs
     #: more than one concurrent key; scalar walks stay None (payload unchanged).
     step_targets: Optional[Tuple[LabStepTarget, ...]] = None
+    #: Intra-staff second voice (ticket 04, held-note textures): a stream
+    #: engraved on the SAME staff against the staff's first voice (classic
+    #: two-voice writing, stems split).  Each non-empty stream must fill the
+    #: 64-tick bar on its own; empty streams render byte-identically to the
+    #: single-voice layout.
+    staff1_voice2: Tuple[LabNote, ...] = ()
+    staff2_voice2: Tuple[LabNote, ...] = ()
+    #: The pitch class held through this measure (ticket 04); None when the
+    #: measure has no held-note texture.  ``hold_graded`` is True only when
+    #: the spec opted into v2 enforcement AND this measure holds a note --
+    #: it gates the payload's additive ``hold`` field.
+    hold_pc: Optional[int] = None
+    hold_graded: bool = False
 
     def sounding_midis(self) -> List[int]:
-        out = [n.midi for n in (self.staff1 + self.staff2) if not n.is_rest]
+        out = [n.midi
+               for n in (self.staff1 + self.staff1_voice2
+                         + self.staff2 + self.staff2_voice2)
+               if not n.is_rest]
         return sorted(out)
 
 
@@ -742,6 +758,14 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     number of distinct keys — and the payload grows the additive ``steps``
     field; purely scalar measures stay ``None`` so old payloads are
     byte-identical.
+
+    Held-note textures (ticket 04): a ``hold`` entry puts one whole note in
+    a second voice on the active hand's staff, under/over the moving line.
+    Grading stays the moving line — the hold never enters
+    ``expected_by_beat`` / ``target_pitch_classes``.  With ``hold_graded``
+    (v2) the measure records its hold pitch class for the payload, where the
+    JS grader accepts a step only while that pc is sounding; without it (v1)
+    the hold is notation + coach text, and the guide line says so.
     """
     tp = technique_params(spec.parameters)
     mode = spec.mode
@@ -759,6 +783,8 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     # on the natural-minor node (the Score Soul precedent — raised degrees
     # are per-note accidentals, never a new key).
     atlas_mode = "natural_minor" if mode == "harmonic_minor" else mode
+
+    hold_entries = tp.hold or ((),) * n_measures
 
     measures: List[LabMeasure] = []
     for k, entries in enumerate(tp.phrase):
@@ -800,6 +826,19 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
         for _ in range(slots - len(entries)):
             notes.append(LabNote("C", 0, rest_octave, dtype, is_rest=True))
 
+        # Held-note texture (ticket 04): one whole note in the second voice
+        # of the active hand's staff.  A whole note fills the 64-tick bar on
+        # its own, so the voice needs no rest padding.
+        hold_pc: Optional[int] = None
+        hold_name = ""
+        voice2: Tuple[LabNote, ...] = ()
+        if hold_entries[k]:
+            h_step, h_alter, h_octave = _scale_note(scale, hold_entries[k][0])
+            h_octave += octave_shift
+            voice2 = (LabNote(h_step, h_alter, h_octave, "whole"),)
+            hold_pc = _midi(h_step, h_alter, h_octave) % 12
+            hold_name = f"{h_step}{_alter_str(h_alter)}{h_octave}"
+
         expected = {i + 1: list(s.pcs) for i, s in enumerate(step_targets)}
         # Simultaneity is opt-in per measure: scalar walks keep the old
         # payload shape (no steps), so pre-ticket-03 grading is untouched.
@@ -807,6 +846,18 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
             isinstance(e, tuple) and len(e) >= 2 for e in entries)
         lab_note = (f"{scale.key} technique phrase, measure {k + 1}/"
                     f"{n_measures} ({hand_word}): {'–'.join(spelled)}.")
+        if hold_pc is not None:
+            # The honest grading line the ticket demands: v1 shows the hold
+            # but cannot check it; v2 checks it at each step's satisfaction
+            # instant (any octave), never continuously between steps.
+            if tp.hold_graded:
+                lab_note += (f" Hold {hold_name} through the bar; each "
+                             f"moving note counts only while the hold is "
+                             f"sounding (checked note by note, any octave).")
+            else:
+                lab_note += (f" Hold {hold_name} through the bar. Graded: "
+                             f"the moving notes in order; not graded yet: "
+                             f"keeping the hold down.")
         if tp.fingering:
             lab_note += (" Fingering: "
                          + " ".join(_mark_text(f) for f in tp.fingering[k])
@@ -830,10 +881,14 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
             scale_pitches=tuple(scale.scale_pitches),
             staff1=idle if left else line,
             staff2=line if left else idle,
+            staff1_voice2=() if left else voice2,
+            staff2_voice2=voice2 if left else (),
             annotation=ann, underlying=None,
             target_pitch_classes=tuple(pcs), bass_pitch_class=None,
             expected_by_beat=expected,
             step_targets=tuple(step_targets) if simultaneous else None,
+            hold_pc=hold_pc,
+            hold_graded=tp.hold_graded and hold_pc is not None,
         ))
     return measures
 

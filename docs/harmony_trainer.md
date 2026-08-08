@@ -229,6 +229,18 @@ without `steps` — and controllers that ignore unknown fields — behave exactl
 as before. This grades **concurrency at note-on time**, not attack synchrony:
 striking exactly together would need the timestamps the grader discards.
 
+An arpeggio-walk target may also carry `hold` (piano-technique ticket 04 v2,
+the held-note textures), `{"pc": <int>}`: the pitch class that must be
+sounding — any octave — for the walk's steps to be accepted. A correct
+moving note struck while the hold is up is refused *without* resetting
+progress; the guide panel shows an amber "keep the X held" hint until the
+hold sounds again. Honesty limits, stated in the guide text: the hold is
+verified **at each step's satisfaction instant**, not continuously between
+steps; mod-12 means the octave of the held key is not checked, nor is the
+finger used. Without `hold` in the payload (the v1 default) the held whole
+note is notation + coach text only, and the measure's guide line says which
+side of that boundary it is on.
+
 The guide panel also has **Prev / Next / Reset** controls and a clickable chord
 list, so you can jump to any chord for free practice.
 

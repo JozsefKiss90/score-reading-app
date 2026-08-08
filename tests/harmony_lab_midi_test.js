@@ -77,7 +77,7 @@ function makeHarness(payload) {
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "..", "beat_selector", "harmony_trainer.js"), "utf-8"),
     sandbox, { filename: "harmony_trainer.js" });
-  return { window, app, state, keyStatus,
+  return { window, app, state, keyStatus, nodes,
            noteOn: (p, v) => window.onMidiNoteOn(p, v === undefined ? 100 : v, 0),
            noteOff: (p) => window.onMidiNoteOff(p, 0) };
 }
@@ -323,6 +323,87 @@ function assert(cond, msg) {
   assert(h.window.HarmonyTrainer.state().finished === true,
          "octaves: C4+C5 held together completes the step");
   console.log("Test H (octave doubling): PASS");
+})();
+
+// === Test I: hold enforcement gates the scalar ordered walk (ticket 04 v2) ===
+// target.hold = {pc} — a moving note counts only while some active key maps
+// mod-12 to the hold pc.  Dropping the hold never resets progress; the walk
+// simply refuses until the hold is re-pressed (hold-release-repress cycle).
+(function testHoldGateScalarWalk() {
+  const payload = {
+    title: "rotation", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [4, 7, 9], midiPitches: [48, 64, 67, 69],
+      hold: { pc: 0 },                       // hold C (engraved C3)
+    })],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  // Without the hold down, the correct moving note is refused.
+  h.noteOn(64);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "hold: E without the C held is refused");
+  h.noteOff(64);
+  // Press the hold, then the walk proceeds.
+  h.noteOn(48);
+  h.noteOn(64);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "hold: E over the held C advances");
+  h.noteOff(64);
+  // Drop the hold mid-phrase: progress is kept, the hint appears at once
+  // (on the release itself, before any refused note), the next step refuses.
+  h.noteOff(48);
+  assert(/held/.test(h.nodes.get("htHoldMsg").textContent),
+         "hold: releasing the hold shows the keep-held hint immediately");
+  h.noteOn(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "hold: dropping the hold does not reset progress");
+  h.noteOff(67);
+  // Re-press the hold and re-strike: the walk continues to the end.
+  h.noteOn(48);
+  assert(h.nodes.get("htHoldMsg").textContent === "",
+         "hold: re-pressing the hold clears the hint");
+  h.noteOn(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 2,
+         "hold: re-pressed hold lets G through");
+  h.noteOn(69);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "hold: the moving line finishes over the re-pressed hold");
+  console.log("Test I (hold gate, scalar walk): PASS");
+})();
+
+// === Test J: hold enforcement composes with dyad steps (tickets 03+04) ======
+(function testHoldGateDyadSteps() {
+  const payload = {
+    title: "hold + dyads", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [4, 7, 5, 9], midiPitches: [48, 64, 65, 67, 69],
+      steps: [{ pcs: [4, 7], minDistinct: 2 },
+              { pcs: [5, 9], minDistinct: 2 }],
+      hold: { pc: 0 },
+    })],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  // A complete dyad without the hold is refused.
+  h.noteOn(64); h.noteOn(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "hold+dyad: E+G without the hold is refused");
+  // Pressing the hold re-evaluates: the held fresh dyad now satisfies.
+  h.noteOn(48);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "hold+dyad: pressing the hold accepts the already-held fresh dyad");
+  h.noteOff(64); h.noteOff(67);
+  // The hold key itself is never a fresh constituent for the next step.
+  h.noteOff(48); h.noteOn(48);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 1,
+         "hold+dyad: re-pressing the hold alone satisfies nothing");
+  h.noteOn(65); h.noteOn(69);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "hold+dyad: the second dyad over the hold finishes the walk");
+  console.log("Test J (hold gate, dyad steps): PASS");
 })();
 
 console.log("\nAll harmony_lab MIDI-acceptance checks passed (" + passed + " assertions).");

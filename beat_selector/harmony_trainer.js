@@ -35,6 +35,7 @@
   var finished = false;     // whole exercise done?
   var bassMiss = false;     // full set played but with the wrong lowest note
   var bassMissText = "";    // feedback naming the expected bass
+  var holdMissText = "";    // "keep the X held" hint (ticket 04 v2)
 
   // ---- simultaneity steps (piano-technique ticket 03) --------------------
   // activeNotes mirrors the physically held keys as RAW midi numbers (add on
@@ -137,6 +138,22 @@
       ? t.steps : null;
   }
 
+  // Hold enforcement (ticket 04 v2): target.hold = {pc} names the pitch
+  // class that must stay sounding (any octave) for the measure's ordered
+  // steps to be accepted.  Null for every target without a graded hold, so
+  // holdDown() is vacuously true and pre-04 drills grade unchanged.
+  function holdPc(t) {
+    return (t && t.hold && t.hold.pc !== null && t.hold.pc !== undefined)
+      ? mod12(t.hold.pc) : null;
+  }
+  function holdDown(t) {
+    var pc = holdPc(t);
+    if (pc === null) return true;
+    var ok = false;
+    activeNotes.forEach(function (m) { if (mod12(m) === pc) ok = true; });
+    return ok;
+  }
+
   // Strict-bass grading (plan G4/F4): a block target with `strictBass: true`
   // demands `bassPitchClass` as the LOWEST sounding chord tone.  Returns the
   // demanded pitch class, or null when the target grades octave-agnostically.
@@ -200,6 +217,7 @@
     completed = false;
     bassMiss = false;
     bassMissText = "";
+    holdMissText = "";
     // A fresh attempt demands fresh attacks; keys already held stay in
     // activeNotes (physical reality) but no longer count as struck.
     freshNotes = new Set();
@@ -623,6 +641,15 @@
     return true;
   }
 
+  // A correct step arrived while the graded hold was up: refuse it without
+  // touching progress and tell the player what to re-press.  The hint stays
+  // until the hold sounds again (cleared at the top of the ordered branch).
+  function reportHoldMiss(t) {
+    holdMissText = "Keep the " + toneName(t, holdPc(t)) +
+      " held — press it again, then replay the note.";
+    renderProgress();
+  }
+
   function afterNoteOn(pitch, velocity) {
     var midi = Math.trunc(Number(pitch));
     if (Number(velocity) <= 0) {             // velocity-0 is a note-off
@@ -639,11 +666,22 @@
 
     if (isArpeggio()) {
       var steps = stepsFor(t);
+      // Hold enforcement (ticket 04 v2): re-pressing the hold clears the
+      // hint; the step evaluation below then runs with the hold satisfied
+      // (in steps mode the already-held fresh keys can advance right away).
+      if (holdMissText && holdDown(t)) {
+        holdMissText = "";
+        renderProgress();
+      }
       if (steps) {
         // Wrong notes stay ignored, and an incomplete dyad is simply not
         // yet satisfied — releasing between its halves carries no error
         // state (near-miss forgiveness).
         if (arpIndex < steps.length && stepSatisfied(steps[arpIndex])) {
+          if (!holdDown(t)) {
+            reportHoldMiss(t);       // refuse, keep progress (no reset)
+            return;
+          }
           freshNotes.clear();        // the next step demands its own attack
           arpIndex += 1;
           if (arpIndex >= steps.length) {
@@ -656,6 +694,10 @@
           }
         }
       } else if (pc === mod12(t.pitchClasses[arpIndex])) {
+        if (!holdDown(t)) {
+          reportHoldMiss(t);         // refuse, keep progress (no reset)
+          return;
+        }
         arpIndex += 1;
         if (arpIndex >= t.pitchClasses.length) {
           completed = true;
@@ -708,11 +750,21 @@
   }
 
   function afterNoteOff(pitch) {
-    activeNotes.delete(Math.trunc(Number(pitch)));
-    freshNotes.delete(Math.trunc(Number(pitch)));
+    var off = Math.trunc(Number(pitch));
+    activeNotes.delete(off);
+    freshNotes.delete(off);
     if (answerMode !== "midi") return;       // ID drills grade via answer()
     if (finished) return;
-    if (isArpeggio()) return;                // arpeggio advances on note-on
+    if (isArpeggio()) {
+      // Releasing the graded hold shows the keep-held hint right away —
+      // not only once a moving note gets refused (ticket 04 v2).
+      var t = cur();
+      if (t && !completed && holdPc(t) !== null &&
+          mod12(off) === holdPc(t) && !holdDown(t) && !holdMissText) {
+        reportHoldMiss(t);
+      }
+      return;                                // arpeggio advances on note-on
+    }
     if (completed && app.state.midiDown.size === 0) {
       advance();
       return;
@@ -867,6 +919,10 @@
       "#htCurrent.done{background:#dcfce7;border-color:#86efac;}",
       "#htBassMsg{display:none;margin:6px 0;padding:6px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#991b1b;font-size:12px;}",
       "#htBassMsg.show{display:block;}",
+      /* the "keep the hold down" hint (ticket 04 v2): amber, not red — the
+         refused note is not an error, the walk resumes once the hold sounds */
+      "#htHoldMsg{display:none;margin:6px 0;padding:6px 8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;color:#92400e;font-size:12px;}",
+      "#htHoldMsg.show{display:block;}",
       "#htResMsg{display:none;margin:6px 0;padding:6px 8px;background:#dcfce7;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:12px;font-weight:600;}",
       "#htResMsg.show{display:block;}",
       "#htList{max-height:34vh;overflow:auto;margin-top:4px;}",
@@ -901,6 +957,7 @@
       ".dark-score #htControls button{background:#1f2937;border-color:#374151;color:#e5e7eb;}",
       ".dark-score #htCurrent{background:#0b1220;border-color:#1e3a8a;color:#e5e7eb;}",
       ".dark-score #htBassMsg{background:#2b0b0b;border-color:#7f1d1d;color:#fca5a5;}",
+      ".dark-score #htHoldMsg{background:#292008;border-color:#92400e;color:#fcd34d;}",
       ".dark-score #htCurrent .big{color:#93c5fd;}",
       ".dark-score #htCurrent .exp{color:#cbd5e1;}",
       ".dark-score .htCard{background:#0b0b0b;border-color:#1f2933;color:#e5e7eb;}",
@@ -937,6 +994,7 @@
       '</div>' +
       '<div id="htDone">✓ Exercise complete!</div>' +
       '<div id="htBassMsg"></div>' +
+      '<div id="htHoldMsg"></div>' +
       '<div id="htResMsg"></div>' +
       '<div id="htCurrent"></div>' +
       '<div id="htAnswer"></div>' +
@@ -1065,6 +1123,11 @@
     if (bm) {
       bm.textContent = bassMissText;
       bm.className = bassMissText ? "show" : "";
+    }
+    var hm = document.getElementById("htHoldMsg");
+    if (hm) {
+      hm.textContent = holdMissText;
+      hm.className = holdMissText ? "show" : "";
     }
     var rm = document.getElementById("htResMsg");
     if (rm) {

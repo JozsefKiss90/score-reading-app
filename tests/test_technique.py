@@ -612,6 +612,246 @@ class TestSimultaneityPayload(unittest.TestCase):
                          64)
 
 
+class TestHoldValidation(unittest.TestCase):
+    """Ticket 04 -- the ``hold`` param (one entry per measure) + v2 opt-in."""
+
+    def _hold_spec(self, **params):
+        base = {"phrase": [[2, 3, 4, 5], [5, 4, 3, 2]],
+                "note_value": "quarter", "hold": [[1], []]}
+        base.update(params)
+        return _spec(parameters=base)
+
+    def test_hold_validates(self):
+        self._hold_spec().validate()
+
+    def test_hold_length_must_mirror_phrase(self):
+        with self.assertRaisesRegex(ValueError, "hold"):
+            self._hold_spec(hold=[[1]]).validate()
+        with self.assertRaisesRegex(ValueError, "hold"):
+            self._hold_spec(hold=[[1], [], [5]]).validate()
+
+    def test_two_note_hold_refused(self):
+        with self.assertRaisesRegex(ValueError, "hold"):
+            self._hold_spec(hold=[[1, 5], []]).validate()
+
+    def test_hold_degree_range_checked(self):
+        with self.assertRaisesRegex(ValueError, "1..29"):
+            self._hold_spec(hold=[[30], []]).validate()
+        with self.assertRaisesRegex(ValueError, "1..29"):
+            self._hold_spec(hold=[[0], []]).validate()
+
+    def test_all_empty_hold_entries_equal_no_hold(self):
+        self._hold_spec(hold=[[], []]).validate()
+
+    def test_hold_graded_requires_a_hold(self):
+        self._hold_spec(hold_graded=True).validate()
+        with self.assertRaisesRegex(ValueError, "hold_graded"):
+            self._hold_spec(hold=[[], []], hold_graded=True).validate()
+        with self.assertRaisesRegex(ValueError, "hold_graded"):
+            self._hold_spec(hold=(), hold_graded=True).validate()
+
+    def test_hold_sharing_a_moving_pitch_class_refused(self):
+        # The grader hears pitch classes only: a hold on the same class as a
+        # moving note would grade itself (pressing the hold advances the
+        # walk).  Same degree and octave-apart degrees both collide.
+        with self.assertRaisesRegex(ValueError, "pitch class"):
+            self._hold_spec(phrase=[[1, 2, 3, 4], [5]],
+                            hold=[[1], []]).validate()
+        with self.assertRaisesRegex(ValueError, "pitch class"):
+            self._hold_spec(phrase=[[8, 9, 10], [5]],
+                            hold=[[1], []]).validate()
+
+    def test_hold_collision_checked_per_measure_only(self):
+        # measure 2's moving line may reuse measure 1's held class freely.
+        self._hold_spec(phrase=[[2, 3, 4, 5], [1, 2, 3]],
+                        hold=[[1], []]).validate()
+
+    def test_hold_round_trips_through_dict(self):
+        spec = self._hold_spec(hold_graded=True)
+        spec.validate()
+        again = LabExperimentSpec.from_dict(spec.to_dict())
+        again.validate()
+        self.assertEqual(again.parameters["hold"], spec.parameters["hold"])
+        self.assertTrue(again.parameters["hold_graded"])
+
+
+class TestHoldCompile(unittest.TestCase):
+    """Ticket 04 -- the hold as a second voice; grading stays the moving line."""
+
+    def _compile(self, **params):
+        base = {"phrase": [[2, 3, 4, 5], [5, 4, 3, 2]],
+                "note_value": "quarter", "hold": [[1], []]}
+        base.update(params)
+        return compile_lab(_spec(parameters=base))
+
+    def test_rh_hold_is_whole_note_second_voice_on_treble(self):
+        m0 = self._compile().measures[0]
+        self.assertEqual(len(m0.staff1_voice2), 1)
+        held = m0.staff1_voice2[0]
+        self.assertFalse(held.is_rest)
+        self.assertEqual((held.step, held.octave, held.note_type),
+                         ("C", 4, "whole"))
+        self.assertEqual(m0.staff2_voice2, ())
+        # the moving line still lives in voice 1
+        self.assertEqual(len([n for n in m0.staff1 if not n.is_rest]), 4)
+
+    def test_lh_hold_shifts_with_the_hand(self):
+        m0 = self._compile(hand="lh").measures[0]
+        self.assertEqual(len(m0.staff2_voice2), 1)
+        self.assertEqual((m0.staff2_voice2[0].step, m0.staff2_voice2[0].octave),
+                         ("C", 2))
+        self.assertEqual(m0.staff1_voice2, ())
+
+    def test_no_hold_measure_has_empty_second_voice(self):
+        m1 = self._compile().measures[1]
+        self.assertEqual(m1.staff1_voice2, ())
+        self.assertEqual(m1.staff2_voice2, ())
+        self.assertIsNone(m1.hold_pc)
+
+    def test_grading_is_the_moving_line_only(self):
+        # v1 AND v2: the hold pc appears in neither expected_by_beat nor
+        # target_pitch_classes -- degree 1 hold under a 2..5 walk.
+        m0 = self._compile().measures[0]
+        self.assertEqual(m0.expected_by_beat,
+                         {1: [2], 2: [4], 3: [5], 4: [7]})
+        self.assertEqual(list(m0.target_pitch_classes), [2, 4, 5, 7])
+        self.assertEqual(m0.hold_pc, 0)
+
+    def test_hold_midi_still_sounds_in_the_payload_pitches(self):
+        # midiPitches builds the runtime PITCH_MAP: the engraved hold C4=60
+        # must be listed even though it is not a grading target.
+        m0 = self._compile().measures[0]
+        self.assertIn(60, m0.sounding_midis())
+
+    def test_v1_guide_text_states_the_grading_honestly(self):
+        note = self._compile().measures[0].annotation.lab_note
+        self.assertIn("Hold C4", note)
+        self.assertIn("Graded: the moving notes in order", note)
+        self.assertIn("not graded yet: keeping the hold down", note)
+
+    def test_v2_guide_text_promises_the_hold_check(self):
+        m0 = self._compile(hold_graded=True).measures[0]
+        note = m0.annotation.lab_note
+        self.assertIn("Hold C4", note)
+        self.assertIn("only while the hold is sounding", note)
+        self.assertNotIn("not graded yet", note)
+        self.assertTrue(m0.hold_graded)
+
+    def test_hold_graded_only_marks_measures_with_a_hold(self):
+        exp = self._compile(hold_graded=True)
+        self.assertTrue(exp.measures[0].hold_graded)
+        self.assertFalse(exp.measures[1].hold_graded)
+
+    def test_no_hold_measure_text_carries_no_hold_line(self):
+        note = self._compile().measures[1].annotation.lab_note
+        self.assertNotIn("Hold", note)
+        self.assertNotIn("hold", note)
+
+
+class TestHoldMusicXml(unittest.TestCase):
+    """Ticket 04 -- two-voice serialization + the no-hold byte identity."""
+
+    def _xml(self, **params):
+        base = {"phrase": [[2, 3, 4, 5], [5, 4, 3, 2]],
+                "note_value": "quarter", "hold": [[1], []]}
+        base.update(params)
+        return build_lab_musicxml(compile_lab(_spec(parameters=base)))
+
+    @staticmethod
+    def _measures(xml):
+        return ET.fromstring(xml).findall(".//measure")
+
+    @staticmethod
+    def _voice_ticks(measure):
+        """{voice: summed duration} over every note of the measure."""
+        out = {}
+        for n in measure.findall("note"):
+            if n.find("chord") is not None:
+                continue                     # chord partners carry no new time
+            v = n.findtext("voice")
+            out[v] = out.get(v, 0) + int(n.findtext("duration"))
+        return out
+
+    def test_hold_measure_emits_two_backups_and_voice_three(self):
+        m0 = self._measures(self._xml())[0]
+        backups = m0.findall("backup")
+        self.assertEqual(len(backups), 2)
+        self.assertTrue(all(b.findtext("duration") == "64" for b in backups))
+        held = [n for n in m0.findall("note") if n.findtext("voice") == "3"]
+        self.assertEqual(len(held), 1)
+        self.assertEqual(held[0].findtext("staff"), "1")
+        self.assertEqual(held[0].findtext("type"), "whole")
+
+    def test_hold_voice_precedes_the_bass_staff_stream(self):
+        # document order: staff1 voice 1, backup, staff1 voice 3, backup,
+        # staff2 voice 2 -- the second voice stays inside its staff's block.
+        m0 = self._measures(self._xml())[0]
+        seq = [(c.tag, c.findtext("voice")) for c in m0
+               if c.tag in ("note", "backup")]
+        voices = [v for tag, v in seq if tag == "note"]
+        self.assertEqual(voices, ["1"] * 4 + ["3"] + ["2"])
+
+    def test_each_voice_fills_the_bar_independently(self):
+        for m in self._measures(self._xml()):
+            for voice, ticks in self._voice_ticks(m).items():
+                self.assertEqual(ticks, 64, f"voice {voice}")
+
+    def test_lh_hold_uses_voice_four_on_staff_two(self):
+        xml = self._xml(hand="lh")
+        m0 = self._measures(xml)[0]
+        self.assertEqual(len(m0.findall("backup")), 2)
+        held = [n for n in m0.findall("note") if n.findtext("voice") == "4"]
+        self.assertEqual(len(held), 1)
+        self.assertEqual(held[0].findtext("staff"), "2")
+
+    def test_no_hold_measure_keeps_the_single_backup_layout(self):
+        m1 = self._measures(self._xml())[1]
+        self.assertEqual(len(m1.findall("backup")), 1)
+        self.assertEqual({n.findtext("voice") for n in m1.findall("note")},
+                         {"1", "2"})
+
+    def test_spec_without_holds_renders_byte_identically(self):
+        # the regression the ticket pins: the hold machinery must be a no-op
+        # for every spec that does not use it (empty entries included).
+        plain = self._xml(hold=())
+        self.assertEqual(self._xml(hold=[[], []]), plain)
+        self.assertNotIn("<voice>3</voice>", plain)
+        self.assertNotIn("<voice>4</voice>", plain)
+        self.assertEqual(plain.count("<backup>"), 2)     # one per measure
+
+
+class TestHoldPayload(unittest.TestCase):
+    """Ticket 04 -- the additive ``hold`` target field (v2 only)."""
+
+    def _payload(self, **params):
+        base = {"phrase": [[2, 3, 4, 5], [5, 4, 3, 2]],
+                "note_value": "quarter", "hold": [[1], []]}
+        base.update(params)
+        return build_lab_payload(compile_lab(_spec(parameters=base)))
+
+    def test_v1_targets_carry_no_hold_key(self):
+        for t in self._payload()["TARGET_CHORDS"]:
+            self.assertNotIn("hold", t)
+
+    def test_v2_hold_measure_names_its_pitch_class(self):
+        targets = self._payload(hold_graded=True)["TARGET_CHORDS"]
+        self.assertEqual(targets[0]["hold"], {"pc": 0})
+        self.assertNotIn("hold", targets[1])
+
+    def test_hold_never_enters_the_expected_map(self):
+        # v1 and v2 alike: the ordered walk stays the moving line.
+        for graded in (False, True):
+            payload = self._payload(hold_graded=graded)
+            self.assertEqual(payload["EXPECTED_MIDI_BY_MEASURE_OR_BEAT"]["0"],
+                             {"1": [2], "2": [4], "3": [5], "4": [7]})
+            self.assertEqual(payload["TARGET_CHORDS"][0]["pitchClasses"],
+                             [2, 4, 5, 7])
+
+    def test_hold_midi_listed_for_the_pitch_map(self):
+        t = self._payload()["TARGET_CHORDS"][0]
+        self.assertIn(60, t["midiPitches"])          # the engraved C4 hold
+
+
 class TestEchoIneligibility(unittest.TestCase):
     def test_technique_is_not_echo_eligible(self):
         self.assertFalse(is_echo_eligible(_spec()))
@@ -704,6 +944,16 @@ class TestConceptExplanation(unittest.TestCase):
         text = " ".join([page["core_idea"]] + page["common_misconceptions"])
         self.assertIn("octave", text.lower())        # octaves indistinguishable
         self.assertIn("order", text.lower())         # the ordered walk
+
+    def test_explanation_states_the_hold_limits(self):
+        # ticket 04: the hold check is instant-based (never continuous) and
+        # mod-12 (the held octave is not verified) -- said, not hidden.
+        from harmony.lab_explanations import get_concept_explanation
+        page = get_concept_explanation("technique")
+        text = " ".join([page["core_idea"]] + page["common_misconceptions"])
+        self.assertIn("hold", text.lower())
+        self.assertIn("continuous", text.lower())
+        self.assertNotIn("arrives with ticket 04", text)
 
 
 if __name__ == "__main__":

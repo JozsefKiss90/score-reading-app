@@ -362,6 +362,18 @@ class TechniqueParams:
     fingering: tuple = ()             # "1".."5"
     slurs: tuple = ()                 # "start" | "stop"
     articulations: tuple = ()         # "staccato" | "accent"
+    #: Held-note texture (ticket 04): one entry per MEASURE (mirrors
+    #: ``phrase``'s length when set), each ``()`` for no hold or ``(degree,)``
+    #: for the one note held through that measure while the same hand plays
+    #: the moving line.  Rendered as a whole note in a second voice on the
+    #: active hand's staff (classic two-voice writing, stems split).
+    hold: tuple = ()
+    #: Hold enforcement (ticket 04 v2): when True the payload names each
+    #: hold's pitch class and the JS grader accepts a step only while the
+    #: hold is sounding (checked mod-12 at each step's satisfaction instant,
+    #: not continuously).  False (v1) keeps the hold notation + coach text
+    #: only -- the honest default until the drill author opts in.
+    hold_graded: bool = False
     #: The not-graded gesture instruction (wrist, accents, tempo intent).
     #: Shown in the leaf description / guide panel, never assessed.
     coach: str = ""
@@ -443,6 +455,8 @@ def technique_params(p: Dict) -> TechniqueParams:
                     for m in p.get("slurs", ())),
         articulations=tuple(tuple(_mark_entry(a) for a in m)
                             for m in p.get("articulations", ())),
+        hold=tuple(tuple(int(d) for d in m) for m in p.get("hold", ())),
+        hold_graded=bool(p.get("hold_graded", False)),
         coach=str(p.get("coach", "")),
     )
 
@@ -820,6 +834,46 @@ class LabExperimentSpec:
                                     f"{pname} labels are "
                                     f"{'/'.join(repr(v) for v in vocab)} "
                                     f"(or '' for none); got {lab!r}")
+            if tp.hold:
+                if len(tp.hold) != len(tp.phrase):
+                    raise ValueError(
+                        "hold must mirror the phrase: one entry per measure "
+                        "— () for no hold, (degree,) for the note held "
+                        "through that measure")
+                for i, h in enumerate(tp.hold):
+                    if len(h) > 1:
+                        raise ValueError(
+                            f"technique measure {i + 1} holds {len(h)} notes; "
+                            f"a hold is at most ONE note per measure (the "
+                            f"moving line is the rest of the hand)")
+                    for d in h:
+                        if not (1 <= d <= TECHNIQUE_MAX_DEGREE):
+                            raise ValueError(
+                                f"hold degrees must be in "
+                                f"1..{TECHNIQUE_MAX_DEGREE} (four octaves "
+                                f"above the tonic); got {d}")
+                        # In one key, degrees an octave apart share a pitch
+                        # class, and the grader hears nothing finer: a hold
+                        # on a moving note's class would grade itself
+                        # (pressing the hold advances the walk).
+                        moving = {(x - 1) % 7
+                                  for entry in tp.phrase[i]
+                                  for x in (entry if isinstance(entry, tuple)
+                                            else (entry,))}
+                        if (d - 1) % 7 in moving:
+                            raise ValueError(
+                                f"technique measure {i + 1}'s hold (degree "
+                                f"{d}) shares a pitch class with the moving "
+                                f"line; the mod-12 grader could not tell "
+                                f"the held key from the moving note, so the "
+                                f"hold must sit on a class the measure's "
+                                f"moving line never strikes")
+            if tp.hold_graded and not any(tp.hold):
+                raise ValueError(
+                    "hold_graded=True but no measure holds a note; grading "
+                    "a hold requires a non-empty 'hold' entry (the honest "
+                    "description would otherwise promise a check that can "
+                    "never run)")
             self._check_len(len(tp.phrase))
 
         elif self.concept == "drill":

@@ -121,9 +121,20 @@ def _measure_xml(measure: LabMeasure, m_no: int, prev_fifths: Optional[int],
     fifths = measure.fifths
     attr = _attributes_xml(measure, m_no, prev_fifths)
     annotation = _annotation_xml(measure)
+    backup = f"<backup><duration>{MEASURE_TICKS}</duration></backup>"
     staff1 = _staff_xml(measure.staff1, staff=1, voice=1, fifths=fifths)
     staff2 = _staff_xml(measure.staff2, staff=2, voice=2, fifths=fifths)
-    backup = f"<backup><duration>{MEASURE_TICKS}</duration></backup>"
+    # Intra-staff second voices (ticket 04, held-note textures): each stream
+    # fills the 64-tick bar on its own, so a full backup rewinds to the bar
+    # start before it.  Voice 3 = staff 1's second voice, voice 4 = staff
+    # 2's (Verovio splits the stems).  Empty streams add nothing -- the
+    # classic one-voice-per-staff layout stays byte-identical.
+    if measure.staff1_voice2:
+        staff1 += backup + _staff_xml(measure.staff1_voice2,
+                                      staff=1, voice=3, fifths=fifths)
+    if measure.staff2_voice2:
+        staff2 += backup + _staff_xml(measure.staff2_voice2,
+                                      staff=2, voice=4, fifths=fifths)
     barline = ('<barline location="right"><bar-style>light-heavy</bar-style>'
                "</barline>") if is_last else ""
     return (
@@ -249,6 +260,12 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
         # simultaneity steps the JS grader demands concurrently.
         target["steps"] = [{"pcs": list(s.pcs), "minDistinct": s.min_distinct}
                            for s in measure.step_targets]
+    if measure.hold_graded and measure.hold_pc is not None:
+        # Ticket 04 v2 (additive, absent for v1 and for hold-free measures):
+        # the pitch class that must stay sounding for the measure's ordered
+        # steps to be accepted.  Checked mod-12 at each step's satisfaction
+        # instant, never continuously -- the guide text says so.
+        target["hold"] = {"pc": measure.hold_pc}
     return target
 
 

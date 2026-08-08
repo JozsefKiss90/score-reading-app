@@ -424,15 +424,20 @@ _CONCEPT_EXPLANATIONS: Dict[str, Dict] = {
             "discards.",
             "\"Passing the drill means the technique is right\" — the grader "
             "checks order and concurrency only; tone, legato and relaxation "
-            "are the coach line's job (holding notes for their written "
-            "length arrives with ticket 04).",
+            "are the coach line's job.",
+            "\"The trainer verified I kept the hold down the whole bar\" — "
+            "a graded hold is checked only at the instant each moving note "
+            "is accepted, never continuously between notes, and mod-12 (any "
+            "octave of the held class counts — you have no reason to hold "
+            "the wrong one, but the grader could not tell). Dropping the "
+            "hold never resets progress; the walk just waits for it.",
         ],
         "next_steps": [
             "16th-note values and rendered fingering numbers (ticket 02).",
-            "Hold enforcement — notes kept down for their written length "
-            "(ticket 04).",
             "The dyad exercises this unlocks: thirds, ricochet sixths, "
             "octave scales, hands together (tickets 05/08/09/10).",
+            "The held-note textures this unlocks: rotation and "
+            "finger-independence drills (tickets 12/13).",
         ],
     },
 }
