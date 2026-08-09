@@ -272,6 +272,90 @@
     S.selNoteIds = allIds;
   }
 
+  // --- Slot-aware selection for scalar ordered walks (piano-technique 06).
+  // A measure whose walk repeats a pitch class (the arpeggio runs: three C's
+  // per bar) must not light FUTURE same-pc noteheads when an earlier step is
+  // played — pc-level selection would green them all at once and read as
+  // premature progress.  PITCH_MAP rows carry enough order (numeric beat
+  // buckets, then Verovio's own note times for sub-beat notes) to recover
+  // the notation order, so each walked slot selects only its own notehead.
+  // Grading is untouched (the walk stays octave-blind).
+  function orderedRowsForMeasure(absMeasure) {
+    var pm = app && app.state && app.state.boot && app.state.boot.PITCH_MAP;
+    if (!pm) return null;
+    var beats = pm[String(absMeasure)] || pm[absMeasure];
+    if (!beats) return null;
+    var rows = [];
+    Object.keys(beats)
+      .sort(function (a, b) { return Number(a) - Number(b); })
+      .forEach(function (b) {
+        (beats[b] || []).forEach(function (r) {
+          if (!r || !r.id || !r.pitch) return;
+          var mm = pitchToMidi(r.pitch);
+          if (mm === null) return;
+          rows.push({ id: String(r.id), midi: mm,
+                      t: (typeof r.t_rel === "number") ? r.t_rel : null });
+        });
+      });
+    // Two eighths share a quarter bucket; when every row is timed, the note
+    // times restore their order (Array.prototype.sort is stable, so ties
+    // keep the beat-bucket order).
+    if (rows.length && rows.every(function (r) { return r.t !== null; })) {
+      rows.sort(function (a, b) { return a.t - b.t; });
+    }
+    return rows;
+  }
+
+  // The measure's notehead ids in walk order, or null when the rows do not
+  // mirror the walk (chord stacks, second voices, unpitched rows) — callers
+  // then fall back to pc-level selection, the pre-existing behaviour.
+  function walkSlotIds(t) {
+    var rows = orderedRowsForMeasure(t.absMeasure);
+    if (!rows || !rows.length) return null;
+    // Trainer measures also notate a held bass note that is not part of the
+    // walk; lab melody measures (marked by slotsPerMeasure) put every row on
+    // the walked line, and their bassMidi IS the line's lowest note.
+    if (!t.slotsPerMeasure && t.bassMidi !== null && t.bassMidi !== undefined) {
+      var bass = Math.trunc(Number(t.bassMidi));
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].midi === bass) { rows.splice(i, 1); break; }
+      }
+    }
+    if (rows.length !== t.pitchClasses.length) return null;
+    for (var k = 0; k < rows.length; k++) {
+      if (mod12(rows[k].midi) !== mod12(t.pitchClasses[k])) return null;
+    }
+    return rows.map(function (r) { return r.id; });
+  }
+
+  // Selection for a slot-aligned scalar walk: slots 0..arpIndex (played plus
+  // current) select their own noteheads; later same-pc slots stay unlit.
+  // Returns false when the measure's rows cannot be slot-aligned.
+  function buildWalkSelection(t) {
+    var slots = walkSlotIds(t);
+    if (!slots) return false;
+    var idsByPc = new Map();
+    var last = Math.min(arpIndex, t.pitchClasses.length - 1);
+    for (var i = 0; i <= last; i++) {
+      var pc = mod12(t.pitchClasses[i]);
+      if (!idsByPc.has(pc)) {
+        var seed = new Set();
+        seed.add("__ht_target_" + pc);   // survives off-page measures
+        idsByPc.set(pc, seed);
+      }
+      idsByPc.get(pc).add(slots[i]);
+    }
+    var byMidi = new Map();
+    var allIds = new Set();
+    idsByPc.forEach(function (ids, pc) {
+      ids.forEach(function (id) { allIds.add(id); });
+      for (var m = pc; m <= 127; m += 12) byMidi.set(m, ids);
+    });
+    app.state.selNotesByMidi = byMidi;
+    app.state.selNoteIds = allIds;
+    return true;
+  }
+
   function expectedPcsForCurrent() {
     var t = cur();
     if (!t) return [];
@@ -297,7 +381,9 @@
   function applySelection() {
     var t = cur();
     if (!t) return;
-    buildSelection(expectedPcsForCurrent(), t.absMeasure);
+    if (!(isArpeggio() && !stepsFor(t) && buildWalkSelection(t))) {
+      buildSelection(expectedPcsForCurrent(), t.absMeasure);
+    }
     if (app.refreshMidiHighlights) app.refreshMidiHighlights();
   }
 

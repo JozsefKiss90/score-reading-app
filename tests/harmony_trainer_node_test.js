@@ -222,6 +222,76 @@ function assert(cond, msg) {
   console.log("Test B2 (four-tone accent cell): PASS");
 })();
 
+// === Test B3: repeated-pc walk lights only walked noteheads =================
+(function testSlotAwareSelection() {
+  // The arpeggio-run bug (piano-technique ticket 06): a bar whose walk
+  // repeats a pitch class (three C's: C4/C5/C6) must NOT light every same-pc
+  // notehead at once — only the walked slots plus the current one.  Grading
+  // stays octave-blind; this is the display contract.
+  const t0 = target(0, "arpeggio", "I", "C", "C", "major",
+    ["C", "E", "G", "C", "E", "G", "C", "G"],
+    [0, 4, 7, 0, 4, 7, 0, 7],
+    [60, 64, 67, 72, 76, 79, 84, 79], "M3+m3", "tonic", "tonic");
+  t0.slotsPerMeasure = 8;
+  const payload = { title: "run", render: "arpeggio", TARGET_CHORDS: [t0] };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+
+  const idsFor = (midi) => {
+    const ids = h.state.selNotesByMidi.get(midi);
+    return ids ? [...ids].filter((i) => !i.startsWith("__ht")) : [];
+  };
+
+  // At the start only slot 0's C notehead is selectable — not slots 3 and 6.
+  assert(idsFor(60).includes("n0_0"), "slot-0 C selected at start");
+  assert(!idsFor(60).includes("n0_3"), "future C (slot 3) unlit at start");
+  assert(!idsFor(60).includes("n0_6"), "future C (slot 6) unlit at start");
+  assert(idsFor(72).includes("n0_0"), "octave-blind: C5 maps to the same slot");
+
+  // Walk C E G: the current step becomes slot 3 (the second C).
+  h.noteOn(60); h.noteOff(60);
+  h.noteOn(64); h.noteOff(64);
+  h.noteOn(67); h.noteOff(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 3, "walked to slot 3");
+  assert(idsFor(60).includes("n0_0"), "played C stays selected");
+  assert(idsFor(60).includes("n0_3"), "current C (slot 3) selected");
+  assert(!idsFor(60).includes("n0_6"), "future C (slot 6) still unlit");
+  assert(!h.state.selNoteIds.has("n0_6"), "slot 6 not in the selection set");
+  // The future E (slot 4) is not lit either while slot 3 is current.
+  assert(!idsFor(64).includes("n0_4"), "future E (slot 4) unlit");
+
+  console.log("Test B3 (slot-aware repeated-pc selection): PASS");
+})();
+
+// === Test B4: trainer cell keeps slot-awareness despite the bass row =======
+(function testSlotAwareWithBass() {
+  // A trainer measure's PITCH_MAP also carries the notated bass whole note;
+  // it is not part of the walk and must not break the slot alignment.
+  const t0 = target(0, "arpeggio", "I", "C", "C", "major",
+    ["C", "E", "G", "C"], [0, 4, 7, 0], [60, 64, 67, 72],
+    "M3+m3", "tonic", "tonic");
+  t0.bassMidi = 48;
+  const payload = { title: "cell", render: "arpeggio", TARGET_CHORDS: [t0] };
+  const h = makeHarness(payload);
+  // Hand-build the pitch map with the bass row present.
+  h.state.boot.PITCH_MAP = { "0": {
+    "1": [{ id: "n0_b", pitch: "C3" }, { id: "n0_0", pitch: "C4" }],
+    "2": [{ id: "n0_1", pitch: "E4" }],
+    "3": [{ id: "n0_2", pitch: "G4" }],
+    "4": [{ id: "n0_3", pitch: "C5" }],
+  } };
+  h.window.HarmonyTrainer.init(payload);
+
+  const idsFor = (midi) => {
+    const ids = h.state.selNotesByMidi.get(midi);
+    return ids ? [...ids].filter((i) => !i.startsWith("__ht")) : [];
+  };
+  assert(idsFor(60).includes("n0_0"), "slot-0 C selected at start (cell)");
+  assert(!idsFor(60).includes("n0_3"), "octave-root C unlit until walked");
+  assert(!idsFor(60).includes("n0_b"), "bass row never joins the walk");
+  console.log("Test B4 (slot-aware with bass row): PASS");
+})();
+
 // === Test C: navigation =====================================================
 (function testNav() {
   const payload = {

@@ -71,3 +71,14 @@ Implemented (2026-08-09). Notes for the reviewer:
 * Leaf fingerprint 381 → 405 (`tests/test_applied_chords.py`, `tests/curriculum_node_test.js`);
   audit artifacts regenerated; `docs/curriculum.md` totals updated (529 nodes).
 * Tests: `tests/test_technique_arpeggio.py` (34 cases, A + B).
+
+**Bug fix (2026-08-09, user report):** in bars whose walk repeats a pitch class (the runs carry
+three C's: C4/C5/C6), the selection lit EVERY same-pc notehead at once — pressing any C greened
+all of them, reading as premature progress. Cause: `buildSelection` maps an expected pc to all
+of that pc's noteheads in the measure. Fix: slot-aware selection for scalar ordered walks
+(`walkSlotIds`/`buildWalkSelection` in `harmony_trainer.js`) — PITCH_MAP rows are put in
+notation order (numeric beat buckets + Verovio note times) and each walked slot selects only
+its own notehead; on any shape mismatch (chord stacks, second voices) it falls back to the old
+pc-level selection. Grading was and stays octave-blind mod-12 by design (a C in any octave
+advances a C step) — that is the documented honesty contract, not part of the bug. Pinned by
+Tests B3/B4 in `tests/harmony_trainer_node_test.js`.
