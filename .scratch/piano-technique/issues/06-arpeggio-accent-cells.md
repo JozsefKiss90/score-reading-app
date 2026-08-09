@@ -10,7 +10,7 @@ Two deliverables, matching the host evaluation:
 
 **Blocked by:** (A) — nothing. (B) 01 — phrase engine; 02 — fingering/16ths.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 ## A. Trainer accent cell (no Lab involvement)
 
@@ -38,13 +38,36 @@ Two deliverables, matching the host evaluation:
   (RH C major 1-2-3-1…, LH 5-4-2-1…; the black-key sets per the standard table).
 * Coach text: "Accent the first of each four — the accent itself is not graded."
 
-- [ ] A: flag + builder change; both specs appear in the opt-in group; default groups unchanged
+- [x] A: flag + builder change; both specs appear in the opt-in group; default groups unchanged
       (pinned tests stay green); ordered grading accepts the 4-tone cell.
-- [ ] B: 24 leaves launch/render/grade with fingering; accent marks on beat-1 of each group.
-- [ ] Leaf-count pins +24; per-category test extended.
+- [x] B: 24 leaves launch/render/grade with fingering; accent marks on beat-1 of each group.
+- [x] Leaf-count pins +24; per-category test extended.
 
 ## Grading honesty
 
 Accent placement is unobservable (velocity is discarded — `harmony_trainer.js:561` uses it only
 as a note-off test); the groups-of-four benefit is embodied in the *notation and fingering*, the
 grade remains right-tones-in-order.
+
+## Comments
+
+Implemented (2026-08-09). Notes for the reviewer:
+
+* A: `arp_octave_root` validates fail-closed (requires `render="arpeggio"`; refuses
+  `mcq_focus="quality"`, whose option set counts pitch classes); `to_dict` omits the flag when
+  False so the pinned default set serialises byte-identically. The builder raises on a tetrad +
+  flag (5 quarters can't fit 4/4). JS needed no change — pinned by the new Test B2 in
+  `tests/harmony_trainer_node_test.js`.
+* B: the RH-then-LH single leaf uses the "hand may be per-measure" option (ticket 05's
+  implementer's choice): `TechniqueParams.hand` accepts a per-measure tuple, group labels split
+  per hand. Runs are eighths (13-note cycle ×2 = 26 notes = 3¼ measures, rest-padded to 4, per
+  hand → 8 measures/leaf).
+* `harmony/technique_data.py` (new, shared with 05/07) encodes the two-octave arpeggio table,
+  source-verified (colorinmypiano appendix, R. Kelley chart, M. Denton sheets): white-key
+  RH 1231235 / LH 5421421; D/A/E/B-major LH 5321321; black-key roots RH 2124124 / LH 2142142;
+  Bb major LH 3213213; Bb minor RH 2312312 / LH 3213212; Gb major & Eb minor keep thumb-on-black
+  white-key patterns (Gb LH 5321321). Where charts disagree the majority reading was taken —
+  display-only, never graded.
+* Leaf fingerprint 381 → 405 (`tests/test_applied_chords.py`, `tests/curriculum_node_test.js`);
+  audit artifacts regenerated; `docs/curriculum.md` totals updated (529 nodes).
+* Tests: `tests/test_technique_arpeggio.py` (34 cases, A + B).

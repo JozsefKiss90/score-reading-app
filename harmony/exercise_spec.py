@@ -141,6 +141,10 @@ GROUP_ARPEGGIO = "Arpeggio drills"
 #: Opt-in launcher group for the no-MIDI identification drills (plan U2).
 #: NOT part of ``default_exercise_groups()`` — see ``identification_demo_specs``.
 GROUP_IDENTIFY = "Identification drills (no MIDI needed)"
+#: Opt-in launcher group for the four-tone arpeggio accent cells
+#: (piano-technique ticket 06).  NOT part of ``default_exercise_groups()``
+#: — see ``technique_arpeggio_demo_specs``.
+GROUP_TECH_ARPEGGIO = "Technique: arpeggio cells (groups of four)"
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +171,13 @@ class HarmonyExerciseSpec:
     answer_mode: str = "midi"            # one of _VALID_ANSWER_MODES (plan U2)
     presentation: str = "visual"         # one of _VALID_PRESENTATIONS (plan A1)
     mcq_focus: str = "roman"             # one of _VALID_MCQ_FOCUS (ticket 10)
+    #: The four-tone accent cell (piano-technique ticket 06): an
+    #: arpeggio-rendered triad closes with its root an octave up as the 4th
+    #: quarter, so playing cells back to back shifts the downbeat accent
+    #: through the chord tones ("1-2-3-4" instead of "1-2-3").  Grading needs
+    #: nothing new — ``pitchClasses`` becomes ``[r, 3rd, 5th, r]`` and the
+    #: ordered walk accepts the return to the root (mod-12).
+    arp_octave_root: bool = False
 
     def validate(self) -> None:
         if self.drill not in _VALID_DRILLS:
@@ -196,6 +207,19 @@ class HarmonyExerciseSpec:
             raise ValueError(
                 "mcq_focus is an mcq-only knob: set answer_mode='mcq' or "
                 "leave mcq_focus at its default")
+        if self.arp_octave_root:
+            if self.render != "arpeggio":
+                raise ValueError(
+                    "arp_octave_root appends the root an octave up as the "
+                    "4th quarter of an arpeggio measure; it requires "
+                    "render='arpeggio' (a block chord has no 4th beat to "
+                    "close on)")
+            if self.mcq_focus == "quality":
+                raise ValueError(
+                    "arp_octave_root cannot combine with "
+                    "mcq_focus='quality': the 4-tone cell would read as a "
+                    "tetrad to the quality question, which counts pitch "
+                    "classes to choose its option set")
         self.mode = _canon_mode(self.mode)
         if self.mode == "melodic_minor":
             # A trainer drill is a CHORD drill, and melodic minor has no
@@ -354,6 +378,10 @@ class HarmonyExerciseSpec:
     # --- JSON round-tripping ------------------------------------------
     def to_dict(self) -> Dict:
         d = {k: v for k, v in asdict(self).items() if v is not None}
+        if not d.get("arp_octave_root"):
+            # Additive flag (ticket 06): unflagged specs — the whole pinned
+            # default set — serialise exactly as they did before it existed.
+            d.pop("arp_octave_root", None)
         d["schema"] = SCHEMA_VERSION
         return d
 
@@ -800,6 +828,41 @@ def identification_demo_specs() -> List[HarmonyExerciseSpec]:
             drill="full_key", mode="major", key="C major", answer_mode="card",
             description=("Read the current chord's tones and function, then "
                          "click the matching chord card in the list.")),
+    ]
+    for s in specs:
+        s.validate()
+    return specs
+
+
+def technique_arpeggio_demo_specs() -> List[HarmonyExerciseSpec]:
+    """The groups-of-four arpeggio accent cells (piano-technique ticket 06).
+
+    Tonic-arpeggio cells across all 12 keys, one spec per mode: each measure
+    is root–3rd–5th–root-an-octave-up in even quarters, so chaining the
+    measures lands the downbeat (and the thumb) on a different chord tone
+    each time.  Same opt-in reasoning as :func:`identification_demo_specs`:
+    the pinned 102-drill default set never grows, the trainer launcher
+    appends this group itself (:data:`GROUP_TECH_ARPEGGIO`).
+    """
+    coach = ("Count 1-2-3-4 through each measure and accent the 1 — the "
+             "accent itself is not graded, the notes in order are.")
+    specs = [
+        HarmonyExerciseSpec(
+            exercise_id="tech_arp_cells_major",
+            title="Arpeggio cells of four — tonic triads, major keys",
+            drill="horizontal_degree", degree="I", render="arpeggio",
+            mode="major", arp_octave_root=True,
+            description=("The tonic arpeggio as a four-note cell (root, "
+                         "3rd, 5th, root an octave up) in every major key. "
+                         + coach)),
+        HarmonyExerciseSpec(
+            exercise_id="tech_arp_cells_minor",
+            title="Arpeggio cells of four — tonic triads, minor keys",
+            drill="horizontal_degree", degree="i", render="arpeggio",
+            mode="natural_minor", arp_octave_root=True,
+            description=("The minor tonic arpeggio as a four-note cell "
+                         "(root, 3rd, 5th, root an octave up) in every "
+                         "minor key. " + coach)),
     ]
     for s in specs:
         s.validate()

@@ -774,10 +774,11 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     dtype = tp.note_value
     slots = TECHNIQUE_SLOTS[dtype]
     n_measures = len(tp.phrase)
-    left = tp.hand == "lh"
-    octave_shift = -2 if left else 0          # LH: same degrees, octaves 2-3
-    hand_word = "left hand" if left else "right hand"
-    group = f"{spec.title} — {scale.key}, {hand_word}"
+    # ``hand`` may be one hand for the whole phrase or per-measure (ticket
+    # 06): consecutive same-hand measures share a group label, so an
+    # RH-then-LH leaf reads as two measure groups.
+    hands = (tp.hand if isinstance(tp.hand, tuple)
+             else (tp.hand,) * n_measures)
     coach = tp.coach.strip()
     # The Atlas has no harmonic-minor scale node: the key context is claimed
     # on the natural-minor node (the Score Soul precedent — raised degrees
@@ -788,6 +789,10 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
 
     measures: List[LabMeasure] = []
     for k, entries in enumerate(tp.phrase):
+        left = hands[k] == "lh"
+        octave_shift = -2 if left else 0      # LH: same degrees, octaves 2-3
+        hand_word = "left hand" if left else "right hand"
+        group = f"{spec.title} — {scale.key}, {hand_word}"
         # validate() pins each mark tuple to the measure's step count.
         fingers = tp.fingering[k] if tp.fingering else ()
         slur_marks = tp.slurs[k] if tp.slurs else ()

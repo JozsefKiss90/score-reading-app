@@ -349,7 +349,11 @@ class TechniqueParams:
     #: simultaneity step.
     phrase: tuple = ()
     note_value: str = "quarter"       # "quarter" | "eighth" | "16th"
-    hand: str = "rh"                  # "rh" (treble staff) | "lh" (bass staff)
+    #: Which staff carries the moving line: "rh" (treble) | "lh" (bass) for
+    #: the whole phrase, or a per-MEASURE tuple of those (ticket 06) so one
+    #: leaf holds RH measures then LH measures — the ordered walk crosses
+    #: staves naturally since only one line sounds at a time.
+    hand: object = "rh"
     #: Octave doubling (ticket 03): every step is written as the degree plus
     #: its octave (d, d+7) and graded as two distinct keys on one pitch
     #: class.  Scalar phrase entries only — a doubled dyad is refused.
@@ -443,11 +447,13 @@ def _mark_entry(x: object) -> object:
 
 
 def technique_params(p: Dict) -> TechniqueParams:
+    hand = p.get("hand", "rh")
     return TechniqueParams(
         phrase=tuple(tuple(_phrase_entry(d) for d in m)
                      for m in p.get("phrase", ())),
         note_value=str(p.get("note_value", "quarter")),
-        hand=str(p.get("hand", "rh")),
+        hand=(tuple(str(h) for h in hand)
+              if isinstance(hand, (list, tuple)) else str(hand)),
         octaves=bool(p.get("octaves", False)),
         fingering=tuple(tuple(_mark_entry(f) for f in m)
                         for m in p.get("fingering", ())),
@@ -800,10 +806,17 @@ class LabExperimentSpec:
                                 f"1..{TECHNIQUE_MAX_DEGREE} span; keep "
                                 f"octave-doubled degrees <= "
                                 f"{TECHNIQUE_MAX_DEGREE - 7}")
-            if tp.hand not in ("rh", "lh"):
+            hands = (tp.hand if isinstance(tp.hand, tuple)
+                     else (tp.hand,) * len(tp.phrase))
+            if len(hands) != len(tp.phrase):
                 raise ValueError(
-                    f"unknown hand {tp.hand!r}; 'rh' plays the line on the "
-                    f"treble staff, 'lh' on the bass staff")
+                    f"a per-measure hand list must name one hand per "
+                    f"measure ({len(tp.phrase)}); got {len(tp.hand)}")
+            for h in hands:
+                if h not in ("rh", "lh"):
+                    raise ValueError(
+                        f"unknown hand {h!r}; 'rh' plays the line on the "
+                        f"treble staff, 'lh' on the bass staff")
             for pname, marks, vocab in (
                     ("fingering", tp.fingering, ("1", "2", "3", "4", "5")),
                     ("slurs", tp.slurs, ("start", "stop")),

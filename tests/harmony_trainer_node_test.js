@@ -196,6 +196,32 @@ function assert(cond, msg) {
   console.log("Test B (arpeggio): PASS");
 })();
 
+// === Test B2: four-tone accent cell (piano-technique ticket 06) =============
+(function testArpeggioAccentCell() {
+  // arp_octave_root payload: pitchClasses [r, 3rd, 5th, r], the 4th quarter
+  // the root an octave up. The ordered walk accepts the return to the root
+  // mod-12 (any octave), with no JS change.
+  const payload = {
+    title: "C cell", render: "arpeggio",
+    TARGET_CHORDS: [
+      target(0, "arpeggio", "I", "C", "C", "major", ["C", "E", "G", "C"], [0, 4, 7, 0], [60, 64, 67, 72], "M3+m3", "tonic", "tonic"),
+    ],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+
+  h.noteOn(60); h.noteOff(60);
+  h.noteOn(64); h.noteOff(64);
+  h.noteOn(67); h.noteOff(67);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 3, "three tones down, cell not finished");
+  assert(h.window.HarmonyTrainer.state().finished !== true, "the 4th tone is still owed");
+  // The return to the root is green and finishes the cell — octave-blind.
+  h.noteOn(60); assert(h.keyStatus.get(60) === "ok", "root return green in any octave");
+  h.noteOff(60);
+  assert(h.window.HarmonyTrainer.state().finished === true, "finished after the 4-tone cell");
+  console.log("Test B2 (four-tone accent cell): PASS");
+})();
+
 // === Test C: navigation =====================================================
 (function testNav() {
   const payload = {

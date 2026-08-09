@@ -233,8 +233,19 @@ def _treble_block(triad: DiatonicTriad, fifths: int) -> str:
     return "".join(parts)
 
 
-def _treble_arpeggio(triad: DiatonicTriad, fifths: int) -> str:
+def _treble_arpeggio(triad: DiatonicTriad, fifths: int,
+                     octave_root: bool = False) -> str:
     voicing = triad_treble_voicing(triad)
+    if octave_root:
+        # The four-tone accent cell (piano-technique ticket 06): the root
+        # returns an octave up as the 4th quarter — no rest padding.
+        if len(voicing) >= BEATS_PER_MEASURE:
+            raise ValueError(
+                f"arp_octave_root needs a free 4th beat; a "
+                f"{len(voicing)}-tone chord ({triad.chord_symbol}) already "
+                f"fills the 4/4 measure")
+        r_step, r_alter, r_octave = voicing[0]
+        voicing = voicing + [(r_step, r_alter, r_octave + 1)]
     parts = []
     for (step, alter, octave) in voicing:
         parts.append(_note_xml(step, alter, octave, QUARTER_TICKS, "quarter",
@@ -248,7 +259,8 @@ def _treble_arpeggio(triad: DiatonicTriad, fifths: int) -> str:
 
 def _measure_xml(chord: CompiledChord, m_no: int, fifths: int,
                  prev_fifths: Optional[int], is_last: bool,
-                 hide_roman: bool = False) -> str:
+                 hide_roman: bool = False,
+                 arp_octave_root: bool = False) -> str:
     triad = chord.triad
 
     if m_no == 1:
@@ -277,7 +289,7 @@ def _measure_xml(chord: CompiledChord, m_no: int, fifths: int,
                   else _annotation_xml(triad))
 
     if chord.render == "arpeggio":
-        treble = _treble_arpeggio(triad, fifths)
+        treble = _treble_arpeggio(triad, fifths, octave_root=arp_octave_root)
     else:
         treble = _treble_block(triad, fifths)
 
@@ -317,6 +329,7 @@ def build_musicxml(compiled: CompiledExercise, title: Optional[str] = None) -> s
             is_last=(i == n - 1),
             hide_roman=(spot and
                         parse_applied_token(chord.triad.roman) is not None),
+            arp_octave_root=compiled.spec.arp_octave_root,
         ))
         prev_fifths = fifths
 
@@ -339,11 +352,19 @@ def build_musicxml(compiled: CompiledExercise, title: Optional[str] = None) -> s
 # Public: trainer payload (consumed by harmony_trainer.js)
 # ----------------------------------------------------------------------------
 
-def _target_for(chord: CompiledChord) -> Dict:
+def _target_for(chord: CompiledChord, arp_octave_root: bool = False) -> Dict:
     triad = chord.triad
     voicing = triad_treble_voicing(triad)
     midi_pitches = [_midi_of(step, alter, octave) for (step, alter, octave) in voicing]
     pitch_classes = [m % 12 for m in midi_pitches]  # ordered root/third/fifth
+    chord_tones = list(triad.pitches)
+    if arp_octave_root and chord.render == "arpeggio":
+        # The four-tone accent cell (ticket 06): the notation's 4th quarter
+        # is the root an octave up, so the ordered walk (and the playback
+        # plan, which reads midiPitches sequentially) closes on it too.
+        midi_pitches.append(midi_pitches[0] + 12)
+        pitch_classes.append(pitch_classes[0])
+        chord_tones.append(chord_tones[0])
     target = {
         "absMeasure": chord.index,
         "measureNumber": chord.index + 1,
@@ -358,7 +379,7 @@ def _target_for(chord: CompiledChord) -> Dict:
         "chordSymbol": triad.chord_symbol,
         "root": triad.root,
         "quality": triad.chord_quality,
-        "chordTones": list(triad.pitches),
+        "chordTones": chord_tones,
         "pitchClasses": pitch_classes,
         "midiPitches": midi_pitches,
         "bassMidi": _midi_of(*triad_bass_note(triad)),
@@ -462,7 +483,8 @@ def build_trainer_payload(compiled: CompiledExercise) -> Dict:
     ``TRAINER_MODE``, ``TARGET_CHORDS``, ``TARGET_BY_MEASURE`` and
     ``EXPECTED_MIDI_BY_MEASURE_OR_BEAT``.
     """
-    targets = [_target_for(c) for c in compiled.chords]
+    targets = [_target_for(c, compiled.spec.arp_octave_root)
+               for c in compiled.chords]
 
     answer_mode = compiled.spec.answer_mode
     if answer_mode == "mcq":

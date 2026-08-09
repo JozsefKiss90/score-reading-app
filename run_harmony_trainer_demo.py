@@ -48,6 +48,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from harmony.exercise_spec import (
     HarmonyExerciseSpec, compile_exercise, default_exercise_groups, load_specs,
     identification_demo_specs, GROUP_IDENTIFY,
+    technique_arpeggio_demo_specs, GROUP_TECH_ARPEGGIO,
 )
 from harmony.echo_drills import echo_demo_specs, GROUP_ECHO
 from harmony.musicxml_builder import build_exercise
@@ -602,6 +603,9 @@ def _load_groups(argv: List[str]) -> "OrderedDict[str, List[HarmonyExerciseSpec]
     # Opt-in extra group (plan A1, ticket 07): echo-play ear drills — the
     # notation-hidden aural twins.  Same opt-in reasoning as above.
     groups[GROUP_ECHO] = echo_demo_specs()
+    # Opt-in extra group (piano-technique ticket 06): the groups-of-four
+    # arpeggio accent cells.  Same opt-in reasoning as above.
+    groups[GROUP_TECH_ARPEGGIO] = technique_arpeggio_demo_specs()
     return groups
 
 

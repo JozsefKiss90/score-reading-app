@@ -101,10 +101,11 @@ _CATEGORIES = [
      ["tests/test_harmony_lab.py"],
      "Two-voice implied-harmony examples."),
     ("technique", "Piano Technique", ["cat:technique"],
-     ["tests/test_technique.py"],
-     "The piano-technique ticket-01 tracer: one five-finger warm-up phrase "
+     ["tests/test_technique.py", "tests/test_technique_arpeggio.py"],
+     "The piano-technique ticket-01 tracer (one five-finger warm-up phrase "
      "proving curriculum -> lab compile -> melody render -> ordered MIDI "
-     "grading (the ten daily exercises follow in tickets 02+)."),
+     "grading) + the ticket-06 arpeggio runs: two-octave tonic arpeggios "
+     "in all 24 keys, RH then LH, accented in groups of four (24 leaves)."),
     ("integration", "Atlas / Circle integration", ["cat:atlas", "cat:circle"],
      ["tests/atlas_node_test.js", "tests/circle_node_test.js",
       "tests/test_circle_payload.py"],

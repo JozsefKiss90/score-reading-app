@@ -1,7 +1,7 @@
 {
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
-    "totalLeaves": 381,
+    "totalLeaves": 405,
     "categories": 15,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
@@ -309,8 +309,8 @@
       "categoryIds": [
         "cat:technique"
       ],
-      "expected": "The piano-technique ticket-01 tracer: one five-finger warm-up phrase proving curriculum -> lab compile -> melody render -> ordered MIDI grading (the ten daily exercises follow in tickets 02+).",
-      "actualLeaves": 1,
+      "expected": "The piano-technique ticket-01 tracer (one five-finger warm-up phrase proving curriculum -> lab compile -> melody render -> ordered MIDI grading) + the ticket-06 arpeggio runs: two-octave tonic arpeggios in all 24 keys, RH then LH, accented in groups of four (24 leaves).",
+      "actualLeaves": 25,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],
@@ -322,7 +322,8 @@
       "missingCircleMapping": [],
       "unresolvedCircleMapping": [],
       "tests": [
-        "tests/test_technique.py"
+        "tests/test_technique.py",
+        "tests/test_technique_arpeggio.py"
       ]
     },
     {

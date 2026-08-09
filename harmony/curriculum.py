@@ -83,6 +83,10 @@ from harmony.exercise_spec import (
     GROUP_ARPEGGIO,
 )
 from harmony.lab_spec import LabExperimentSpec, split_figured_pattern
+from harmony.technique_data import (
+    ARPEGGIO_DEGREES_UP,
+    arpeggio_run_fingering,
+)
 from harmony.applied_ramp import (
     applied_progression,
     chain_label,
@@ -1318,6 +1322,75 @@ def _technique_warmup_specs() -> List[LabExperimentSpec]:
     )
     spec.validate()
     return [spec]
+
+
+#: One up-and-down two-octave arpeggio pass: 7 degrees up, 6 back down (the
+#: peak is not restruck) = 13 notes.
+_ARP_RUN_CYCLE = tuple(ARPEGGIO_DEGREES_UP) + tuple(
+    reversed(ARPEGGIO_DEGREES_UP))[1:]
+
+#: The video's twist (piano-technique ticket 06): played twice in a row, the
+#: 13-note cycle makes the every-4th-note accent land on a different chord
+#: tone each time (13 mod 4 = 1).
+_ARP_RUN_STREAM_LEN = 2 * len(_ARP_RUN_CYCLE)          # 26 notes per hand
+
+_ARP_RUN_COACH = ("Accent the first of each four — the accent itself is "
+                  "not graded, the notes in order are.")
+
+
+def _chunk_slots(seq: List, slots: int) -> List[List]:
+    """Split one hand's note stream into measures of ``slots`` entries."""
+    return [list(seq[i:i + slots]) for i in range(0, len(seq), slots)]
+
+
+def _tech_arpeggio_run_spec(tonic: str, mode: str) -> LabExperimentSpec:
+    """One two-octave arpeggio-run leaf (piano-technique ticket 06).
+
+    The 13-note up/down cycle twice in even eighths (26 notes = 4 measures),
+    right hand then left hand in one leaf (8 measures), with the standard
+    fingering from :mod:`harmony.technique_data` and an accent mark on every
+    4th note — so the accent (and the thumb) shifts through the chord tones
+    instead of riding the root.
+    """
+    word = "major" if mode == "major" else "minor"
+    stream = list(_ARP_RUN_CYCLE) * 2
+    accents = ["accent" if i % 4 == 0 else ""
+               for i in range(_ARP_RUN_STREAM_LEN)]
+    slots = 8                                          # eighths in a 4/4 bar
+    phrase, fingering, articulations, hands = [], [], [], []
+    for hand in ("rh", "lh"):
+        f_stream = list(arpeggio_run_fingering(tonic, word, hand)) * 2
+        hand_measures = _chunk_slots(stream, slots)
+        phrase += hand_measures
+        fingering += _chunk_slots(f_stream, slots)
+        articulations += _chunk_slots(accents, slots)
+        hands += [hand] * len(hand_measures)
+    spec = LabExperimentSpec(
+        experiment_id=f"tech_arp_run_{_key_slug(tonic).lower()}_{word}",
+        title=f"Two-octave arpeggio run in {tonic} {word} (groups of four)",
+        concept="technique", mode=mode, key=f"{tonic} {word}",
+        render="melody",
+        parameters={
+            "phrase": phrase,
+            "note_value": "eighth",
+            "hand": hands,
+            "fingering": fingering,
+            "articulations": articulations,
+            "coach": _ARP_RUN_COACH,
+        },
+        description=(f"The {tonic} {word} tonic arpeggio over two octaves, "
+                     f"up and down twice in even eighths — right hand then "
+                     f"left hand, standard fingering. Coach: "
+                     f"{_ARP_RUN_COACH}"),
+    )
+    spec.validate()
+    return spec
+
+
+def _tech_arpeggio_run_specs(mode: str) -> List[LabExperimentSpec]:
+    """The 12 arpeggio-run leaves of one mode (ticket 06's 24-leaf set)."""
+    keys = DEFAULT_MAJOR_KEYS if mode == "major" else DEFAULT_MINOR_KEYS
+    return [_tech_arpeggio_run_spec(tonic, mode) for tonic in keys]
 
 
 def _augmented_quality_specs() -> List[HarmonyExerciseSpec]:
@@ -2609,6 +2682,33 @@ def build_curriculum() -> CurriculumNode:
     fill_lab(group(l_tech, "tech_warmup_drills", "Warm-up drills",
                    "The tracer phrase: up and back, graded in order.", 1),
              _technique_warmup_specs(), 1)
+    l_arp = lesson(technique, "tech_arpeggios", "Arpeggio runs in fours",
+                   "Two-octave tonic arpeggios, accented in groups of four.",
+                   "Run the tonic arpeggio up and down with the standard "
+                   "fingering, accenting every fourth note.", 2,
+                   theory="An arpeggio has three chord tones, so practising "
+                          "it in groups of THREE parks the accent — and the "
+                          "thumb — on the root forever. Grouping the same "
+                          "notes in fours (count 1-2-3-4, accent the 1) "
+                          "makes each accent land on a different chord tone "
+                          "each time: 13 notes up-and-down means the "
+                          "downbeat walks root, third, fifth… through the "
+                          "whole chord. The accent itself is a gesture the "
+                          "grader cannot hear — only the notes in order are "
+                          "graded — but the printed accents and standard "
+                          "fingering carry the drill's point.",
+                   related=["lesson:tech_warmup",
+                            "lesson:motive_transposition"],
+                   keywords=["arpeggio", "accent", "groups of four",
+                             "fingering", "two octaves", "technique"])
+    fill_lab(group(l_arp, "tech_arp_runs_major", "Major keys",
+                   "Two-octave tonic arpeggio runs in all 12 major keys.",
+                   2),
+             _tech_arpeggio_run_specs("major"), 2)
+    fill_lab(group(l_arp, "tech_arp_runs_minor", "Minor keys",
+                   "Two-octave tonic arpeggio runs in all 12 minor keys.",
+                   2),
+             _tech_arpeggio_run_specs("natural_minor"), 2)
 
     # ===================================================================
     # 11. ATLAS  (bridge — opens the Interactive Harmony Atlas)
