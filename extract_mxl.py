@@ -2,7 +2,7 @@ import zipfile
 from pathlib import Path
 
 # Path to your MXL file
-mxl_path = Path("resources\\organ-sonata-no-4-bwv-528-2-andante-adagio-vikingur-olafsson-interpretation.mxl")
+mxl_path = Path("resources\\passacaglia-georg-friedrich-handel-arranged-by-alexander-motovilov.mxl")
 
 # Output folder where XML will be extracted
 output_folder = Path("mxl_extracted")

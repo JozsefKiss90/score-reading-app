@@ -7,7 +7,14 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple
 import zipfile, io
-from music21 import converter, note as m21note, chord as m21chord, tempo as m21tempo, stream
+from music21 import (
+    converter,
+    note as m21note,
+    chord as m21chord,
+    harmony as m21harmony,
+    tempo as m21tempo,
+    stream,
+)
 
 def _parse_musicxml_tree(xml_path: str, mxl_path: str) -> ET.Element | None:
     """
@@ -85,6 +92,11 @@ def load_notes_from_mxl(mxl_path: str, xml_path: str):
     flat_notes = score.flat.notes
     notes = []
     for n in flat_notes:
+        # Chord symbols ("Cmaj7" over the staff) are Chord subclasses and would
+        # otherwise contribute phantom, zero-length pitches that nobody plays.
+        if isinstance(n, m21harmony.Harmony):
+            continue
+
         if isinstance(n, m21note.Note):
             pitch_name = n.nameWithOctave
             start = float(n.offset)
@@ -212,9 +224,13 @@ def build_measure_times(mxl_path: str):
 
     out = []
     for i, m in enumerate(measures):
-        # Measure number (fallback to 1-based index if missing)
+        # Measure number (fallback to 1-based index if missing).  A pickup bar is
+        # numbered 0, which is falsy -- it must not be replaced by the index, or
+        # the anacrusis and the first full bar both end up numbered 1 and callers
+        # that resolve a bar by its number get the wrong one.
         try:
-            num = int(getattr(m, "number", None) or (i + 1))
+            raw = getattr(m, "number", None)
+            num = i + 1 if raw is None else int(raw)
         except Exception:
             num = i + 1
 

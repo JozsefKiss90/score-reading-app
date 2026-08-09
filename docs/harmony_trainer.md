@@ -193,17 +193,42 @@ The trainer reuses the app's existing MIDI keyboard-colouring machinery rather
 than replacing it:
 
 * For the **current target chord**, the controller sets
-  `app.state.selNotesByMidi` to that chord's tones, mapped **octave-agnostically**
-  (any octave of a chord tone counts). The existing
+  `app.state.selNotesByMidi` to that chord's tones. The existing
   `app.refreshMidiHighlights()` then colours each pressed key:
-  * **green** if the pitch belongs to the target chord, and the matching
-    notehead on the staff turns green too;
+  * **green** if the pitch belongs to the target chord, and the notehead the
+    key *is* turns green too;
   * **red** if the pitch is not in the target chord.
+* The two halves of that entry use **different octave rules**, on purpose:
+  * **Key colour is octave-agnostic** — any octave of a chord tone counts, the
+    same rule the grader uses. Every octave of an expected pitch class gets an
+    entry carrying a `__ht_target_<pc>` sentinel id, which resolves to no SVG
+    node and so only keeps the key green.
+  * **Noteheads are octave-exact** — MIDI `m` selects only noteheads actually
+    notated at `m` (via `idsByMidiForMeasure`), so pressed pitch → lit notehead
+    is one-to-one. Playing a chord tone in an octave the score does not notate
+    still greens the key but lights no notehead.
+
+  Keying every octave onto one shared pitch-class-wide id set made this
+  ambiguous in both directions: pressing any C lit every C in the bar (the
+  two-octave arpeggio runs lit C4/C5/C6 at once, reading as premature
+  progress), and every C on the keyboard lit the same single notehead.
 * **Block mode** expects all chord tones together: the chord is complete once
   every tone has been pressed, and the trainer advances to the next chord after
-  you release the keys.
+  you release the keys. Block grading is **octave-agnostic** — a block target
+  asks *which chord*, so any voicing of it counts.
 * **Arpeggio mode** expects the tones **in order** (root → third → fifth);
   pressing the wrong next note shows red, and each correct note advances.
+  Ordered walks grade **octave-exact**: the walk asks *which keys*, so a slot
+  written C5 is not satisfied by C4 (`walkStepMatches`). The key colour follows
+  the same rule here — for a slot-aligned walk `buildWalkSelection` maps only
+  the notated pitches, so a wrong-octave press reads red rather than showing a
+  green key that refuses to advance. Already-played slots stay green.
+
+  The demanded octaves come from the notation itself: `walkSlotRows` recovers
+  the measure's noteheads in walk order from `PITCH_MAP`. When the rows cannot
+  be slot-aligned — chord stacks, second voices, or no `PITCH_MAP` yet — there
+  is no honest octave to demand and the comparison falls back to mod-12, the
+  same fallback the display uses.
 
 The runtime payload (built by `build_trainer_payload`) drives the controller
 entirely through `TARGET_CHORDS`; the JS recomputes the per-tone expectation
@@ -216,17 +241,19 @@ not read them.
 
 An arpeggio-walk target may additionally carry `steps` (piano-technique
 ticket 03) — an ordered list of simultaneity steps,
-`{"pcs": [0, 4], "minDistinct": 2}`: the pitch classes that must be **held
-concurrently**, and the minimum number of distinct MIDI keys sounding among
-them (octave doubling is one pc, two keys). The walk then advances per step:
-at each note-on the current step is satisfied iff every pc is held, enough
-distinct keys land in those pcs, and at least one of them was struck after the
-previous step completed (the re-attack rule — a held chord never plays the
-next step for free, while finger-legato overlap between *different*
+`{"pcs": [0, 4], "minDistinct": 2, "midis": [60, 64]}`: the pitch classes that
+must be **held concurrently**, the minimum number of distinct MIDI keys
+sounding among them (octave doubling is one pc, two keys), and the step's keys
+**as notated**. The walk then advances per step: at each note-on the current
+step is satisfied iff its keys are held and at least one of them was struck
+after the previous step completed (the re-attack rule — a held chord never
+plays the next step for free, while finger-legato overlap between *different*
 consecutive steps still passes). Wrong notes stay ignored and releases carry
-no error state. `pitchClasses` keeps the flat ordered union, so payloads
-without `steps` — and controllers that ignore unknown fields — behave exactly
-as before. This grades **concurrency at note-on time**, not attack synchrony:
+no error state. `midis` makes the step octave-exact like the scalar walk, so
+an octave pair written C4+C5 is **not** satisfied by C3+C4; a step without it
+falls back to the `pcs`/`minDistinct` comparison. `pitchClasses` keeps the flat
+ordered union, so payloads without `steps` — and controllers that ignore
+unknown fields — behave exactly as before. This grades **concurrency at note-on time**, not attack synchrony:
 striking exactly together would need the timestamps the grader discards.
 
 An arpeggio-walk target may also carry `hold` (piano-technique ticket 04 v2,

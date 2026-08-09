@@ -199,8 +199,8 @@ function assert(cond, msg) {
 // === Test B2: four-tone accent cell (piano-technique ticket 06) =============
 (function testArpeggioAccentCell() {
   // arp_octave_root payload: pitchClasses [r, 3rd, 5th, r], the 4th quarter
-  // the root an octave up. The ordered walk accepts the return to the root
-  // mod-12 (any octave), with no JS change.
+  // the root an octave up.  The walk is an execution drill, so that 4th slot
+  // demands the written C5 — the C4 it started from does not close the cell.
   const payload = {
     title: "C cell", render: "arpeggio",
     TARGET_CHORDS: [
@@ -215,9 +215,19 @@ function assert(cond, msg) {
   h.noteOn(67); h.noteOff(67);
   assert(h.window.HarmonyTrainer.state().arpIndex === 3, "three tones down, cell not finished");
   assert(h.window.HarmonyTrainer.state().finished !== true, "the 4th tone is still owed");
-  // The return to the root is green and finishes the cell — octave-blind.
-  h.noteOn(60); assert(h.keyStatus.get(60) === "ok", "root return green in any octave");
+  // Replaying the C4 the walk started on stays green — it is that walk's own
+  // slot-0 note, already played — but it is not slot 3, so nothing advances.
+  h.noteOn(60); assert(h.keyStatus.get(60) === "ok", "the played C4 stays lit");
   h.noteOff(60);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 3, "replaying C4 did not advance");
+  assert(h.window.HarmonyTrainer.state().finished !== true, "the 4th tone is still owed");
+  // A C the walk never touches is simply wrong.
+  h.noteOn(48); assert(h.keyStatus.get(48) === "bad", "C3 is not in this walk");
+  h.noteOff(48);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 3, "C3 did not advance the walk");
+  // The written C5 is green and finishes the cell.
+  h.noteOn(72); assert(h.keyStatus.get(72) === "ok", "the written C5 is the root return");
+  h.noteOff(72);
   assert(h.window.HarmonyTrainer.state().finished === true, "finished after the 4-tone cell");
   console.log("Test B2 (four-tone accent cell): PASS");
 })();
@@ -246,19 +256,29 @@ function assert(cond, msg) {
   assert(idsFor(60).includes("n0_0"), "slot-0 C selected at start");
   assert(!idsFor(60).includes("n0_3"), "future C (slot 3) unlit at start");
   assert(!idsFor(60).includes("n0_6"), "future C (slot 6) unlit at start");
-  assert(idsFor(72).includes("n0_0"), "octave-blind: C5 maps to the same slot");
+  // A walk is an execution drill: same pitch class, wrong octave is just wrong.
+  // C5 neither lights a head nor greens its key until the walk reaches slot 3.
+  assert(idsFor(72).length === 0, "C5 lights no notehead of its own yet");
+  assert(h.state.selNotesByMidi.get(72) === undefined, "C5 is not a target yet");
+  h.noteOn(72); assert(h.keyStatus.get(72) === "bad", "wrong-octave C reads red");
+  h.noteOff(72);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0, "wrong-octave C did not advance");
 
-  // Walk C E G: the current step becomes slot 3 (the second C).
+  // Walk C E G: the current step becomes slot 3 (the second C, notated C5).
   h.noteOn(60); h.noteOff(60);
   h.noteOn(64); h.noteOff(64);
   h.noteOn(67); h.noteOff(67);
   assert(h.window.HarmonyTrainer.state().arpIndex === 3, "walked to slot 3");
   assert(idsFor(60).includes("n0_0"), "played C stays selected");
-  assert(idsFor(60).includes("n0_3"), "current C (slot 3) selected");
+  assert(idsFor(72).includes("n0_3"), "current C (slot 3) lights at its own C5");
+  assert(!idsFor(60).includes("n0_3"), "pressing C4 does not light the C5 head");
+  assert(!idsFor(72).includes("n0_0"), "pressing C5 does not light the C4 head");
   assert(!idsFor(60).includes("n0_6"), "future C (slot 6) still unlit");
+  assert(!idsFor(84).includes("n0_6"), "future C6 unlit at its own octave too");
   assert(!h.state.selNoteIds.has("n0_6"), "slot 6 not in the selection set");
   // The future E (slot 4) is not lit either while slot 3 is current.
   assert(!idsFor(64).includes("n0_4"), "future E (slot 4) unlit");
+  assert(!idsFor(76).includes("n0_4"), "future E5 unlit at its own octave");
 
   console.log("Test B3 (slot-aware repeated-pc selection): PASS");
 })();
@@ -289,7 +309,39 @@ function assert(cond, msg) {
   assert(idsFor(60).includes("n0_0"), "slot-0 C selected at start (cell)");
   assert(!idsFor(60).includes("n0_3"), "octave-root C unlit until walked");
   assert(!idsFor(60).includes("n0_b"), "bass row never joins the walk");
+  assert(idsFor(48).length === 0, "pressing the bass C3 lights no walk head");
   console.log("Test B4 (slot-aware with bass row): PASS");
+})();
+
+// === Test B5: block chords map each octave to its own notehead ==============
+(function testBlockOctaveExactSelection() {
+  // The Harmony Trainer's block triads notate C3 in the bass under C4/E4/G4.
+  // Every C on the keyboard used to light the same single notehead; each C now
+  // lights the head it actually is, and a C with no head of its own lights
+  // none — while still grading as a chord tone.
+  const t0 = target(0, "block", "I", "C", "C", "major",
+    ["C", "E", "G"], [0, 4, 7], [48, 60, 64, 67], "M3+m3", "tonic", "tonic");
+  const payload = { title: "block", render: "block", TARGET_CHORDS: [t0] };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+
+  const idsFor = (midi) => {
+    const ids = h.state.selNotesByMidi.get(midi);
+    return ids ? [...ids].filter((i) => !i.startsWith("__ht")) : [];
+  };
+  // makePitchMap names them n0_0=C3, n0_1=C4, n0_2=E4, n0_3=G4.
+  assert(idsFor(48).length === 1 && idsFor(48)[0] === "n0_0", "C3 lights the bass head only");
+  assert(idsFor(60).length === 1 && idsFor(60)[0] === "n0_1", "C4 lights the treble C only");
+  assert(idsFor(64).length === 1 && idsFor(64)[0] === "n0_2", "E4 lights the E head");
+  assert(idsFor(72).length === 0, "C5 is not notated, so it lights nothing");
+  // ...but the keyboard still greens it, because grading is octave-agnostic.
+  h.noteOn(72);
+  assert(h.keyStatus.get(72) === "ok", "C5 still reads as a chord tone");
+  h.noteOff(72);
+  h.noteOn(61);
+  assert(h.keyStatus.get(61) === "bad", "C#4 is still wrong");
+  h.noteOff(61);
+  console.log("Test B5 (octave-exact block selection): PASS");
 })();
 
 // === Test C: navigation =====================================================

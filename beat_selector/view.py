@@ -25,7 +25,7 @@ except Exception:
 
 from .timing import Measure, build_onsets_by_measure, build_beats_by_measure, build_pitch_events_by_measure
 from .web_assets import prepare_web_assets
-from .verovio_map import VerovioNoteMapper
+from .verovio_map import SVG_ADDITIONAL_ATTRIBUTES, VerovioNoteMapper, map_page_measures_to_indexes
 
 # MIDI integration (optional)
 try:
@@ -176,14 +176,7 @@ class ScoreViewBeats(QWidget):
             "breaks": "auto",
             "adjustPageHeight": 1,
             "svgViewBox": 1,
-            "svgAdditionalAttribute": [
-                "note@pname",
-                "note@oct",
-                "note@pname.ges",
-                "note@oct.ges",
-                "note@accid",
-                "note@accid.ges",
-            ],
+            "svgAdditionalAttribute": list(SVG_ADDITIONAL_ATTRIBUTES),
         })
 
         self._tk.loadFile(self.mxl_path)
@@ -258,45 +251,11 @@ class ScoreViewBeats(QWidget):
         self._page_abs_indexes.clear()
         self._index_to_page.clear()
 
-        num_to_abs: Dict[int, int] = {}
-        for m in self.measures:
-            if m.number not in num_to_abs:
-                num_to_abs[m.number] = m.index
-
-        for p in range(self._page_count):
-            svg = self._tk.renderToSVG(p + 1)
-            self._page_svgs.append(svg)
-            abs_list: List[int] = []
-            try:
-                root = ET.fromstring(svg)
-                for g in root.iter():
-                    if g.tag.split("}")[-1] != "g":
-                        continue
-                    typ = g.attrib.get("data-vrv-type") or g.attrib.get("data-type") or ""
-                    if typ != "measure" and "measure" not in g.attrib.get("class", ""):
-                        continue
-                    n_attr = g.attrib.get("n") or g.attrib.get("data-n") or ""
-                    num = None
-                    try:
-                        if n_attr:
-                            num = int(str(n_attr).strip().split()[0])
-                    except Exception:
-                        num = None
-
-                    if num is not None and num in num_to_abs:
-                        abs_idx = num_to_abs[num]
-                    else:
-                        abs_idx = (abs_list[-1] + 1) if abs_list else len(sum(self._page_abs_indexes, []))
-                        abs_idx = min(abs_idx, len(self.measures) - 1)
-
-                    abs_list.append(abs_idx)
-            except Exception as e:
-                dlog("SVG parse error:", e)
-                count = svg.count('data-vrv-type="measure"') or svg.count('class="measure"') or 1
-                base = len(sum(self._page_abs_indexes, []))
-                abs_list = [min(base + i, len(self.measures) - 1) for i in range(count)]
-
-            self._page_abs_indexes.append(abs_list)
+        self._page_svgs.extend(self._tk.renderToSVG(p + 1) for p in range(self._page_count))
+        self._page_abs_indexes.extend(
+            map_page_measures_to_indexes(self._page_svgs, self.measures, dlog=dlog)
+        )
+        for p, abs_list in enumerate(self._page_abs_indexes):
             for a in abs_list:
                 self._index_to_page[a] = p
 

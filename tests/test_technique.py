@@ -574,8 +574,11 @@ class TestSimultaneityPayload(unittest.TestCase):
 
     def test_steps_emitted_with_flat_pitch_classes(self):
         t = self._payload()["TARGET_CHORDS"][0]
-        self.assertEqual(t["steps"], [{"pcs": [0, 4], "minDistinct": 2},
-                                      {"pcs": [2, 5], "minDistinct": 2}])
+        # ``midis`` carries the same keys as notated, so the walk can demand
+        # the written octave; ``pcs`` stays the octave-blind guide-text view.
+        self.assertEqual(t["steps"],
+                         [{"pcs": [0, 4], "minDistinct": 2, "midis": [60, 64]},
+                          {"pcs": [2, 5], "minDistinct": 2, "midis": [62, 65]}])
         self.assertEqual(t["pitchClasses"], [0, 4, 2, 5])
         self.assertEqual(t["render"], "arpeggio")
 
@@ -586,9 +589,12 @@ class TestSimultaneityPayload(unittest.TestCase):
             self.assertNotIn("steps", t)
 
     def test_octave_steps_min_distinct_two(self):
+        # One pc, two written keys an octave apart — ``midis`` keeps both, so
+        # the pair must be played as written rather than at any two C's.
         t = self._payload(phrase=[[1, 2]], octaves=True)["TARGET_CHORDS"][0]
-        self.assertEqual(t["steps"], [{"pcs": [0], "minDistinct": 2},
-                                      {"pcs": [2], "minDistinct": 2}])
+        self.assertEqual(t["steps"],
+                         [{"pcs": [0], "minDistinct": 2, "midis": [60, 72]},
+                          {"pcs": [2], "minDistinct": 2, "midis": [62, 74]}])
         self.assertEqual(t["pitchClasses"], [0, 2])
 
     def test_expected_map_carries_both_pcs_per_beat(self):

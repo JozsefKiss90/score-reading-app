@@ -179,10 +179,17 @@ class LabStepTarget:
     the step; ``min_distinct`` is the minimum number of distinct MIDI keys
     sounding among them (octave doubling: one pc, two keys).  The JS grader
     walks these in order exactly like the scalar arpeggio walk.
+
+    ``midis`` are the same keys as *notated* -- one entry per written note, so
+    an octave pair keeps both.  A technique step is an execution drill, so the
+    grader demands these exact keys; ``pcs``/``min_distinct`` remain the
+    octave-blind view used for the guide text and as the fallback when a
+    measure carries no notated octaves.
     """
 
     pcs: Tuple[int, ...]
     min_distinct: int
+    midis: Tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -809,6 +816,7 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
             s_labels = _step_labels(slur_marks[j], n) if slur_marks else ("",) * n
             a_labels = _step_labels(arts[j], n) if arts else ("",) * n
             step_pcs: List[int] = []
+            step_midis: List[int] = []
             names: List[str] = []
             for x, d in enumerate(degrees):
                 step, alter, octave = _scale_note(scale, d)
@@ -818,14 +826,17 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
                     is_chord_tone=x > 0,
                     fingering=f_labels[x], slur=s_labels[x],
                     articulation=a_labels[x]))
-                pc = _midi(step, alter, octave) % 12
+                midi = _midi(step, alter, octave)
+                step_midis.append(midi)
+                pc = midi % 12
                 if pc not in step_pcs:   # octave pair: one pc, two keys
                     step_pcs.append(pc)
                 names.append(f"{step}{_alter_str(alter)}{octave}")
             pcs.extend(step_pcs)
             spelled.append("+".join(names))
             step_targets.append(LabStepTarget(pcs=tuple(step_pcs),
-                                              min_distinct=n))
+                                              min_distinct=n,
+                                              midis=tuple(step_midis)))
         rest_octave = BASS_OCTAVE if left else TREBLE_OCTAVE
         for _ in range(slots - len(entries)):
             notes.append(LabNote("C", 0, rest_octave, dtype, is_rest=True))

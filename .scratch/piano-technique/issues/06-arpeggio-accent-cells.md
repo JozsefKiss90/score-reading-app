@@ -76,9 +76,32 @@ Implemented (2026-08-09). Notes for the reviewer:
 three C's: C4/C5/C6), the selection lit EVERY same-pc notehead at once — pressing any C greened
 all of them, reading as premature progress. Cause: `buildSelection` maps an expected pc to all
 of that pc's noteheads in the measure. Fix: slot-aware selection for scalar ordered walks
-(`walkSlotIds`/`buildWalkSelection` in `harmony_trainer.js`) — PITCH_MAP rows are put in
+(`walkSlotRows`/`buildWalkSelection` in `harmony_trainer.js`) — PITCH_MAP rows are put in
 notation order (numeric beat buckets + Verovio note times) and each walked slot selects only
-its own notehead; on any shape mismatch (chord stacks, second voices) it falls back to the old
-pc-level selection. Grading was and stays octave-blind mod-12 by design (a C in any octave
+its own notehead; on any shape mismatch (chord stacks, second voices) it falls back to
+`buildSelection`. Grading was and stays octave-blind mod-12 by design (a C in any octave
 advances a C step) — that is the documented honesty contract, not part of the bug. Pinned by
 Tests B3/B4 in `tests/harmony_trainer_node_test.js`.
+
+**Follow-up (2026-08-09, same user report):** the slot fix cured *slot* aliasing but not
+*octave* aliasing — both selection builders still keyed every octave of a pitch class onto one
+shared id set (`for (var m = pc; m <= 127; m += 12) byMidi.set(m, ids)`), so pressing any C
+still lit all three walked C's, and in the trainer's block triads every C on the keyboard lit
+the same single notehead. Fix: `selNotesByMidi` now splits its two jobs — noteheads are keyed
+octave-exact (`idsByMidiForMeasure`), while each octave keeps a `__ht_target_<pc>` sentinel so
+the key colour stays octave-agnostic like the grader. A chord tone played in an unnotated
+octave greens the key and lights nothing. Pinned by Test B5 (block) and the reworked B3/B4.
+
+**Follow-up 2 (2026-08-09, user report):** display was then right but the walk still
+*advanced* on any octave, because grading was mod-12 everywhere. Ordered walks are execution
+drills — the written octave IS the exercise — so they now grade octave-exact, while block
+chords keep voicing freedom (a block target asks *which chord*; the ~400-leaf harmony
+curriculum is untouched). Scalar walks compare against `walkSlotRows(t)[arpIndex].midi`
+(`walkStepMatches`), falling back to mod-12 when the rows cannot be slot-aligned; for a
+slot-aligned walk `buildWalkSelection` also drops the cross-octave sentinels, so a
+wrong-octave press reads red instead of green-but-inert. Simultaneity steps carry the same
+honesty: `LabStepTarget.midis` (new, additive) keeps each step's notated keys —
+`_gen_technique` already computed the octave at the `% 12` and threw it away — and
+`stepSatisfiedExact` demands them, so a written C4+C5 octave is no longer satisfied by
+C3+C4. Tests: B2/B3 reworked, lab Test E reworked, new lab Test H2; H keeps the pc-only
+fallback covered.

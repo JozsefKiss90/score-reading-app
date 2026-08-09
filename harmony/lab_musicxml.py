@@ -258,8 +258,13 @@ def _lab_target_for(measure: LabMeasure) -> Dict:
     if measure.step_targets:
         # Ticket 03 (additive, absent for scalar walks): the ordered
         # simultaneity steps the JS grader demands concurrently.
-        target["steps"] = [{"pcs": list(s.pcs), "minDistinct": s.min_distinct}
-                           for s in measure.step_targets]
+        # ``midis`` (additive) carries the step's keys as notated, so the walk
+        # can demand the written octave the way the scalar walk does.
+        target["steps"] = [
+            dict({"pcs": list(s.pcs), "minDistinct": s.min_distinct},
+                 **({"midis": list(s.midis)} if s.midis else {}))
+            for s in measure.step_targets
+        ]
     if measure.hold_graded and measure.hold_pc is not None:
         # Ticket 04 v2 (additive, absent for v1 and for hold-free measures):
         # the pitch class that must stay sounding for the measure's ordered

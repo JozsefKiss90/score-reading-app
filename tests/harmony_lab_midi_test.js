@@ -213,8 +213,13 @@ function assert(cond, msg) {
   h.noteOff(61);
   up.forEach((m) => { h.noteOn(m); h.noteOff(m); });
   assert(h.app.lastMeasure === 1, "technique: cursor moved to the final measure");
-  // Octave-agnostic close: the final tonic accepted an octave up (C5).
-  h.noteOn(72); h.noteOff(72);
+  // The walk is an execution drill: the closing tonic is written C4, so the
+  // same pitch class an octave up does not close the phrase.
+  h.noteOn(72); assert(h.keyStatus.get(72) === "bad", "technique: C5 is not the written C4");
+  h.noteOff(72);
+  assert(h.window.HarmonyTrainer.state().finished !== true,
+         "technique: wrong-octave tonic does not finish the phrase");
+  h.noteOn(60); h.noteOff(60);
   assert(h.window.HarmonyTrainer.state().finished === true,
          "technique: finishes the two-measure phrase in order");
   console.log("Test E (technique phrase): PASS");
@@ -323,6 +328,35 @@ function assert(cond, msg) {
   assert(h.window.HarmonyTrainer.state().finished === true,
          "octaves: C4+C5 held together completes the step");
   console.log("Test H (octave doubling): PASS");
+})();
+
+// === Test H2: a step carrying `midis` demands the written keys ==============
+// Same octave drill as H, but with the notated keys in the payload.  A
+// technique step is an execution drill, so any two C's no longer satisfy it —
+// only the pair as written.  (H keeps the pc-only fallback covered.)
+(function testOctaveStepIsOctaveExact() {
+  const payload = {
+    title: "octaves exact", render: "arpeggio", concept: "technique",
+    TARGET_CHORDS: [labTarget({
+      absMeasure: 0, render: "arpeggio", concept: "melody",
+      pitchClasses: [0], midiPitches: [60, 72],
+      steps: [{ pcs: [0], minDistinct: 2, midis: [60, 72] }],
+    })],
+  };
+  const h = makeHarness(payload);
+  h.window.HarmonyTrainer.init(payload);
+  // The right shape (an octave) on the wrong keys does not satisfy the step.
+  h.noteOn(48); h.noteOn(60);
+  assert(h.window.HarmonyTrainer.state().arpIndex === 0,
+         "octaves: C3+C4 is not the written C4+C5");
+  assert(h.window.HarmonyTrainer.state().finished !== true,
+         "octaves: the wrong-octave pair did not complete the drill");
+  h.noteOff(48);
+  // Adding the written upper C completes it (C4 is already down).
+  h.noteOn(72);
+  assert(h.window.HarmonyTrainer.state().finished === true,
+         "octaves: the written C4+C5 completes the step");
+  console.log("Test H2 (octave-exact steps): PASS");
 })();
 
 // === Test I: hold enforcement gates the scalar ordered walk (ticket 04 v2) ===

@@ -8,10 +8,13 @@
  *
  * It deliberately reuses the existing MIDI machinery instead of replacing it:
  *
- *   - It sets app.state.selNotesByMidi to the *current target chord's* tones
- *     (mapped octave-agnostically), so the existing app.refreshMidiHighlights()
- *     paints the keyboard green (pitch belongs to the target) / red (it does
- *     not) and greens the on-staff noteheads -- with zero changes to app.js.
+ *   - It sets app.state.selNotesByMidi to the *current target chord's* tones,
+ *     so the existing app.refreshMidiHighlights() paints the keyboard green
+ *     (pitch belongs to the target) / red (it does not) and greens the on-staff
+ *     noteheads -- with zero changes to app.js.  The two halves of that entry
+ *     differ on purpose: the key colour is octave-agnostic (any octave of a
+ *     chord tone counts, as grading does), while the notehead ids are
+ *     octave-exact, so pressed pitch -> lit notehead stays one-to-one.
  *   - It wraps window.onMidiNoteOn / onMidiNoteOff to drive target
  *     advancement (block: all tones; arpeggio: tones in order).
  *   - Non-MIDI answer modes (plan U2): payloads carrying ANSWER_MODE "mcq"
@@ -243,7 +246,10 @@
     return out;
   }
 
-  // Octave-agnostic (grading) and octave-exact (playback flash) views.
+  // Octave-agnostic view -- "every head of this pitch class", used by the
+  // gestures that mean exactly that (spot pulse, tritone flash) and as the
+  // playback fallback.  Octave-exact view -- "the head that IS this pitch",
+  // used by learner selection and the playback flash.
   function idsByPcForMeasure(absMeasure) {
     return idsForMeasure(absMeasure, mod12);
   }
@@ -251,21 +257,35 @@
     return idsForMeasure(absMeasure, function (m) { return m; });
   }
 
-  // Build selNotesByMidi for a set of expected pitch classes.  Every octave of
-  // each expected pc maps to that pc's note ids in the current measure, plus a
-  // sentinel id so the "ok" status survives even if the measure is off-page.
+  // The sentinel id an expected pc always carries.  It resolves to no SVG node,
+  // so it never lights a notehead; it exists only so the pressed key still
+  // reads "ok" when the measure's own noteheads are unreachable (off-page) or
+  // when the played octave is not the notated one.
+  function targetSentinel(pc) { return "__ht_target_" + mod12(pc); }
+
+  // Build selNotesByMidi for a set of expected pitch classes.
+  //
+  // Grading stays octave-agnostic (every octave of an expected pc is accepted,
+  // so every octave gets a non-empty entry), but the *notehead* half of the
+  // entry is octave-exact: MIDI m selects only the noteheads actually notated
+  // at m.  Keying every octave onto one shared pc-wide id set made the mapping
+  // ambiguous in both directions -- pressing any C lit every C in the bar, and
+  // every C on the keyboard lit the same single notehead.
   function buildSelection(expectedPcs, absMeasure) {
     var S = app.state;
-    var idsByPc = idsByPcForMeasure(absMeasure);
+    var idsByMidi = idsByMidiForMeasure(absMeasure);
     var byMidi = new Map();
     var allIds = new Set();
 
     expectedPcs.forEach(function (pc) {
       pc = mod12(pc);
-      var ids = new Set(idsByPc.get(pc) || []);
-      ids.add("__ht_target_" + pc);
-      ids.forEach(function (i) { allIds.add(i); });
-      for (var m = pc; m <= 127; m += 12) byMidi.set(m, ids);
+      var sentinel = targetSentinel(pc);
+      for (var m = pc; m <= 127; m += 12) {
+        var ids = new Set(idsByMidi.get(m) || []);
+        ids.add(sentinel);
+        ids.forEach(function (i) { allIds.add(i); });
+        byMidi.set(m, ids);
+      }
     });
 
     S.selNotesByMidi = byMidi;
@@ -306,10 +326,10 @@
     return rows;
   }
 
-  // The measure's notehead ids in walk order, or null when the rows do not
-  // mirror the walk (chord stacks, second voices, unpitched rows) — callers
-  // then fall back to pc-level selection, the pre-existing behaviour.
-  function walkSlotIds(t) {
+  // The measure's noteheads in walk order ({id, midi} per slot), or null when
+  // the rows do not mirror the walk (chord stacks, second voices, unpitched
+  // rows) — callers then fall back to buildSelection.
+  function walkSlotRows(t) {
     var rows = orderedRowsForMeasure(t.absMeasure);
     if (!rows || !rows.length) return null;
     // Trainer measures also notate a held bass note that is not part of the
@@ -325,35 +345,46 @@
     for (var k = 0; k < rows.length; k++) {
       if (mod12(rows[k].midi) !== mod12(t.pitchClasses[k])) return null;
     }
-    return rows.map(function (r) { return r.id; });
+    return rows;
   }
 
   // Selection for a slot-aligned scalar walk: slots 0..arpIndex (played plus
   // current) select their own noteheads; later same-pc slots stay unlit.
-  // Returns false when the measure's rows cannot be slot-aligned.
+  //
+  // A slot-aligned walk grades octave-exact (see walkStepMatches), so the key
+  // colour here is octave-exact too: only the notated pitches get an entry,
+  // and the same pitch class in another octave reads red rather than showing a
+  // green key that refuses to advance.  Off-page measures never reach this
+  // function -- walkSlotRows returns null and buildSelection takes over with
+  // its octave-agnostic sentinels.
   function buildWalkSelection(t) {
-    var slots = walkSlotIds(t);
+    var slots = walkSlotRows(t);
     if (!slots) return false;
-    var idsByPc = new Map();
-    var last = Math.min(arpIndex, t.pitchClasses.length - 1);
-    for (var i = 0; i <= last; i++) {
-      var pc = mod12(t.pitchClasses[i]);
-      if (!idsByPc.has(pc)) {
-        var seed = new Set();
-        seed.add("__ht_target_" + pc);   // survives off-page measures
-        idsByPc.set(pc, seed);
-      }
-      idsByPc.get(pc).add(slots[i]);
-    }
     var byMidi = new Map();
     var allIds = new Set();
-    idsByPc.forEach(function (ids, pc) {
-      ids.forEach(function (id) { allIds.add(id); });
-      for (var m = pc; m <= 127; m += 12) byMidi.set(m, ids);
-    });
+    var last = Math.min(arpIndex, t.pitchClasses.length - 1);
+    for (var i = 0; i <= last; i++) {
+      var midi = slots[i].midi;
+      if (!byMidi.has(midi)) byMidi.set(midi, new Set([targetSentinel(midi)]));
+      byMidi.get(midi).add(slots[i].id);
+      allIds.add(slots[i].id);
+    }
     app.state.selNotesByMidi = byMidi;
     app.state.selNoteIds = allIds;
     return true;
+  }
+
+  // Does this key press satisfy the walk's current slot?
+  //
+  // Ordered walks are execution drills -- the written octave IS the exercise --
+  // so a slot-aligned walk demands the slot's own notated pitch, not merely its
+  // pitch class.  When the rows cannot be slot-aligned (chord stacks, second
+  // voices, or no PITCH_MAP yet) there is no honest octave to demand, so the
+  // comparison falls back to mod-12, matching the display's own fallback.
+  function walkStepMatches(t, midi) {
+    var rows = walkSlotRows(t);
+    if (rows && arpIndex < rows.length) return midi === rows[arpIndex].midi;
+    return mod12(midi) === mod12(t.pitchClasses[arpIndex]);
   }
 
   function expectedPcsForCurrent() {
@@ -704,7 +735,27 @@
   // This grades CONCURRENCY at note-on time, not attack synchrony: notes
   // struck apart but overlapping still pass (true togetherness would need
   // the discarded timestamps; the concept explanation says so).
+  //
+  // A step carrying `midis` (its keys as notated) is graded octave-exact, the
+  // same rule the scalar walk uses: a technique step is an execution drill, so
+  // an octave pair written C4+C5 is not satisfied by C3+C4.  The re-attack and
+  // concurrency rules are unchanged; only the identity of the keys tightens.
+  // Every notated key of the step held at once, at least one of them freshly
+  // struck.  Duplicates in `midis` would demand the same key twice, which no
+  // notation produces, so distinctness is implicit.
+  function stepSatisfiedExact(midis) {
+    var fresh = false;
+    for (var i = 0; i < midis.length; i++) {
+      var m = Math.trunc(Number(midis[i]));
+      if (!activeNotes.has(m)) return false;
+      if (freshNotes.has(m)) fresh = true;
+    }
+    return fresh;
+  }
+
   function stepSatisfied(step) {
+    var exact = (step && step.midis) || null;
+    if (exact && exact.length) return stepSatisfiedExact(exact);
     var pcs = ((step && step.pcs) || []).map(mod12);
     if (!pcs.length) return false;
     var held = [];                    // distinct held keys landing in pcs
@@ -779,7 +830,7 @@
             renderProgress();
           }
         }
-      } else if (pc === mod12(t.pitchClasses[arpIndex])) {
+      } else if (walkStepMatches(t, midi)) {
         if (!holdDown(t)) {
           reportHoldMiss(t);         // refuse, keep progress (no reset)
           return;
