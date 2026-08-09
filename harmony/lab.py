@@ -774,11 +774,10 @@ def _gen_technique(spec: LabExperimentSpec) -> List[LabMeasure]:
     dtype = tp.note_value
     slots = TECHNIQUE_SLOTS[dtype]
     n_measures = len(tp.phrase)
-    # ``hand`` may be one hand for the whole phrase or per-measure (ticket
-    # 06): consecutive same-hand measures share a group label, so an
+    # ``hand`` is per-measure (ticket 06; the parse seam broadcasts a scalar
+    # spec value): consecutive same-hand measures share a group label, so an
     # RH-then-LH leaf reads as two measure groups.
-    hands = (tp.hand if isinstance(tp.hand, tuple)
-             else (tp.hand,) * n_measures)
+    hands = tp.hand
     coach = tp.coach.strip()
     # The Atlas has no harmonic-minor scale node: the key context is claimed
     # on the natural-minor node (the Score Soul precedent — raised degrees

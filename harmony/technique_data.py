@@ -75,11 +75,17 @@ ARPEGGIO_FINGERINGS: Dict[Tuple[str, str], Dict[str, Tuple[str, ...]]] = {
 }
 
 
-def arpeggio_run_fingering(tonic: str, mode: str, hand: str) -> Tuple[str, ...]:
-    """The 13 fingering labels of one up-and-down two-octave arpeggio cycle.
+def up_and_down(seq) -> tuple:
+    """One up-and-down pass over ``seq`` without restriking the peak.
 
-    Ascent (7 notes) then descent (6 more — the peak is not restruck); the
-    descent is the ascent reversed, which every standard chart shares.
+    The single source of the run's palindrome shape: the degree stream and
+    the fingering stream (whose descent is the ascent reversed, which every
+    standard chart shares) must stay in lockstep, so both are built here.
     """
-    up = ARPEGGIO_FINGERINGS[(tonic, mode)][hand]
-    return up + tuple(reversed(up))[1:]
+    seq = tuple(seq)
+    return seq + tuple(reversed(seq))[1:]
+
+
+def arpeggio_run_fingering(tonic: str, mode: str, hand: str) -> Tuple[str, ...]:
+    """The 13 fingering labels of one up-and-down two-octave arpeggio cycle."""
+    return up_and_down(ARPEGGIO_FINGERINGS[(tonic, mode)][hand])

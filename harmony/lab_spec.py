@@ -349,11 +349,13 @@ class TechniqueParams:
     #: simultaneity step.
     phrase: tuple = ()
     note_value: str = "quarter"       # "quarter" | "eighth" | "16th"
-    #: Which staff carries the moving line: "rh" (treble) | "lh" (bass) for
-    #: the whole phrase, or a per-MEASURE tuple of those (ticket 06) so one
-    #: leaf holds RH measures then LH measures — the ordered walk crosses
-    #: staves naturally since only one line sounds at a time.
-    hand: object = "rh"
+    #: Which staff carries each measure's moving line: one "rh" (treble) |
+    #: "lh" (bass) entry per MEASURE.  ``technique_params`` broadcasts a
+    #: scalar spec value over the phrase, so a mixed-hands leaf (ticket 06:
+    #: RH measures then LH measures) and a single-hand one share this shape —
+    #: the ordered walk crosses staves naturally since only one line sounds
+    #: at a time.
+    hand: tuple = ()
     #: Octave doubling (ticket 03): every step is written as the degree plus
     #: its octave (d, d+7) and graded as two distinct keys on one pitch
     #: class.  Scalar phrase entries only — a doubled dyad is refused.
@@ -447,13 +449,15 @@ def _mark_entry(x: object) -> object:
 
 
 def technique_params(p: Dict) -> TechniqueParams:
+    phrase = tuple(tuple(_phrase_entry(d) for d in m)
+                   for m in p.get("phrase", ()))
     hand = p.get("hand", "rh")
     return TechniqueParams(
-        phrase=tuple(tuple(_phrase_entry(d) for d in m)
-                     for m in p.get("phrase", ())),
+        phrase=phrase,
         note_value=str(p.get("note_value", "quarter")),
         hand=(tuple(str(h) for h in hand)
-              if isinstance(hand, (list, tuple)) else str(hand)),
+              if isinstance(hand, (list, tuple))
+              else (str(hand),) * len(phrase)),
         octaves=bool(p.get("octaves", False)),
         fingering=tuple(tuple(_mark_entry(f) for f in m)
                         for m in p.get("fingering", ())),
@@ -806,13 +810,13 @@ class LabExperimentSpec:
                                 f"1..{TECHNIQUE_MAX_DEGREE} span; keep "
                                 f"octave-doubled degrees <= "
                                 f"{TECHNIQUE_MAX_DEGREE - 7}")
-            hands = (tp.hand if isinstance(tp.hand, tuple)
-                     else (tp.hand,) * len(tp.phrase))
-            if len(hands) != len(tp.phrase):
+            if len(tp.hand) != len(tp.phrase):
+                # Only an explicit per-measure list can mismatch: a scalar
+                # spec value is broadcast over the phrase at the parse seam.
                 raise ValueError(
                     f"a per-measure hand list must name one hand per "
                     f"measure ({len(tp.phrase)}); got {len(tp.hand)}")
-            for h in hands:
+            for h in tp.hand:
                 if h not in ("rh", "lh"):
                     raise ValueError(
                         f"unknown hand {h!r}; 'rh' plays the line on the "

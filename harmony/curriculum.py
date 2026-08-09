@@ -86,6 +86,7 @@ from harmony.lab_spec import LabExperimentSpec, split_figured_pattern
 from harmony.technique_data import (
     ARPEGGIO_DEGREES_UP,
     arpeggio_run_fingering,
+    up_and_down,
 )
 from harmony.applied_ramp import (
     applied_progression,
@@ -1325,17 +1326,23 @@ def _technique_warmup_specs() -> List[LabExperimentSpec]:
 
 
 #: One up-and-down two-octave arpeggio pass: 7 degrees up, 6 back down (the
-#: peak is not restruck) = 13 notes.
-_ARP_RUN_CYCLE = tuple(ARPEGGIO_DEGREES_UP) + tuple(
-    reversed(ARPEGGIO_DEGREES_UP))[1:]
+#: peak is not restruck) = 13 notes.  Built by the same helper as the
+#: fingering cycle so the two streams can never desync.
+_ARP_RUN_CYCLE = up_and_down(ARPEGGIO_DEGREES_UP)
 
 #: The video's twist (piano-technique ticket 06): played twice in a row, the
 #: 13-note cycle makes the every-4th-note accent land on a different chord
 #: tone each time (13 mod 4 = 1).
 _ARP_RUN_STREAM_LEN = 2 * len(_ARP_RUN_CYCLE)          # 26 notes per hand
 
-_ARP_RUN_COACH = ("Accent the first of each four — the accent itself is "
-                  "not graded, the notes in order are.")
+#: The ticket's exact coach line; the (unwritten) graded contract — the notes
+#: in order — is the concept explanation's job.
+_ARP_RUN_COACH = "Accent the first of each four — the accent itself is not graded."
+
+#: Engine mode -> the mode word used in keys, titles and the fingering table.
+#: An explicit map so an unexpected mode fails closed (KeyError) instead of
+#: silently reading the minor fingering.
+_ARP_RUN_MODE_WORD = {"major": "major", "natural_minor": "minor"}
 
 
 def _chunk_slots(seq: List, slots: int) -> List[List]:
@@ -1352,7 +1359,7 @@ def _tech_arpeggio_run_spec(tonic: str, mode: str) -> LabExperimentSpec:
     4th note — so the accent (and the thumb) shifts through the chord tones
     instead of riding the root.
     """
-    word = "major" if mode == "major" else "minor"
+    word = _ARP_RUN_MODE_WORD[mode]
     stream = list(_ARP_RUN_CYCLE) * 2
     accents = ["accent" if i % 4 == 0 else ""
                for i in range(_ARP_RUN_STREAM_LEN)]
