@@ -13,5 +13,7 @@ Append one entry per session that modifies the vault. Never rewrite past entries
 
 - Defined `lab_refs`/`atlas_refs` semantics in `CLAUDE.md` (curriculum node ids verbatim; closed Atlas-surface vocabulary) and documented the validator as the acceptance gate.
 - Validator landed at `tools/validate_wiki.py` (repo tooling; reads the app, never modifies it) with tests in `tests/test_wiki_validator.py`.
-- Seed pages: `chords/Triad.md`, `scales-keys/Circle of Fifths.md` (cross-linked, real curriculum/Atlas ids); index tables + statistics updated.
+- Seed pages: `chords/Triad.md`, `scales-keys/Circle of Fifths.md` (cross-linked, real curriculum/Atlas ids) plus stubs `intervals/Third.md`, `scales-keys/Major Scale.md` for their Prerequisites links (stub policy); index tables + statistics updated.
+- Deliberate-failure demo: `Triad.md` briefly cited `lesson:triad_qualitees` — validator reported `[lab_ref] chords/Triad.md: 'lesson:triad_qualitees' is not a node id in the live curriculum tree` and exited 1; fixed back to `lesson:triad_qualities`.
+- Post-review hardening: duplicate name/alias detection, folder-qualified wikilinks rejected, nested-page rejection, template headings ignore code fences.
 - Lint: `python -m tools.validate_wiki` → OK.

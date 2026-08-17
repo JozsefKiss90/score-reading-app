@@ -87,7 +87,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 @dataclass(frozen=True)
 class Violation:
-    check: str      # frontmatter | wikilink | orphan | index | template | lab_ref | atlas_ref
+    check: str      # frontmatter | wikilink | duplicate | orphan | index | template | lab_ref | atlas_ref
     page: str       # vault-relative path (or "index.md")
     message: str
 
@@ -125,10 +125,15 @@ def _split_frontmatter(text: str):
     return data, text[match.end():]
 
 
+def _strip_code(text: str) -> str:
+    """``text`` with fenced blocks and inline code removed."""
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    return re.sub(r"`[^`\n]*`", "", text)
+
+
 def _extract_links(body: str) -> List[str]:
     """Wikilink targets in ``body``, code fences and inline code ignored."""
-    prose = re.sub(r"```.*?```", "", body, flags=re.S)
-    prose = re.sub(r"`[^`\n]*`", "", prose)
+    prose = _strip_code(body)
     targets = []
     for raw in _WIKILINK_RE.findall(prose):
         target = raw.split("|")[0].split("#")[0].split("^")[0].strip()
@@ -194,16 +199,16 @@ def _check_frontmatter(pages: List[_Page]) -> List[Violation]:
                     "frontmatter", p.rel,
                     f"invalid {key} '{value}' (allowed: {', '.join(enum)})"))
         domain = front.get("domain")
-        if domain in DOMAINS and domain != p.directory:
+        if len(p.rel.split("/")) != 2 or p.directory not in DOMAINS:
+            out.append(Violation(
+                "frontmatter", p.rel,
+                f"page must live directly inside one domain folder "
+                f"(found '{p.directory or '(vault root)'}')"))
+        elif domain in DOMAINS and domain != p.directory:
             out.append(Violation(
                 "frontmatter", p.rel,
                 f"domain '{domain}' does not match directory "
-                f"'{p.directory or '(vault root)'}'"))
-        elif p.directory not in DOMAINS:
-            out.append(Violation(
-                "frontmatter", p.rel,
-                f"page is not inside a domain folder "
-                f"(found '{p.directory or '(vault root)'}')"))
+                f"'{p.directory}'"))
         for key in ("created", "updated"):
             if key in front and not _is_date(front[key]):
                 out.append(Violation(
@@ -231,9 +236,31 @@ def _link_index(pages: List[_Page]) -> Dict[str, _Page]:
 
 
 def _resolve(target: str, links: Dict[str, _Page]) -> Optional[_Page]:
-    # Accept both "Page Name" and Obsidian's "folder/Page Name" forms.
-    return links.get(target.lower()) or links.get(
-        target.rsplit("/", 1)[-1].lower())
+    # Exact page-name/alias form only ("[[Page Name]]", per CLAUDE.md naming);
+    # folder-qualified links are rejected so a wrong-folder path can't pass.
+    return links.get(target.lower())
+
+
+def _check_duplicates(pages) -> List[Violation]:
+    """Canonical ownership: no two pages may share a name or alias."""
+    seen: Dict[str, tuple] = {}   # lower-cased name/alias -> (page, label)
+    out = []
+    for p in pages:
+        labels = [(p.name, "name")]
+        aliases = (p.frontmatter or {}).get("aliases")
+        if _is_flat_string_list(aliases):
+            labels += [(a, "alias") for a in aliases]
+        for value, kind in labels:
+            key = value.lower()
+            if key in seen and seen[key][0].rel != p.rel:
+                other, other_label = seen[key]
+                out.append(Violation(
+                    "duplicate", p.rel,
+                    f"{kind} '{value}' collides with {other_label} "
+                    f"of {other.rel}"))
+            else:
+                seen[key] = (p, f"{kind} '{value}'")
+    return out
 
 
 def _check_wikilinks(pages, links) -> List[Violation]:
@@ -274,7 +301,8 @@ def _check_template(pages) -> List[Violation]:
             continue
         if front.get("type") not in ("concept", "lesson-support"):
             continue
-        headings = re.findall(r"^##\s+(.+?)\s*$", p.body, flags=re.M)
+        headings = re.findall(r"^##\s+(.+?)\s*$", _strip_code(p.body),
+                              flags=re.M)
         positions = {h: i for i, h in enumerate(headings)}
         last = -1
         for section in TEMPLATE_SECTIONS:
@@ -316,32 +344,21 @@ def _check_index(vault: Path, pages, links) -> List[Violation]:
     return out
 
 
-def _check_lab_refs(pages, curriculum_ids: Set[str]) -> List[Violation]:
+def _check_refs(pages, key: str, vocabulary, check: str,
+                describe: str) -> List[Violation]:
+    """Report every ``key`` frontmatter ref not present in ``vocabulary``.
+
+    Mis-shaped ref lists are skipped here -- the frontmatter check already
+    reported them.
+    """
     out = []
     for p in pages:
-        refs = (p.frontmatter or {}).get("lab_refs")
-        if not _is_flat_string_list(refs):
-            continue  # shape already reported by the frontmatter check
-        for ref in refs:
-            if ref not in curriculum_ids:
-                out.append(Violation(
-                    "lab_ref", p.rel,
-                    f"'{ref}' is not a node id in the live curriculum tree"))
-    return out
-
-
-def _check_atlas_refs(pages, surfaces: Dict[str, str]) -> List[Violation]:
-    out = []
-    for p in pages:
-        refs = (p.frontmatter or {}).get("atlas_refs")
+        refs = (p.frontmatter or {}).get(key)
         if not _is_flat_string_list(refs):
             continue
         for ref in refs:
-            if ref not in surfaces:
-                out.append(Violation(
-                    "atlas_ref", p.rel,
-                    f"'{ref}' is not in the Atlas-surface vocabulary "
-                    f"(see tools/validate_wiki.py ATLAS_SURFACES)"))
+            if ref not in vocabulary:
+                out.append(Violation(check, p.rel, f"'{ref}' {describe}"))
     return out
 
 
@@ -357,7 +374,6 @@ def _load_curriculum_ids() -> Set[str]:
 
 def validate_vault(vault: Path,
                    curriculum_ids: Optional[Set[str]] = None,
-                   atlas_surfaces: Optional[Dict[str, str]] = None,
                    ) -> List[Violation]:
     """Run every lint check against ``vault`` and return the violations.
 
@@ -367,9 +383,9 @@ def validate_vault(vault: Path,
     vault = Path(vault)
     pages = _load_pages(vault)
     links = _link_index(pages)
-    surfaces = ATLAS_SURFACES if atlas_surfaces is None else atlas_surfaces
 
     violations = _check_frontmatter(pages)
+    violations += _check_duplicates(pages)
     violations += _check_wikilinks(pages, links)
     violations += _check_orphans(pages, links)
     violations += _check_template(pages)
@@ -380,8 +396,13 @@ def validate_vault(vault: Path,
             curriculum_ids = _load_curriculum_ids()
         else:
             curriculum_ids = set()
-    violations += _check_lab_refs(pages, curriculum_ids)
-    violations += _check_atlas_refs(pages, surfaces)
+    violations += _check_refs(
+        pages, "lab_refs", curriculum_ids, "lab_ref",
+        "is not a node id in the live curriculum tree")
+    violations += _check_refs(
+        pages, "atlas_refs", ATLAS_SURFACES, "atlas_ref",
+        "is not in the Atlas-surface vocabulary "
+        "(see tools/validate_wiki.py ATLAS_SURFACES)")
     violations.sort(key=lambda v: (v.check, v.page, v.message))
     return violations
 

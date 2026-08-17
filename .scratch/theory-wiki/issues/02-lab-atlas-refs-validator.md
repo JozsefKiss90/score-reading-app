@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Vault scaffold + governance schema.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 Scope:
 
@@ -14,8 +14,26 @@ Scope:
 - One or two seed pages (they may be stubs later superseded) exercising every check, including a deliberate failure demonstrated and then fixed.
 - Document how to run the validator in `wiki/CLAUDE.md` so every content ticket uses it as its acceptance gate.
 
-- [ ] `lab_refs`/`atlas_refs` semantics documented in CLAUDE.md with examples
-- [ ] Validator verifies lab_refs against the real curriculum tree (not a hardcoded id list)
-- [ ] Validator catches broken wikilinks, bad frontmatter, domain/directory mismatch, orphans, and index drift
-- [ ] Seed page(s) pass; an intentionally broken ref is shown to fail
-- [ ] No file under the Lab/Atlas/trainer/curriculum code is modified
+- [x] `lab_refs`/`atlas_refs` semantics documented in CLAUDE.md with examples
+- [x] Validator verifies lab_refs against the real curriculum tree (not a hardcoded id list)
+- [x] Validator catches broken wikilinks, bad frontmatter, domain/directory mismatch, orphans, and index drift
+- [x] Seed page(s) pass; an intentionally broken ref is shown to fail
+- [x] No file under the Lab/Atlas/trainer/curriculum code is modified
+
+## Comments
+
+2026-08-17 — Implemented in commits 85fdf21 + follow-up. Validator at
+`tools/validate_wiki.py` (`python -m tools.validate_wiki`, `--list-refs` for id
+discovery), 31 tests in `tests/test_wiki_validator.py` including a
+real-vault-clean gate. `lab_refs` = any live curriculum node id (cat:/lesson:/
+group:/ex:, checked against `get_curriculum().walk()`); `atlas_refs` = closed
+13-id surface vocabulary (9 Atlas parts + circle:fifths + 3 network launchers;
+Parts VII/VIII deliberately excluded, documented in CLAUDE.md). Seed pages
+Triad + Circle of Fifths (active) with Third + Major Scale stubs for their
+Prerequisites links. Deliberate-failure demo (`lesson:triad_qualitees` → exit 1
+→ fixed) recorded in wiki/log.md. Two-axis review findings addressed:
+duplicate-name/alias detection, folder-qualified links rejected, nested pages
+rejected, template headings ignore code fences, unused injector param removed,
+ref checks deduplicated, seed-page outbound-link targets met via the stubs.
+Beyond scope, kept deliberately: template-completeness check (mechanises
+CLAUDE.md lint check 4) and `--list-refs`.

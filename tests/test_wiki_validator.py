@@ -200,6 +200,41 @@ def test_wikilinks_inside_code_fences_ignored(tmp_path):
     assert not [v for v in run(vault) if v.check == "wikilink"]
 
 
+def test_folder_qualified_wikilink_is_rejected(tmp_path):
+    pages = two_linked_pages()
+    pages["chords/Triad.md"] = page(
+        fm(), "Triad", "See [[Chord Quality]] and [[chords/Chord Quality]].\n")
+    vault = make_vault(tmp_path, pages)
+    violations = [v for v in run(vault) if v.check == "wikilink"]
+    assert [("chords/Chord Quality" in v.message) for v in violations] == [True]
+
+
+def test_duplicate_page_name_across_domains_fails(tmp_path):
+    pages = two_linked_pages()
+    pages["harmony/Triad.md"] = page(
+        fm(domain="harmony"), "Triad", "See [[Chord Quality]].\n")
+    vault = make_vault(tmp_path, pages)
+    assert any(v.check == "duplicate" for v in run(vault))
+
+
+def test_alias_colliding_with_page_name_fails(tmp_path):
+    pages = two_linked_pages()
+    pages["chords/Triad.md"] = page(
+        fm(aliases='["Chord Quality"]'), "Triad", "See [[Chord Quality]].\n")
+    vault = make_vault(tmp_path, pages)
+    assert any(v.check == "duplicate" and "Chord Quality" in v.message
+               for v in run(vault))
+
+
+def test_page_nested_below_domain_folder_fails(tmp_path):
+    pages = two_linked_pages()
+    pages["chords/deep/Nested.md"] = page(
+        fm(), "Nested", "See [[Triad]].\n")
+    vault = make_vault(tmp_path, pages)
+    assert any(v.check == "frontmatter" and "chords/deep/Nested.md" == v.page
+               for v in run(vault))
+
+
 # ---------------------------------------------------------------------------
 # Orphan checks
 # ---------------------------------------------------------------------------
@@ -253,6 +288,18 @@ def test_in_the_atlas_section_is_omittable(tmp_path):
         fm() + "# Triad\n\nSee [[Chord Quality]].\n" + body)
     vault = make_vault(tmp_path, pages)
     assert not [v for v in run(vault) if v.check == "template"]
+
+
+def test_template_heading_inside_code_fence_does_not_count(tmp_path):
+    pages = two_linked_pages()
+    body = ALL_SECTIONS.replace(
+        "## Common confusions\nx\n",
+        "```\n## Common confusions\n```\n")
+    pages["chords/Triad.md"] = (
+        fm() + "# Triad\n\nSee [[Chord Quality]].\n" + body)
+    vault = make_vault(tmp_path, pages)
+    violations = [v for v in run(vault) if v.check == "template"]
+    assert violations and "Common confusions" in violations[0].message
 
 
 def test_stub_glossary_and_hub_pages_skip_template_check(tmp_path):

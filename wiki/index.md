@@ -15,14 +15,16 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
+| [[Third]] | *(stub)* The chord-building interval; major and minor sizes. |
 
-*(no pages yet — ticket 04)*
+*(more pages with ticket 04)*
 
 ## Scales & Keys
 
 | Page | Summary |
 |------|---------|
 | [[Circle of Fifths]] | The wheel of key relationships: one step clockwise = up a fifth = one more sharp. |
+| [[Major Scale]] | *(stub)* The W W H W W W H pattern every major key repeats. |
 
 *(more pages with ticket 05)*
 
@@ -85,6 +87,6 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 ## Statistics
 
-- **Total pages**: 2 canonical + 3 structural (index, log, CLAUDE.md)
-- **Domains populated**: 2 of 11
+- **Total pages**: 4 canonical (2 active, 2 stubs) + 3 structural (index, log, CLAUDE.md)
+- **Domains populated**: 3 of 11
 - **Initial scaffold date**: 2026-08-17

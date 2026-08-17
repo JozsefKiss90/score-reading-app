@@ -160,7 +160,7 @@ Each entry names a *place in the app* the student can open — an Atlas part, th
 | `network:functional` | Functional Journey launcher (`run_functional_network_demo.py`) |
 | `network:score-soul` | Score Soul Graph launcher (`run_score_harmonic_network_demo.py`) |
 
-Fine-grained Atlas *node* ids (`scale:G:major`, `degree:major:V`, …) are **not** valid `atlas_refs` — the wiki points at surfaces, not ontology nodes. Extending the vocabulary means editing `ATLAS_SURFACES` and this table together (validator tooling is the one sanctioned edit outside the vault).
+Fine-grained Atlas *node* ids (`scale:G:major`, `degree:major:V`, …) are **not** valid `atlas_refs` — the wiki points at surfaces, not ontology nodes. Two Atlas parts are deliberately absent: Part VII (synchronisation) is a behaviour, not a destination a student can open, and Part VIII (real-score analysis) is reserved and unimplemented — it joins the vocabulary when it ships as an openable view. Extending the vocabulary means editing `ATLAS_SURFACES` and this table together (validator tooling is the one sanctioned edit outside the vault).
 
 ### Discovering valid ids
 

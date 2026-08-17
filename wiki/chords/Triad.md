@@ -22,7 +22,7 @@ Almost everything the Lab drills â€” degrees, functions, cadences, inversions â€
 
 ## Prerequisites
 
-*(The interval pages arrive with ticket 04. Until then, this page assumes you can name the notes of a major scale and count semitones.)*
+Know what a [[Third]] is and how the [[Major Scale]] names its notes.
 
 ## Explanation
 

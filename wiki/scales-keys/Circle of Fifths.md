@@ -22,7 +22,7 @@ The circle is the map of key relationships: it tells you which keys are close (e
 
 ## Prerequisites
 
-*(The scale and key-signature pages arrive with ticket 05. Until then, this page assumes you know what a major scale and a key signature are.)*
+Know the [[Major Scale]] and what a key signature is. *(Key-signature and relative-minor pages arrive with ticket 05.)*
 
 ## Explanation
 
