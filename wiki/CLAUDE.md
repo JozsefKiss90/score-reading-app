@@ -107,8 +107,8 @@ status: active         # active | stub | draft
 created: 2026-08-17    # set once, never modified
 updated: 2026-08-17    # refreshed on substantive content edits only
 aliases: []            # optional; alternative names, flat string array
-lab_refs: []           # curriculum node ids (semantics: ticket 02)
-atlas_refs: []         # Atlas surface ids   (semantics: ticket 02)
+lab_refs: []           # curriculum node ids, verbatim (see "Lab and Atlas references")
+atlas_refs: []         # Atlas surface ids from the closed vocabulary (same section)
 ---
 ```
 
@@ -124,6 +124,67 @@ atlas_refs: []         # Atlas surface ids   (semantics: ticket 02)
 2. `created` is set at page creation and never changes; `updated` changes only on substantive content edits (not link additions, typo fixes, or frontmatter corrections).
 3. Enum values are append-only: never rename or remove one; additions require updating this file first.
 4. `lab_refs` / `atlas_refs` hold **ids only**, verbatim from the app. Prose descriptions of drills belong in the "In the Lab" / "In the Atlas" body sections.
+
+## Lab and Atlas references
+
+`lab_refs` and `atlas_refs` are how a page cites the app. Ids live in frontmatter **only**; body prose uses human phrasing ("practise this in the Lab under *Triad Qualities*", "see the quality matrix in the Atlas") and never embeds an id.
+
+### `lab_refs` — curriculum node ids
+
+Each entry is a node id taken **verbatim** from the live curriculum tree built by `harmony.curriculum.get_curriculum()`. Any node kind is citable:
+
+- `cat:<slug>` — a category (e.g. `cat:chords`, `cat:scales`, `cat:cadences`)
+- `lesson:<slug>` — a lesson (e.g. `lesson:triad_qualities`, `lesson:circle_overview`)
+- `group:<slug>` — an exercise group (e.g. `group:triads_major`)
+- `ex:<slug>` — a single exercise leaf (e.g. `ex:drill_major_fullkey_block_C`)
+
+Cite the **most specific node that matches the page's scope** — a concept page usually cites a category or lesson, not thirty leaves. The validator checks every id against the real tree, so a typo or a renamed node fails the build.
+
+### `atlas_refs` — Atlas surface ids
+
+Each entry names a *place in the app* the student can open — an Atlas part, the Circle of Fifths, or a network launcher — from the closed vocabulary defined in `tools/validate_wiki.py` (`ATLAS_SURFACES`):
+
+| Id | Surface |
+|----|---------|
+| `atlas:global-map` | Atlas Part I — Global Diatonic Map |
+| `atlas:transposition-matrix` | Atlas Part II — Transposition Matrix |
+| `atlas:quality-matrix` | Atlas Part III — Quality Matrix |
+| `atlas:function-map` | Atlas Part IV — Function Map (T/PD/D) |
+| `atlas:interval-layer-map` | Atlas Part V — Interval-Layer Map |
+| `atlas:cadence-map` | Atlas Part VI — Cadence Map |
+| `atlas:progress-map` | Atlas Part IX — Progress Map |
+| `atlas:graph` | Atlas Part X — Graph view |
+| `atlas:learning-path` | Atlas Part XI — Learning Path |
+| `circle:fifths` | Circle of Fifths view |
+| `network:harmonic` | Tonal Graph launcher (`run_harmonic_network_demo.py`) |
+| `network:functional` | Functional Journey launcher (`run_functional_network_demo.py`) |
+| `network:score-soul` | Score Soul Graph launcher (`run_score_harmonic_network_demo.py`) |
+
+Fine-grained Atlas *node* ids (`scale:G:major`, `degree:major:V`, …) are **not** valid `atlas_refs` — the wiki points at surfaces, not ontology nodes. Extending the vocabulary means editing `ATLAS_SURFACES` and this table together (validator tooling is the one sanctioned edit outside the vault).
+
+### Discovering valid ids
+
+```
+python -m tools.validate_wiki --list-refs
+```
+
+prints the full `atlas_refs` vocabulary and every live curriculum node id.
+
+### Example
+
+```yaml
+---
+type: concept
+domain: chords
+level: core
+status: active
+created: 2026-08-17
+updated: 2026-08-17
+aliases: ["Triads"]
+lab_refs: ["cat:chords", "lesson:triad_qualities"]
+atlas_refs: ["atlas:global-map", "atlas:quality-matrix"]
+---
+```
 
 ## Stub policy (no dangling links)
 
@@ -158,7 +219,7 @@ Targets (for `status: active` pages): at least 2 outbound and, once the page's d
 
 ## Lint checklist
 
-Run before ending any session that touched the vault (mechanised by the ticket-02 validator; until then, check by hand). "Page" below means every `.md` file except the structural files `index.md`, `log.md`, and `CLAUDE.md`, which are exempt from checks 1–5:
+Run before ending any session that touched the vault (checks 1–6 are mechanised by the validator — see the Validator section; check 7 stays manual). "Page" below means every `.md` file except the structural files `index.md`, `log.md`, and `CLAUDE.md`, which are exempt from checks 1–5:
 
 1. **Broken wikilinks** — every `[[link]]` resolves to a page or alias (all pages, including stubs and drafts).
 2. **Orphans** — no `active` page with zero inbound links (hub pages excepted).
@@ -170,4 +231,14 @@ Run before ending any session that touched the vault (mechanised by the ticket-0
 
 ## Validator
 
-The wiki validator (ticket 02) mechanises the lint checklist and verifies `lab_refs` against the live curriculum tree. Once it lands, this section documents how to run it, and a green validator run is the acceptance gate for every content change.
+The wiki validator lives at `tools/validate_wiki.py` (repo tooling, outside the vault; it only *reads* the app). Run it from the repo root:
+
+```
+python -m tools.validate_wiki               # validate wiki/ (exit 0 = clean, 1 = violations)
+python -m tools.validate_wiki --list-refs   # print all valid lab_refs / atlas_refs ids
+python -m tools.validate_wiki --vault PATH  # validate a different vault
+```
+
+It mechanises lint checks 1–6: frontmatter schema (enums, `domain`↔directory, flat YAML, no unknown keys), broken wikilinks (alias-aware), orphans (`active` non-hub pages with zero inbound links), template completeness for `active` canonical pages ("In the Atlas" is the one omittable section), `lab_refs` against the **live** curriculum tree, `atlas_refs` against the surface vocabulary above, and `index.md` sync (every page listed, no ghosts).
+
+**A green validator run is the acceptance gate for every content ticket.** Its own tests live in `tests/test_wiki_validator.py` (which also asserts the shipped vault is clean).

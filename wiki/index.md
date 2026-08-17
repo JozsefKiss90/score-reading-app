@@ -22,15 +22,17 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
+| [[Circle of Fifths]] | The wheel of key relationships: one step clockwise = up a fifth = one more sharp. |
 
-*(no pages yet — ticket 05)*
+*(more pages with ticket 05)*
 
 ## Chords
 
 | Page | Summary |
 |------|---------|
+| [[Triad]] | Three notes stacked in thirds; the four qualities and the diatonic pattern. |
 
-*(no pages yet — ticket 06)*
+*(more pages with ticket 06)*
 
 ## Harmony
 
@@ -83,6 +85,6 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 ## Statistics
 
-- **Total pages**: 0 canonical + 3 structural (index, log, CLAUDE.md)
-- **Domains populated**: 0 of 11
+- **Total pages**: 2 canonical + 3 structural (index, log, CLAUDE.md)
+- **Domains populated**: 2 of 11
 - **Initial scaffold date**: 2026-08-17
