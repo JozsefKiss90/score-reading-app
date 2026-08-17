@@ -137,6 +137,7 @@ Each entry is a node id taken **verbatim** from the live curriculum tree built b
 - `lesson:<slug>` — a lesson (e.g. `lesson:triad_qualities`, `lesson:circle_overview`)
 - `group:<slug>` — an exercise group (e.g. `group:triads_major`)
 - `ex:<slug>` — a single exercise leaf (e.g. `ex:drill_major_fullkey_block_C`)
+- `cur` — the tree root, reserved for the rare page whose concept is exercised by essentially every drill (grand-staff reading, pitch-class grading). Cite it once, on the page that owns the app-wide claim — sub-concepts of that page leave `lab_refs` empty rather than repeating it.
 
 Cite the **most specific node that matches the page's scope** — a concept page usually cites a category or lesson, not thirty leaves. The validator checks every id against the real tree, so a typo or a renamed node fails the build.
 
