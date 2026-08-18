@@ -50,4 +50,4 @@ The Global Diatonic Map shows the seven diatonic triads of the reference key wit
 
 ## Related Concepts
 
-The [[Circle of Fifths]] orders the keys whose scales generate these diatonic triads. Interval, inversion, and Roman-numeral pages arrive with later tickets.
+The [[Circle of Fifths]] orders the keys whose scales generate these diatonic triads. The [[Interval]] pages take the qualities apart — the stacked thirds and the [[Perfect Fifth]] frame — and [[Consonance and Dissonance]] explains why some qualities can rest while others must move. Roman-numeral and chord-inversion pages arrive with ticket 06.

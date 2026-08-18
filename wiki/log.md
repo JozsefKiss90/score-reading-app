@@ -26,3 +26,12 @@ Append one entry per session that modifies the vault. Never rewrite past entries
 - `index.md`: fundamentals table filled, stub rows added, statistics updated (20 canonical pages, 4 domains populated).
 - Two-axis review fixes (same session): corrected the octave staff-span fact (seven positions, not four); removed forward jargon (leading tone / tonic / seventh degree phrasing) from Accidental, Semitone, Whole Tone, Grand Staff; linked *triad* on first mention in Pitch Class; fixed Semitone prerequisite order; made Ledger Line the sole owner of middle C's placement (Clef and Grand Staff now defer); dropped the speculative `Meter` alias; tightened two Lab-facing claims (4/4 is the only rendered meter; circle entry opens a view, it doesn't "walk" you). Documented the `cur` root-citation convention in `CLAUDE.md`'s `lab_refs` section.
 - Lint: `python -m tools.validate_wiki` → OK.
+
+## 2026-08-18 intervals | Ticket 04 — intervals layer
+
+- Expanded the two ticket-03 stubs to `active` (`Interval`, `Third`) and added four new `active` pages in `intervals/`: `Perfect Fifth`, `Tritone`, `Interval Inversion`, `Consonance and Dissonance`. All `level: core`, fully cross-linked to the fundamentals strand (Semitone, Whole Tone, Octave, Staff, Pitch Class, Enharmonic Equivalence) and forward to `Triad`.
+- Lab/Atlas refs: `cat:intervals` + `lesson:interval_layers` on Interval (the category's one lesson is theory-only — 0 exercise leaves — so "In the Lab" prose routes the actual drilling to the triad-quality drills); `lesson:interval_layers` + `lesson:triad_qualities` on Third; `lesson:triad_qualities` on Tritone and Consonance and Dissonance; `atlas:interval-layer-map` on the layer pages; `circle:fifths` on Perfect Fifth.
+- Stub-policy stubs for the Tritone page's forward links: `sevenths/Dominant Seventh Chord.md` (ticket 09), `chromaticism/Applied Dominant.md` (ticket 10).
+- `Triad.md` Related Concepts updated to link the now-real interval pages (link-only edit; `updated` unchanged).
+- `index.md`: intervals table filled (6 rows), sevenths/chromaticism stub rows added, statistics updated (26 canonical: 22 active, 4 stubs; 6 domains populated).
+- Lint: `python -m tools.validate_wiki` → OK (26 pages).

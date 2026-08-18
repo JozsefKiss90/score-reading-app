@@ -1,6 +1,6 @@
 # Music Theory Lexicon — Index
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 
 Every page in the vault, grouped by domain, one line each. Update this file in the same session that adds or renames a page (see `CLAUDE.md`).
 
@@ -27,10 +27,12 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
-| [[Interval]] | *(stub)* Distance between two notes: letter-count number plus semitone quality. |
-| [[Third]] | *(stub)* The chord-building interval; major and minor sizes. |
-
-*(more pages with ticket 04)*
+| [[Consonance and Dissonance]] | Settled vs. tense intervals — why chords rest or must move. |
+| [[Interval]] | Distance between two notes: letter-count number plus semitone quality. |
+| [[Interval Inversion]] | Flip around the octave: numbers pair to nine, perfect stays perfect. |
+| [[Perfect Fifth]] | Seven semitones; the triad's frame and the circle's step. |
+| [[Third]] | The chord-building interval; major (4) and minor (3) semitone sizes. |
+| [[Tritone]] | Three whole tones, the scale's one dissonant fourth/fifth; engine of dominant tension. |
 
 ## Scales & Keys
 
@@ -75,15 +77,17 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
+| [[Dominant Seventh Chord]] | *(stub)* V7 — the dominant triad plus a seventh, with the tritone inside. |
 
-*(no pages yet — ticket 09)*
+*(more pages with ticket 09)*
 
 ## Chromaticism
 
 | Page | Summary |
 |------|---------|
+| [[Applied Dominant]] | *(stub)* A borrowed dominant aiming its tritone at a non-tonic chord. |
 
-*(no pages yet — ticket 10)*
+*(more pages with ticket 10)*
 
 ## Musicianship
 
@@ -101,6 +105,6 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 ## Statistics
 
-- **Total pages**: 20 canonical (16 active, 4 stubs) + 3 structural (index, log, CLAUDE.md)
-- **Domains populated**: 4 of 11
+- **Total pages**: 26 canonical (22 active, 4 stubs) + 3 structural (index, log, CLAUDE.md)
+- **Domains populated**: 6 of 11
 - **Initial scaffold date**: 2026-08-17

@@ -4,11 +4,11 @@
 
 **Blocked by:** 03 — Fundamentals & notation.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 Scope — canonical pages in `wiki/intervals/`: interval number & quality, the third (M3/m3), the perfect fifth, the tritone (flagged as the engine of dominant tension, forward-linking to sevenths/applied domains), interval inversion, consonance vs dissonance at the depth the curriculum uses. Reference `cat:intervals` drills and any Atlas surface that visualises intervals.
 
-- [ ] Interval pages exist, template-complete, cross-linked to fundamentals
-- [ ] `cat:intervals` referenced from the relevant pages; ids validate
-- [ ] Tritone page forward-links to the (future) sevenths/chromaticism domains without breaking the validator (stub policy per CLAUDE.md)
-- [ ] `index.md` and `log.md` updated; validator passes
+- [x] Interval pages exist, template-complete, cross-linked to fundamentals (6 pages: Interval, Third, Perfect Fifth, Tritone, Interval Inversion, Consonance and Dissonance)
+- [x] `cat:intervals` referenced from the relevant pages; ids validate (`cat:intervals` on the hub Interval page per the most-specific-node rule; the other pages cite `lesson:interval_layers` / `lesson:triad_qualities` — the category's one lesson has 0 exercise leaves, so body prose routes the drilling to the triad-quality drills honestly)
+- [x] Tritone page forward-links to the (future) sevenths/chromaticism domains without breaking the validator (stubs: `sevenths/Dominant Seventh Chord.md`, `chromaticism/Applied Dominant.md`)
+- [x] `index.md` and `log.md` updated; validator passes (OK, 26 pages)
