@@ -35,3 +35,15 @@ Append one entry per session that modifies the vault. Never rewrite past entries
 - `Triad.md` Related Concepts updated to link the now-real interval pages (link-only edit; `updated` unchanged).
 - `index.md`: intervals table filled (6 rows), sevenths/chromaticism stub rows added, statistics updated (26 canonical: 22 active, 4 stubs; 6 domains populated).
 - Lint: `python -m tools.validate_wiki` → OK (26 pages).
+
+## 2026-08-19 scales-keys | Ticket 05 — scales, keys & the circle of fifths
+
+- Expanded the two earlier stubs to `active` (`Major Scale`, `Key Signature`) and added five new `active` pages in `scales-keys/`: `Key`, `Scale Degree`, `Natural Minor Scale`, `Relative and Parallel Keys`, `Transposition`. All `level: core`, cross-linked to fundamentals (Semitone, Whole Tone, Note Names, Accidental, Octave, Clef, Staff) and intervals (Interval, Perfect Fifth).
+- `Leading Tone` created as a `scales-keys` stub — canonical home chosen per `CLAUDE.md`'s own ownership example (first needed pedagogically here, when Scale Degree names 7̂); ticket 08 expands it in place.
+- Scale Degree page names all seven degrees (tonic → leading tone, subtonic in natural minor) and maps them to the Lab's degree drills (fix one degree, transpose through 12 keys).
+- Lab/Atlas refs: `cat:scales` + `lesson:scales_major` + `atlas:global-map` on Major Scale; `cat:scales` on Key; `lesson:circle_overview` + `circle:fifths` on Key Signature; `cat:degrees` + `lesson:degrees_major` + `lesson:degrees_minor` + `atlas:global-map` on Scale Degree; `lesson:scales_minor` + `lesson:degrees_minor` on Natural Minor Scale; `lesson:circle_overview` + `lesson:scales_minor` + `circle:fifths` on Relative and Parallel Keys; `cat:degrees` + `lesson:motive_transposition` + `atlas:transposition-matrix` on Transposition.
+- Stub-policy stubs for forward links: `minor-modes/Harmonic Minor Scale.md`, `minor-modes/Melodic Minor Scale.md` (ticket 08), `musicianship/Motive.md` (ticket 11).
+- `Circle of Fifths.md`: Prerequisites and Related Concepts now link the real Key Signature / Relative and Parallel Keys / Transposition / Scale Degree pages; ticket-05 placeholder notes removed (link-only edits; `updated` unchanged).
+- `index.md`: scales-keys table filled (9 rows), minor-modes/musicianship stub rows added, statistics updated (35 canonical: 29 active, 6 stubs; 8 domains populated).
+- Two-axis review fixes (same session): linked Grand Staff / Ledger Line / Accidental at first body mention in Key Signature and de-linked later mentions; de-linked repeat body links (Key in Major Scale, Relative and Parallel Keys in Natural Minor Scale, Transposition in Key); glossed *diatonic* inline at first use in Major Scale; added `lesson:degrees_minor` to Natural Minor Scale (its "In the Lab" describes the minor degree drills); trimmed Scale Degree's confusion 4 to defer the subtonic detail to Natural Minor Scale; dropped speculative aliases (`Tonal Centre` on Key, `Minor Scale` on Natural Minor Scale); simplified Circle of Fifths' Related Concepts to pure links so the edit stays link-only.
+- Lint: `python -m tools.validate_wiki` → OK (35 pages).

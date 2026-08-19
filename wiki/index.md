@@ -1,6 +1,6 @@
 # Music Theory Lexicon — Index
 
-Last updated: 2026-08-18
+Last updated: 2026-08-19
 
 Every page in the vault, grouped by domain, one line each. Update this file in the same session that adds or renames a page (see `CLAUDE.md`).
 
@@ -39,10 +39,14 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 | Page | Summary |
 |------|---------|
 | [[Circle of Fifths]] | The wheel of key relationships: one step clockwise = up a fifth = one more sharp. |
-| [[Key Signature]] | *(stub)* The standing sharps/flats after the clef that spell a key. |
-| [[Major Scale]] | *(stub)* The W W H W W W H pattern every major key repeats. |
-
-*(more pages with ticket 05)*
+| [[Key]] | A home note plus a scale — the gravity every drill is heard against. |
+| [[Key Signature]] | The standing sharps/flats after the clef; a key's spelling, written once. |
+| [[Leading Tone]] | *(stub)* The 7th degree a semitone under tonic — the note that leads home. |
+| [[Major Scale]] | The W W H W W W H pattern every major key repeats. |
+| [[Natural Minor Scale]] | W H W W H W W — major's darker twin, with a subtonic where the leading tone was. |
+| [[Relative and Parallel Keys]] | Same notes vs. same tonic: the two ways major and minor are siblings. |
+| [[Scale Degree]] | Positions 1̂–7̂ and their names, tonic to leading tone — the app's key-proof vocabulary. |
+| [[Transposition]] | Move the tonic, keep the shape: one pattern learned, twelve keys owned. |
 
 ## Chords
 
@@ -70,8 +74,10 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
+| [[Harmonic Minor Scale]] | *(stub)* Natural minor with 7̂ raised — a real leading tone and a major dominant. |
+| [[Melodic Minor Scale]] | *(stub)* Raised 6̂ and 7̂ ascending, natural minor descending. |
 
-*(no pages yet — ticket 08)*
+*(more pages with ticket 08)*
 
 ## Sevenths
 
@@ -93,8 +99,9 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
+| [[Motive]] | *(stub)* A short degree-and-rhythm cell that survives transposition. |
 
-*(no pages yet — ticket 11)*
+*(more pages with ticket 11)*
 
 ## Glossary
 
@@ -105,6 +112,6 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 ## Statistics
 
-- **Total pages**: 26 canonical (22 active, 4 stubs) + 3 structural (index, log, CLAUDE.md)
-- **Domains populated**: 6 of 11
+- **Total pages**: 35 canonical (29 active, 6 stubs) + 3 structural (index, log, CLAUDE.md)
+- **Domains populated**: 8 of 11
 - **Initial scaffold date**: 2026-08-17

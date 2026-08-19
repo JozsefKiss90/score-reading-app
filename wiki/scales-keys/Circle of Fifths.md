@@ -22,7 +22,7 @@ The circle is the map of key relationships: it tells you which keys are close (e
 
 ## Prerequisites
 
-Know the [[Major Scale]] and what a key signature is. *(Key-signature and relative-minor pages arrive with ticket 05.)*
+Know the [[Major Scale]] and what a [[Key Signature]] is.
 
 ## Explanation
 
@@ -33,7 +33,7 @@ Two practical readings of the circle:
 - **Distance = relatedness.** C and G differ by one accidental; C and F♯ differ by six. A chord progression or modulation between neighbours sounds smooth because the scales overlap almost entirely.
 - **Position = key signature.** The number of steps from C *is* the number of sharps or flats — no memorising twelve signatures separately.
 
-The same wheel carries the relative minors on its inner ring (A minor inside C major), since a relative pair shares one signature.
+The same wheel carries the relative minors on its inner ring (A minor inside C major), since a relative pair shares one signature — see [[Relative and Parallel Keys]].
 
 ## In the Lab
 
@@ -50,4 +50,4 @@ The Circle of Fifths view draws the wheel itself; the Transposition Matrix shows
 
 ## Related Concepts
 
-A [[Triad]] built on each scale degree gives every key on the circle the same quality pattern. Key-signature, relative-minor, and transposition pages arrive with ticket 05.
+A [[Triad]] built on each [[Scale Degree]] gives every key on the circle the same quality pattern; see also [[Key Signature]], [[Relative and Parallel Keys]], and [[Transposition]].
