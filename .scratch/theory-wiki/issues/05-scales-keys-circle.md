@@ -4,11 +4,11 @@
 
 **Blocked by:** 03 — Fundamentals & notation. (Can run in parallel with 04.)
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 Scope — canonical pages in `wiki/scales-keys/`: the major scale, whole/half-step pattern, key & key signature, scale degrees and their names, the natural minor scale, relative vs parallel keys, the circle of fifths, transposition-as-key-change (foundation for the motive drills). Reference `cat:scales`, `cat:degrees`, `cat:circle`, and the Atlas Circle of Fifths view. Harmonic/melodic minor are explicitly deferred to ticket 08 — these pages link forward to them.
 
-- [ ] Scale/key pages exist, template-complete, cross-linked to fundamentals (and intervals where present)
-- [ ] `cat:scales`, `cat:degrees`, `cat:circle` and the Atlas circle surface referenced; ids validate
-- [ ] Scale-degree page names all seven degrees and maps them to the Lab's degree drills
-- [ ] `index.md` and `log.md` updated; validator passes
+- [x] Scale/key pages exist, template-complete, cross-linked to fundamentals (and intervals where present)
+- [x] `cat:scales`, `cat:degrees`, `cat:circle` and the Atlas circle surface referenced; ids validate
+- [x] Scale-degree page names all seven degrees and maps them to the Lab's degree drills
+- [x] `index.md` and `log.md` updated; validator passes
