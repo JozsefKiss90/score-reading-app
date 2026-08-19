@@ -32,7 +32,7 @@ The [[Note Names]] loop, the [[Semitone]] and the [[Whole Tone]] as the two step
 
 **Positions have names.** Within the scale, each note is a numbered position — first, second, third — called a [[Scale Degree]], and the degrees carry names (tonic, dominant, and so on) that stay meaningful in every key. The seventh degree, a semitone below the tonic, is the [[Leading Tone]] — the note that gives the scale its pull home.
 
-**The pattern generates the harmony.** Build a [[Triad]] on each degree and the qualities come out in a fixed order — major, minor, minor, major, major, minor, diminished — identical in every major key. The scale is not just a melody-ladder; it is the source of the key's whole **diatonic** chord set (*diatonic* = built only from the scale's own seven notes), which is what the drills exercise.
+**The pattern generates the harmony.** Build a [[Triad]] on each degree and the qualities come out in a fixed order — major, minor, minor, major, major, minor, diminished — identical in every major key. The scale is not just a melody-ladder; it is the source of the key's whole **diatonic** chord set (*diatonic* = built only from the scale's own seven notes), laid out in full at [[Diatonic Triads]] and exercised by the drills.
 
 Twelve starting notes give twelve major keys, and the [[Circle of Fifths]] arranges them by how many accidentals the pattern forces.
 

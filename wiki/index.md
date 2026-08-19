@@ -52,23 +52,28 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 | Page | Summary |
 |------|---------|
-| [[Triad]] | Three notes stacked in thirds; the four qualities and the diatonic pattern. |
-
-*(more pages with ticket 06)*
+| [[Chord Inversion]] | Same chord tones, different bass: root position, first, second. |
+| [[Diatonic Triads]] | The seven native chords of a key and their fixed quality pattern. |
+| [[Figured Bass]] | 5/3, 6, 6/4 — intervals above the bass as a graded instruction. |
+| [[Roman Numeral]] | Chord names by degree: number = root's position, case = quality. |
+| [[Triad]] | Three notes stacked in thirds: root, third, fifth. |
+| [[Triad Quality]] | Major, minor, diminished, augmented — the four third-stacks. |
 
 ## Harmony
 
 | Page | Summary |
 |------|---------|
+| [[Harmonic Function]] | *(stub)* A chord's job in its key: tonic, predominant, dominant. |
 
-*(no pages yet — ticket 07)*
+*(more pages with ticket 07)*
 
 ## Cadences
 
 | Page | Summary |
 |------|---------|
+| [[Cadential Six-Four]] | *(stub)* The I6/4 over the dominant's bass that is really a dressed-up V. |
 
-*(no pages yet — ticket 07)*
+*(more pages with ticket 07)*
 
 ## Minor Modes
 
@@ -112,6 +117,6 @@ Every page in the vault, grouped by domain, one line each. Update this file in t
 
 ## Statistics
 
-- **Total pages**: 35 canonical (29 active, 6 stubs) + 3 structural (index, log, CLAUDE.md)
-- **Domains populated**: 8 of 11
+- **Total pages**: 42 canonical (34 active, 8 stubs) + 3 structural (index, log, CLAUDE.md)
+- **Domains populated**: 10 of 11
 - **Initial scaffold date**: 2026-08-17

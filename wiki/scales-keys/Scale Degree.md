@@ -44,7 +44,7 @@ The names are symmetric around the tonic: dominant a fifth up, subdominant a fif
 
 **In minor.** The [[Natural Minor Scale]] uses the same numbering, but its seventh degree sits a whole tone below the tonic, so it loses the pull and the name: it is called the **subtonic** instead. (Restoring a true leading tone in minor is the harmonic-minor story, told in the minor-modes pages.)
 
-**Degrees carry chords.** Build a [[Triad]] on each degree and you get the key's seven diatonic chords. The drills label these with Roman numerals — I for the tonic chord, V for the dominant chord, and so on — uppercase and lowercase encoding the quality (the chord pages cover that convention in full). The numeral is just the degree number wearing chord clothes.
+**Degrees carry chords.** Build a [[Triad]] on each degree and you get the key's seven diatonic chords. The drills label these with Roman numerals — I for the tonic chord, V for the dominant chord, and so on — uppercase and lowercase encoding the quality (the [[Roman Numeral]] page covers that convention in full). The numeral is just the degree number wearing chord clothes.
 
 ## In the Lab
 

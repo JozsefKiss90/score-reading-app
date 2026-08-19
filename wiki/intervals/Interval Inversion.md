@@ -18,7 +18,7 @@ Inverting an [[Interval]] means moving its lower note up an octave (or the upper
 
 ## Why it matters
 
-Inversion halves what you have to memorise: every interval and its flip are two views of one pair of notes, and the conversion follows two small rules. It is also the idea behind chord inversion — a triad with a note moved to the other side of the stack — so getting it right on two notes prepares the three-note version the drills grade.
+Inversion halves what you have to memorise: every interval and its flip are two views of one pair of notes, and the conversion follows two small rules. It is also the idea behind [[Chord Inversion]] — a triad with a note moved to the other side of the stack — so getting it right on two notes prepares the three-note version the drills grade.
 
 ## Prerequisites
 
@@ -47,4 +47,4 @@ No drill asks for interval inversion by name. It is baked into how the Lab grade
 
 ## Related Concepts
 
-The [[Octave]] is the fold line; the [[Third]]/sixth and [[Perfect Fifth]]/fourth pairs are the flips met most often; the [[Tritone]] is the interval that inverts into itself. The [[Triad]] pages take the same idea to three notes.
+The [[Octave]] is the fold line; the [[Third]]/sixth and [[Perfect Fifth]]/fourth pairs are the flips met most often; the [[Tritone]] is the interval that inverts into itself. [[Chord Inversion]] takes the same idea to the three notes of a [[Triad]].

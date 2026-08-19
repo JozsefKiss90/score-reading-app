@@ -32,7 +32,7 @@ The [[Major Scale]] and its step-pattern thinking, the [[Semitone]] and [[Whole 
 
 **The missing leading tone.** In major, 7̂ sits a semitone under the tonic and pulls home — the [[Leading Tone]]. Natural minor's 7̂ (G in A minor) sits a *whole tone* below: no pull. It is called the **subtonic**, and its chord VII is a plain major triad a whole step below home. This is why natural minor's dominant chord (v, minor) closes so much more weakly than major's V — and why the [[Harmonic Minor Scale]] raises 7̂ to fix it, while the [[Melodic Minor Scale]] smooths the melodic path up. Those forms belong to the minor-modes pages; the drills outside that category use natural minor as written here.
 
-**The diatonic chord set.** Triads on each [[Scale Degree]] of natural minor come out i ii° III iv v VI VII — minor, diminished, major, minor, minor, major, major. Same construction rule as major, different result, because the step pattern underneath moved.
+**The diatonic chord set.** Triads on each [[Scale Degree]] of natural minor come out i ii° III iv v VI VII — minor, diminished, major, minor, minor, major, major. Same construction rule as major (see [[Diatonic Triads]]), different result, because the step pattern underneath moved.
 
 ## In the Lab
 
