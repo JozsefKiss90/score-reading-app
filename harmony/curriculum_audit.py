@@ -63,7 +63,9 @@ _CATEGORIES = [
      "Each degree across all 12 keys, both modes, block + arpeggio (28)."),
     ("functions", "Functions", ["cat:functions"],
      ["tests/test_curriculum.py", "tests/test_harmony_exercise.py"],
-     "Major + minor functional progressions (19)."),
+     "Major + minor functional progressions (19) + the 7-leaf Chord "
+     "Progression Foundations bridge lesson (C/G/F, "
+     "harmony.progression_foundations)."),
     ("cadences", "Cadences", ["cat:cadences"],
      ["tests/test_curriculum.py", "tests/test_curriculum_cadences.py",
       "tests/test_content_truth.py", "tests/test_harmony_atlas.py",

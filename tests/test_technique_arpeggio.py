@@ -356,10 +356,11 @@ class TestArpeggioRunLeaves(unittest.TestCase):
         self.assertIn("not graded", leaf.description)
 
     def test_leaf_count_fingerprint(self):
-        # 381 (ticket 19 + technique tracer) + 24 arpeggio runs = 405; the
-        # Python pin lives in tests/test_applied_chords.py, the JS mirror in
+        # 381 (ticket 19 + technique tracer) + 24 arpeggio runs = 405, + 7
+        # Chord Progression Foundations leaves = 412; the Python pin lives in
+        # tests/test_applied_chords.py, the JS mirror in
         # tests/curriculum_node_test.js.
-        self.assertEqual(self.root.exercise_count, 405)
+        self.assertEqual(self.root.exercise_count, 412)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 {
   "schema": "harmony-curriculum-audit/v1",
   "summary": {
-    "totalLeaves": 405,
+    "totalLeaves": 412,
     "categories": 15,
     "duplicateLeafIds": [],
     "duplicateExperimentIds": [],
@@ -101,8 +101,8 @@
       "categoryIds": [
         "cat:functions"
       ],
-      "expected": "Major + minor functional progressions (19).",
-      "actualLeaves": 19,
+      "expected": "Major + minor functional progressions (19) + the 7-leaf Chord Progression Foundations bridge lesson (C/G/F, harmony.progression_foundations).",
+      "actualLeaves": 26,
       "reserved": false,
       "duplicateExerciseIds": [],
       "duplicateExperimentIds": [],

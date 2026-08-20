@@ -118,11 +118,15 @@ class TestCoverage(unittest.TestCase):
         # Chords additionally owns the III+ quality drill (ticket 14 / plan
         # G2b) — a curriculum-authored native spec OUTSIDE the load-bearing
         # 102 default drills, like the harmonic-minor drills of ticket 13.
+        # Functions additionally owns the 7-leaf Chord Progression
+        # Foundations bridge lesson (harmony.progression_foundations):
+        # I–IV–V–I and ii–V–I in G and F, ii7–V7–I in C/G/F — the other five
+        # C/G/F examples reuse existing Scales/Cadences leaves via `related`.
         by_title = {c.title: c.exercise_count for c in self.root.children}
         self.assertEqual(by_title["Scales"], 48)
         self.assertEqual(by_title["Chords (Triads)"], 7 + 1)
         self.assertEqual(by_title["Degrees & Transposition"], 28)
-        self.assertEqual(by_title["Functions"], 19)
+        self.assertEqual(by_title["Functions"], 19 + 7)
 
 
 class TestLabSpecOwnership(unittest.TestCase):

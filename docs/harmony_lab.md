@@ -227,7 +227,9 @@ unchanged.
 .venv/Scripts/python.exe run_harmony_lab_demo.py
 ```
 
-The window shows the **Lab** (left: concept selector + explanation; bottom: live
+The window shows the **Lab** (left: the curriculum browser plus the
+**Foundations** tab — the beginner Chord Progression Foundations lesson, see
+[progression_foundations.md](progression_foundations.md); bottom: live
 Atlas mapping) beside the reused **Harmony Trainer** (middle: the generated score
 + the MIDI guide panel). Pick a concept, click an experiment — it compiles,
 renders to MusicXML, and loads into the trainer; play along on a MIDI keyboard for

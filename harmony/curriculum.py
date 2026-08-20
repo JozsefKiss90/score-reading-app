@@ -96,6 +96,7 @@ from harmony.applied_ramp import (
 )
 from harmony.echo_drills import is_echo_eligible
 from harmony.lab import lab_demo_specs
+from harmony.progression_foundations import new_foundation_exercise_specs
 from harmony.atlas import (
     scale_id, degree_id, triad_id, quality_id, function_id, layer_id,
     function_spec, build_atlas,
@@ -2013,6 +2014,77 @@ def build_curriculum() -> CurriculumNode:
     fill_native(group(l_fmin, "functions_minor_drills", "Function drills (minor)",
                       "The minor function patterns across key-groups.", 3),
                 _by(function_specs, mode="natural_minor"), 3)
+
+    # -- the beginner bridge lesson: Chord Progression Foundations --------
+    # One guided lesson of 12 selectable C/G/F examples in four transposition
+    # families (harmony.progression_foundations).  Five examples have an
+    # exact existing canonical drill — the full-key C/G/F leaves under Scales
+    # and the cadence catalogue's C-major I–IV–V–I / ii–V–I leaves — and are
+    # REFERENCED via `related` rather than re-registered (the reachable-once
+    # invariant); only the seven genuinely new drills become leaves here.
+    l_found = lesson(
+        functions, "progression_foundations",
+        "Chord Progression Foundations — C, G and F major",
+        "One Roman pattern, three keys: the full diatonic field, I–IV–V–I, "
+        "ii–V–I and ii7–V7–I.",
+        "Follow the chain key → scale → degree → Roman numeral → chord "
+        "symbol → chord tones → quality → function, then hear the same "
+        "pattern in another key.", 2,
+        theory=("Diatonic chords are scale notes stacked in thirds: the "
+                "Roman numeral names the scale degree of the root, the "
+                "chord symbol names the actual notes.  Transposing the "
+                "pattern C → G → F keeps the numerals, degrees, functions "
+                "and quality pattern fixed while the chord names, spellings "
+                "and key signature change.  Diatonic and root-position "
+                "only: inversions, applied chords and modulation belong to "
+                "later lessons."),
+        related=["cat:scales", "cat:chords", "cat:degrees", "cat:sevenths",
+                 "lesson:scales_major", "lesson:triad_qualities",
+                 "lesson:degrees_major", "lesson:functions_major",
+                 "lesson:sevenths_ii_v_i", "lesson:dominant_seventh"],
+        keywords=["foundations", "beginner", "progression", "transposition",
+                  "C major", "G major", "F major"])
+    _found_specs = new_foundation_exercise_specs()
+    _found_b = [s for s in _found_specs
+                if s.exercise_id.startswith("atlas_function_I_IV_V_I")]
+    _found_c = [s for s in _found_specs
+                if s.exercise_id.startswith("atlas_function_ii_V_I")]
+    _found_d = [s for s in _found_specs
+                if s.exercise_id.startswith("foundations_ii7_V7_I")]
+    fill_native(group(l_found, "foundations_i_iv_v_i", "I–IV–V–I in G and F",
+                      "The functional loop transposed; the C major version "
+                      "is the Cadences catalogue drill.", 2), _found_b, 2)
+    fill_native(group(l_found, "foundations_ii_v_i", "ii–V–I in G and F",
+                      "Predominant → dominant → tonic transposed; the C "
+                      "major version is the Cadences catalogue drill.", 2),
+                _found_c, 2)
+    fill_native(group(l_found, "foundations_ii7_v7_i",
+                      "ii7–V7–I in C, G and F",
+                      "The same path as genuine four-note seventh chords.",
+                      2), _found_d, 2)
+    # Reused canonical leaves (never re-registered) + cross-links: the
+    # lesson points at them, and each new leaf points back at its C-major
+    # (or triad) sibling so the transposition family stays navigable.
+    _found_i_iv_v_i_c = _cadence_block_leaf_id(
+        ("I", "IV", "V", "I"), "I–IV–V–I", "major")
+    _found_ii_v_i_c = _cadence_block_leaf_id(("ii", "V", "I"), "ii–V–I",
+                                             "major")
+    _found_reused = [
+        "ex:drill_major_fullkey_block_C",
+        "ex:drill_major_fullkey_block_G",
+        "ex:drill_major_fullkey_block_F",
+        _found_i_iv_v_i_c,
+        _found_ii_v_i_c,
+    ]
+    l_found.related = _dedup(l_found.related + _found_reused)
+    for _leaf in l_found.leaves():
+        if _leaf.id.startswith("ex:drill_atlas_function_I_IV_V_I"):
+            _leaf.related = _dedup(_leaf.related + [_found_i_iv_v_i_c])
+        elif _leaf.id.startswith("ex:drill_atlas_function_ii_V_I"):
+            _leaf.related = _dedup(_leaf.related + [_found_ii_v_i_c])
+        else:
+            _leaf.related = _dedup(
+                _leaf.related + [_found_ii_v_i_c, "lesson:sevenths_ii_v_i"])
 
     # ===================================================================
     # 5. CADENCES  (ONE catalogue, two render variants: block + SATB voice

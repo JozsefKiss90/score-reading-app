@@ -487,9 +487,11 @@ class TestAppliedCurriculum(unittest.TestCase):
         # leaves (ticket 19, pinned in tests/test_applied_ramps.py) = 380,
         # + 1 technique tracer (piano-technique ticket 01, pinned in
         # tests/test_technique.py) = 381, + 24 arpeggio runs (piano-technique
-        # ticket 06, pinned in tests/test_technique_arpeggio.py) = 405; the
-        # JS mirror is pinned in tests/curriculum_node_test.js.
-        self.assertEqual(self.root.exercise_count, 405)
+        # ticket 06, pinned in tests/test_technique_arpeggio.py) = 405,
+        # + 7 Chord Progression Foundations leaves (pinned in
+        # tests/test_progression_foundations.py) = 412; the JS mirror is
+        # pinned in tests/curriculum_node_test.js.
+        self.assertEqual(self.root.exercise_count, 412)
 
 
 if __name__ == "__main__":

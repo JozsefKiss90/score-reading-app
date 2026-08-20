@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chord Progression Foundations — C, G and F major</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 13px/1.45 system-ui, Segoe UI, Roboto, sans-serif; color: #0f172a;
+           background: #f8fafc; display: flex; flex-direction: column; height: 100vh; }
+    #fnHeader { padding: 8px 12px; background: #0b3a53; color: #fff; }
+    #fnHeader h1 { margin: 0; font-size: 15px; }
+    #fnHeader .sub { font-size: 11.5px; opacity: .85; }
+    #fnBody { flex: 1; overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+    .fnCard { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 8px 10px; }
+    .fnTitle { font-size: 14px; font-weight: 700; color: #0b3a53; }
+    .fnSub { color: #64748b; font-size: 11.5px; margin-bottom: 4px; }
+    .fnPara { color: #334155; margin: 4px 0; }
+    .fnSecTitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+                  color: #0b3a53; margin: 8px 0 3px; }
+
+    .fnGroup { border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 6px; }
+    .fnGroup:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+    .fnRoman { font-weight: 600; color: #1d4ed8; }
+    .fnKeys { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+    .fnKeyBtn { padding: 5px 12px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc;
+                cursor: pointer; font: inherit; font-weight: 600; color: #0f172a; }
+    .fnKeyBtn:hover { background: #e2e8f0; }
+    .fnKeyBtn[aria-pressed="true"] { background: #2563eb; border-color: #1d4ed8; color: #fff; }
+    .fnKeyBtn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    .fnTransposed { margin: 4px 0; border-collapse: collapse; font-size: 12px; }
+    .fnTransposed th, .fnTransposed td { text-align: left; padding: 1px 10px 1px 0; color: #334155; }
+    .fnTransposed th { color: #64748b; font-weight: 600; }
+    .fnReusedTag { font-size: 10.5px; color: #92400e; background: #fef3c7; border: 1px solid #fde68a;
+                   border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+
+    #fnReveal { margin: 6px 0; padding: 6px 12px; border: 0; border-radius: 7px; cursor: pointer;
+                background: #2563eb; color: #fff; font-weight: 600; font-size: 12.5px; }
+    #fnReveal:hover { background: #1d4ed8; }
+    #fnReveal:focus-visible { outline: 2px solid #0b3a53; outline-offset: 2px; }
+
+    #fnTableWrap { overflow-x: auto; }
+    #fnTable { border-collapse: collapse; width: 100%; font-size: 12px; }
+    #fnTable caption { text-align: left; color: #64748b; font-size: 11px; padding: 2px 0; }
+    #fnTable th, #fnTable td { border: 1px solid #e2e8f0; padding: 3px 6px; text-align: left;
+                               vertical-align: top; }
+    #fnTable thead th { background: #f1f5f9; color: #0b3a53; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: .03em; }
+    #fnTable tbody th[scope="row"] { background: #f8fafc; font-weight: 600; }
+    #fnTable tbody tr:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
+    #fnTable tbody tr.fnRowActive { background: #dbeafe; }
+    #fnTable tbody tr.fnRowActive th[scope="row"]::after { content: " ▶"; color: #1d4ed8; }
+    .fnChip { display: inline-block; padding: 0 7px; margin: 1px 2px 1px 0; border-radius: 999px;
+              background: #ede9fe; border: 1px solid #ddd6fe; color: #5b21b6; font-size: 10.5px;
+              cursor: pointer; font-family: inherit; }
+    .fnChip:hover { background: #ddd6fe; }
+    .fnChip:focus-visible { outline: 2px solid #5b21b6; outline-offset: 1px; }
+    .fnLesson { display: inline-block; margin: 1px 4px 1px 0; color: #2563eb; font-size: 11px; }
+
+    .fnInvariant { display: flex; gap: 16px; flex-wrap: wrap; }
+    .fnInvariant ul { margin: 2px 0; padding-left: 18px; }
+    .fnInvariant li { color: #334155; margin: 1px 0; }
+    .fnPlaceholder { color: #94a3b8; padding: 8px 4px; }
+  </style>
+</head>
+<body>
+  <div id="fnHeader">
+    <h1 id="fnTitle">Chord Progression Foundations</h1>
+    <div class="sub" id="fnSubtitle">One Roman pattern, three keys — pick an example, play it, reveal the analysis.</div>
+  </div>
+  <div id="fnBody">
+    <div id="fnIntro" class="fnCard"></div>
+    <div id="fnGroups" class="fnCard"></div>
+    <div id="fnDetail" class="fnCard"><div class="fnPlaceholder">Pick an example above.</div></div>
+    <div id="fnTransposition" class="fnCard"></div>
+  </div>
+
+  <script src="foundations.js"></script>
+  <script>
+    (function () {
+      if (window.FOUNDATIONS && window.Foundations) {
+        window.Foundations.init(window.FOUNDATIONS);
+      } else {
+        var t = document.getElementById("fnGroups");
+        if (t) t.textContent = "Waiting for lesson data (launch via run_harmony_lab_demo.py).";
+      }
+    })();
+  </script>
+</body>
+</html>

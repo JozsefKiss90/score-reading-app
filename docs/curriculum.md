@@ -136,7 +136,8 @@ Plus the synthetic + derived material, each also owned by a `LabExperimentSpec`:
 | applied ramp (ticket 19 / G5c): 3 moved intruder positions + 3 `vii°7/x` spots + 3 `vii°7/x` resolves + 4 further-out keys + 4 dominant chains (native, wrapped) | 17 | Advanced Topics › Applied chords: the ramp |
 | piano technique (piano-technique ticket 01): the five-finger warm-up tracer (`concept="technique"` phrase engine; the ten daily exercises follow) | 1 | Piano Technique › Five-finger warm-up |
 | arpeggio runs (piano-technique ticket 06): two-octave tonic arpeggios, up and down twice in eighths, RH then LH, standard fingering, accents in groups of four — 12 major + 12 minor keys | 24 | Piano Technique › Arpeggio runs in fours |
-| **grand total** | **405 exercise leaves** | (529 nodes total) |
+| Chord Progression Foundations (beginner bridge lesson, `harmony.progression_foundations`): I–IV–V–I and ii–V–I in G and F + ii7–V7–I in C/G/F — the other five of its 12 C/G/F examples reuse existing Scales/Cadences leaves via `related` (see `docs/progression_foundations.md`) | 7 | Functions › Chord Progression Foundations |
+| **grand total** | **412 exercise leaves** | (540 nodes total) |
 
 The cadence + voice-leading layers are driven by one canonical `_CADENCE_CATALOG`
 (13 cadences) rendered as two variants under the single **Cadences** category —

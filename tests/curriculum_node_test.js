@@ -129,8 +129,11 @@ const PAYLOAD = loadPayload();
   // owns a 🎧 twin recorded under the same node id) + 1 technique tracer
   // (piano-technique ticket 01: the five-finger warm-up phrase) + 24
   // two-octave arpeggio runs (piano-technique ticket 06: 12 major + 12
-  // minor keys, RH-then-LH, accented in groups of four).
-  assert(r.exercises === 405, "reports 405 exercise leaves, got " + r.exercises);
+  // minor keys, RH-then-LH, accented in groups of four) + 7 Chord
+  // Progression Foundations bridge leaves (I–IV–V–I and ii–V–I in G and F,
+  // ii7–V7–I in C/G/F; the other five C/G/F examples reuse existing
+  // Scales/Cadences leaves via `related`).
+  assert(r.exercises === 412, "reports 412 exercise leaves, got " + r.exercises);
   // first category auto-expanded -> its lesson rows are visible
   const rows = h.ui._visibleRows();
   assert(rows.length > PAYLOAD.tree.children.length, "first category expanded");

@@ -58,6 +58,7 @@ from harmony.lab_explanations import (
 from harmony.exercise_spec import HarmonyExerciseSpec
 from harmony.curriculum import get_curriculum
 from harmony.curriculum_explanations import build_curriculum_payload
+from harmony.progression_foundations import build_foundations_payload
 from harmony.progress_service import ProgressService
 from harmony.echo_drills import echo_variant, echo_unlocked, is_echo_eligible
 from harmony.graph_scene_router import GraphSceneRequest, build_graph_scene
@@ -74,6 +75,7 @@ _LAB_HTML = _BEAT / "harmony_lab.html"               # legacy flat catalogue (ke
 _CURRICULUM_HTML = _BEAT / "curriculum.html"          # canonical curriculum browser
 _CHEAT_HTML = _BEAT / "lab_cheatsheet.html"
 _MAP_HTML = _BEAT / "lab_mapping.html"
+_FOUNDATIONS_HTML = _BEAT / "foundations.html"  # the C/G/F beginner lesson
 
 
 def _now_iso() -> str:
@@ -342,6 +344,108 @@ class CurriculumView(QWidget):
 
 
 # ---------------------------------------------------------------------------
+# Left panel (tab 2): the Chord Progression Foundations guided lesson
+# ---------------------------------------------------------------------------
+
+class FoundationsView(QWidget):
+    """The beginner C/G/F lesson page (harmony.progression_foundations).
+
+    Renders ``beat_selector/foundations.html`` + ``foundations.js`` and
+    bridges via the same ``runJavaScript`` polling pattern as the curriculum
+    browser:
+
+    * polls ``Foundations.takeLaunch()`` -> ``launchRequested`` (the selected
+      example's LabExperimentSpec, a ``drill`` passthrough ready for the
+      trainer);
+    * polls ``Foundations.takeAtlasSelection()`` -> ``atlasSelectionRequested``
+      (a clicked table row's Atlas node ids, for the Atlas highlight);
+    * pushes the live target so the chord table tracks the active measure.
+    """
+
+    launchRequested = pyqtSignal(dict)        # a selected LabExperimentSpec
+    atlasSelectionRequested = pyqtSignal(list)  # clicked Atlas node ids
+
+    def __init__(self, payload: dict, parent=None):
+        super().__init__(parent)
+        self._payload = payload
+        self._html_ready = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.web = QWebEngineView(self)
+        self.web.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        layout.addWidget(self.web, 1)
+
+        self.web.loadFinished.connect(self._on_loaded)
+        self.web.load(QUrl.fromLocalFile(str(_FOUNDATIONS_HTML)))
+
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(200)
+        self._poll_timer.timeout.connect(self._poll)
+
+    def _on_loaded(self, ok: bool):
+        if not ok:
+            return
+        self._run_js(
+            "window.FOUNDATIONS = %s; "
+            "window.Foundations && window.Foundations.init(window.FOUNDATIONS);"
+            % json.dumps(self._payload))
+        self._html_ready = True
+        self._poll_timer.start()
+
+    def _run_js(self, code: str, cb=None):
+        try:
+            if cb is None:
+                self.web.page().runJavaScript(code)
+            else:
+                self.web.page().runJavaScript(code, cb)
+        except Exception:
+            pass
+
+    def _poll(self):
+        if not self._html_ready:
+            return
+
+        def on_launch(val):
+            if not val:
+                return
+            try:
+                spec = json.loads(val)
+            except Exception:
+                return
+            if isinstance(spec, dict) and spec.get("concept"):
+                self.launchRequested.emit(spec)
+
+        def on_atlas(val):
+            if not val:
+                return
+            try:
+                nodes = json.loads(val)
+            except Exception:
+                return
+            if isinstance(nodes, list) and nodes:
+                self.atlasSelectionRequested.emit(nodes)
+
+        self._run_js(
+            "(window.Foundations && window.Foundations.takeLaunch) "
+            "? JSON.stringify(window.Foundations.takeLaunch() || null) : null",
+            on_launch)
+        self._run_js(
+            "(window.Foundations && window.Foundations.takeAtlasSelection) "
+            "? JSON.stringify(window.Foundations.takeAtlasSelection() || null)"
+            " : null",
+            on_atlas)
+
+    # -- host -> UI pushes ----------------------------------------------
+    def set_current(self, node_id, target):
+        """Live active-measure sync for the chord table (row highlight)."""
+        if self._html_ready and node_id and target is not None:
+            self._run_js(
+                "window.Foundations && window.Foundations.setCurrent(%s, %s);"
+                % (json.dumps(node_id), json.dumps(target)))
+
+
+# ---------------------------------------------------------------------------
 # Right panel: reused Circle (with lab launches) + cheatsheet + current mapping
 # ---------------------------------------------------------------------------
 
@@ -499,8 +603,13 @@ class HarmonyLabWindow(QWidget):
         self.trainer = HarmonyTrainerWindow(
             OrderedDict(), midi_service=midi_service, with_circle=False)
 
-        # LEFT: the canonical curriculum tree browser.
+        # LEFT: the canonical curriculum tree browser + the Foundations
+        # guided lesson (Chord Progression Foundations — C, G and F major).
         self.curriculum_view = CurriculumView(build_curriculum_payload())
+        self.foundations_view = FoundationsView(build_foundations_payload())
+        self.left_tabs = QTabWidget()
+        self.left_tabs.addTab(self.curriculum_view, "Curriculum")
+        self.left_tabs.addTab(self.foundations_view, "Foundations")
 
         # RIGHT: tabbed analytical dashboard.
         circle_payload = build_circle_payload()
@@ -526,7 +635,7 @@ class HarmonyLabWindow(QWidget):
         self.right_tabs.addTab(self.mapping_view, "Current Mapping")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.curriculum_view)
+        splitter.addWidget(self.left_tabs)
         splitter.addWidget(self.trainer)
         splitter.addWidget(self.right_tabs)
         splitter.setStretchFactor(0, 3)
@@ -540,6 +649,9 @@ class HarmonyLabWindow(QWidget):
         # Wire the launch sources into the middle trainer.
         self.curriculum_view.launchRequested.connect(self._on_curriculum_launch)
         self.curriculum_view.selectionRequested.connect(self._on_curriculum_selection)
+        self.foundations_view.launchRequested.connect(self._on_foundations_launch)
+        self.foundations_view.atlasSelectionRequested.connect(
+            self._on_foundations_atlas)
         self.dashboard_view.launchRequested.connect(self._on_dashboard_launch)
         self.circle_view.launchRequested.connect(self._on_circle_launch)
         self.circle_view.labLaunchRequested.connect(self._on_circle_lab_launch)
@@ -568,6 +680,22 @@ class HarmonyLabWindow(QWidget):
             print("[LAB] ignoring invalid curriculum experiment:", exc)
             return
         self._launch_node(f"ex:{spec.experiment_id}", spec, echo=echo)
+
+    def _on_foundations_launch(self, spec_dict: dict):
+        """A Foundations example click -> the same drill-launch path as the
+        curriculum (the example's LabExperimentSpec IS a curriculum leaf's
+        spec — reused or newly registered), plus tree selection."""
+        self._on_curriculum_launch(spec_dict)
+        exp_id = spec_dict.get("experiment_id") or ""
+        if exp_id:
+            self.curriculum_view.select(f"ex:{exp_id}")
+
+    def _on_foundations_atlas(self, atlas_nodes: list):
+        """A Foundations table-row Atlas chip -> highlight those nodes."""
+        active = self._active_from_atlas_nodes(atlas_nodes)
+        if active:
+            self.atlas_view.set_sync(active)
+            self.curriculum_view.set_sync(active)
 
     def _on_curriculum_selection(self, node_id: str):
         """A curriculum node selection -> highlight its Atlas / Circle nodes."""
@@ -900,8 +1028,9 @@ class HarmonyLabWindow(QWidget):
         def on_target(target):
             if not target:
                 return
-            # Left: live "Now playing" guide.
+            # Left: live "Now playing" guide + the Foundations table row.
             self.curriculum_view.update_explanation(target)
+            self.foundations_view.set_current(self._current_node_id, target)
 
             # Atlas highlight (+ cadence node when applicable).
             active = self._atlas.sync(target).get("active", {})
